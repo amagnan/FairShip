@@ -165,6 +165,7 @@ def hProdPDF(mDarkPhoton, epsilon, norm, binsp, binstheta, tmin = -0.5 * math.pi
     hPdfFilename = sys.modules['__main__'].outputDir+"/ParaPhoton_eps%s_m%s%s.root"%(epsilon,mDarkPhoton,suffix)
     outfile = r.TFile(hPdfFilename,"recreate")
     weight = hPDF.Integral("width")
+    print "Weight = %3.3f"%weight
     hPDF.Scale(1./weight)
     hPDF.Write()
     hPDFp.Write()

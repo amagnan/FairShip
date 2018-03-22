@@ -49,8 +49,14 @@ class DPPythia8Generator : public FairGenerator
   void SetId(Double_t id) { fId  = id; };
   void SetDPId(Int_t id) { fDP = id; };
   Int_t GetDPId() { return fDP; };
-  void SetLmin(Double_t z) { fLmin = z*10; };
-  void SetLmax(Double_t z) { fLmax = z*10; };
+  void SetLmin(Double_t z) { 
+    fLmin = z*10;//in mm 
+    std::cout << "Setting min L of decay vessel to " << fLmin << " mm" << std::endl;
+  };//need mm, given in shipunit=cm in run_simScript
+  void SetLmax(Double_t z) { 
+    fLmax = z*10;
+    std::cout << "Setting max L of decay vessel to " << fLmax << " mm" << std::endl;
+  };//need mm, given in shipunit=cm in run_simScript
   void SetSmearBeam(Double_t sb) { fsmearBeam = sb; };
   void SetfFDs(Double_t z) { fFDs = z; };
   void UseRandom1() { fUseRandom1 = kTRUE; fUseRandom3 = kFALSE; };
