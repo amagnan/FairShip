@@ -1,4 +1,4 @@
-import ROOT,os,sys,getopt
+import ROOT,os,sys,getopt,math
 import shipunit as u
 import proton_bremsstrahlung
 
@@ -26,6 +26,8 @@ def getAverageMesonRate(mumPdg):
     if (mumPdg==221): return 0.7012
     if (mumPdg==223): return 0.8295
     if (mumPdg==331): return 0.07825
+    print " -- ERROR, unknown mother pdgId %d"%mumPdg
+    return 0
 
 #from the PDG, decay to photon channels available for mixing with DP
 def mesonBRtoPhoton(mumPdg,doprint=False):
@@ -63,17 +65,25 @@ def brMesonToDP(mass,epsilon,mumPdg,doprint=False):
     if mumPdg==223: return brMesonToMesonDP(mass,epsilon,mumPdg,111,doprint)
     elif (mumPdg==111 or mumPdg==221 or mumPdg==331): return brMesonToGammaDP(mass,epsilon,mumPdg,doprint)
     else: 
-        print "Warning! Unknown mother pdgId %d, not implemented. Setting br to 1."%mumPdg
+        print "Warning! Unknown mother pdgId %d, not implemented. Setting br to 0."%mumPdg
         return 1
 
 def mesonProdRate(mass,epsilon,mumPdg,doprint=False):
+    #print "avgrate %.8g, brmeson %.8g"%(getAverageMesonRate(mumPdg),brMesonToDP(mass,epsilon,mumPdg,doprint))
     avgMeson = getAverageMesonRate(mumPdg)*brMesonToDP(mass,epsilon,mumPdg,doprint)
     if doprint==True: print "Average %d meson production rate per p.o.t: %.8g"%(mumPdg,avgMeson)
     return avgMeson
 
-#TBD
+#from interpolation of Pythia XS, normalised to epsilon^2
 def qcdprodRate(mass,epsilon,doprint=False):
-    return 1
+    xs = 0
+    if (mass > 3):
+        xs = math.exp(-5.673-0.8869*mass)
+    elif (mass > 1.4):
+        xs = math.exp(-3.802-1.532*mass)
+    else:
+        xs = 0.0586-0.09037*mass + 0.0360743*mass*mass
+    return xs*epsilon*epsilon
 
 def getDPprodRate(mass,epsilon,prodMode,mumPdg,doprint=False):
     if ('pbrem' in prodMode):
