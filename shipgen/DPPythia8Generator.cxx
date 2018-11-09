@@ -131,6 +131,9 @@ Bool_t DPPythia8Generator::Init()
     return kFALSE;
   }
 
+  std::cout << " -- Decay vessel in Pythia unit: " << fLmin << " " << fLmax << std::endl;
+
+
   return kTRUE;
   //if (fHadDecay) fPythiaHadDecay->init();
   //return kTRUE;
@@ -301,7 +304,7 @@ Bool_t DPPythia8Generator::ReadEvent(FairPrimaryGenerator* cpg)
    //if (!hadDecay){
      for(int k=0; k<fPythia->event.size(); k++){
        // if daughter of DP, copy
-       if (debug>1) cout <<k<< " pdg =" <<fPythia->event[k].id() << " mum " << fPythia->event[k].mother1() << std::endl;
+       if (debug>1) cout <<k<< " pdg =" <<fPythia->event[k].id() << " mum1 " << fPythia->event[k].mother1()<< " mum2 " << fPythia->event[k].mother2() << std::endl;
        im =fPythia->event[k].mother1();
        while (im>0){
 	 if ( im == iDP ){break;} // pick the decay products of only 1 chosen DP
