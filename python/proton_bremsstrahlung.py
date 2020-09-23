@@ -164,9 +164,18 @@ def pMaxFix(E,mDarkPhoton):
     return min(0.9*protonMomentum(E), math.sqrt( (energy(protonMomentum(E),mProton)**2. - mDarkPhoton**2.) - mDarkPhoton**2.))
 
 
-def prodRate(E, mDarkPhoton, epsilon, tmin = -0.5 * math.pi, tmax = 0.5 * math.pi, pmin = -1, pmax = -1):
-    if pmin==-1: pmin = pMin(E,mDarkPhoton)
-    if pmax==-1: pmax = pMax(E,mDarkPhoton)
+def prodRate(E, mDarkPhoton, epsilon, ptmax = 4.0, pmin = -1, pmax = -1):
+    if pmin==-1: pmin = pMinFix(E,mDarkPhoton)
+    if pmax==-1: pmax = pMaxFix(E,mDarkPhoton)
+    if ptmax==-1: 
+        tmin = -0.5 * math.pi
+        tmax = 0.5 * math.pi
+    else:
+        tmin = -math.atan(ptmax/pmin)
+        tmax = math.atan(ptmax/pmin)
+
+    print "Boundary conditions: pTmax = %.3f, theta [%.3f,%.3f], p [%.3f,%.3f]"%(ptmax,tmin,tmax,pmin,pmax)
+
     """ dNdPdTheta integrated over p and theta """
     integral = dblquad( dNdPdTheta, # integrand
                         tmin, tmax, # theta boundaries (2nd argument of integrand)
@@ -192,9 +201,16 @@ def normalisedProductionPDF(E, p, theta, mDarkPhoton, epsilon, norm):
     return (1. / norm) * dNdPdTheta(p, theta, E, mDarkPhoton, epsilon)
 
 
-def hProdPDF(E,mDarkPhoton, epsilon, norm, binsp, binstheta, tmin = -0.5 * math.pi, tmax = 0.5 * math.pi, pmin = -1, pmax = -1, suffix=""):
-    if pmin==-1: pmin = pMin(E,mDarkPhoton)
-    if pmax==-1: pmax = pMax(E,mDarkPhoton)
+def hProdPDF(E,mDarkPhoton, epsilon, norm, binsp, binstheta, ptmax = 4.0, pmin = -1, pmax = -1, suffix=""):
+    if pmin==-1: pmin = pMinFix(E,mDarkPhoton)
+    if pmax==-1: pmax = pMaxFix(E,mDarkPhoton)
+    if ptmax==-1: 
+        tmin = -0.5 * math.pi
+        tmax = 0.5 * math.pi
+    else:
+        tmin = -math.atan(ptmax/pmin)
+        tmax = math.atan(ptmax/pmin)
+
     """ Histogram of the PDF for A' production in SHIP """
     angles = np.linspace(tmin,tmax,binstheta).tolist()
     anglestep = 2.*(tmax - tmin)/binstheta
