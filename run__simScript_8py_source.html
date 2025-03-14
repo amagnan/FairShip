@@ -673,9 +673,9 @@ $(document).ready(function(){initNavTree('run__simScript_8py_source.html',''); i
 <div class="line"><a id="l00574" name="l00574"></a><span class="lineno"><a class="line" href="namespacerun__simScript.html#a6cb8e3a7ded8e6da4a673ddb21f330fb">  574</a></span>kParameterMerged = ROOT.kTRUE</div>
 <div class="line"><a id="l00575" name="l00575"></a><span class="lineno"><a class="line" href="namespacerun__simScript.html#a04716d6c09866d36dcb7fe7631f825b9">  575</a></span>parOut = ROOT.FairParRootFileIo(kParameterMerged)</div>
 <div class="line"><a id="l00576" name="l00576"></a><span class="lineno">  576</span>parOut.open(parFile)</div>
-<div class="line"><a id="l00577" name="l00577"></a><span class="lineno">  577</span><span class="comment">#rtdb.setOutput(parOut)</span></div>
-<div class="line"><a id="l00578" name="l00578"></a><span class="lineno">  578</span><span class="comment">#rtdb.saveOutput()</span></div>
-<div class="line"><a id="l00579" name="l00579"></a><span class="lineno">  579</span><span class="comment">#rtdb.printParamContexts()</span></div>
+<div class="line"><a id="l00577" name="l00577"></a><span class="lineno">  577</span>rtdb.setOutput(parOut)</div>
+<div class="line"><a id="l00578" name="l00578"></a><span class="lineno">  578</span>rtdb.saveOutput()</div>
+<div class="line"><a id="l00579" name="l00579"></a><span class="lineno">  579</span>rtdb.printParamContexts()</div>
 <div class="line"><a id="l00580" name="l00580"></a><span class="lineno">  580</span>getattr(rtdb,<span class="stringliteral">&quot;print&quot;</span>)()</div>
 <div class="line"><a id="l00581" name="l00581"></a><span class="lineno">  581</span><span class="comment"># ------------------------------------------------------------------------</span></div>
 <div class="line"><a id="l00582" name="l00582"></a><span class="lineno">  582</span>run.CreateGeometryFile(f<span class="stringliteral">&quot;{options.outputDir}/geofile_full.{tag}.root&quot;</span>)</div>
