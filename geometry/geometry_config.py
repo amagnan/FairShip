@@ -58,8 +58,6 @@ if "SC_mag" not in globals():
     SC_mag = False
 if "shieldName" not in globals():
     shieldName = None
-if "DecayVolumeMedium" not in globals():
-    DecayVolumeMedium = "vacuums"
 if "SND" not in globals():
     SND = True
 
