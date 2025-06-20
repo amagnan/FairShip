@@ -1,7 +1,5 @@
 var NAVTREEINDEX23 =
 {
-"ecalDrawer_8h.html#a9ed32ef338349885970f967d37890a26":[6,0,1,21,1],
-"ecalDrawer_8h_source.html":[6,0,1,21],
 "ecalInf_8cxx.html":[6,0,1,22],
 "ecalInf_8cxx.html#ad23787431a3185405f1e6c46c9bfa8d3":[6,0,1,22,0],
 "ecalInf_8cxx_source.html":[6,0,1,22],
@@ -216,8 +214,8 @@ var NAVTREEINDEX23 =
 "flux__map_8py.html#a0a534466aad410c85e90044a42a9fa87":[6,0,6,10,1],
 "flux__map_8py.html#a771e745091fb71f923521ce4420f4a8d":[6,0,6,10,0],
 "flux__map_8py_source.html":[6,0,6,10],
-"functions.html":[5,3,0,0],
 "functions.html":[5,3,0],
+"functions.html":[5,3,0,0],
 "functions_a.html":[5,3,0,1],
 "functions_b.html":[5,3,0,2],
 "functions_c.html":[5,3,0,3],
@@ -249,5 +247,7 @@ var NAVTREEINDEX23 =
 "functions_func_t.html":[5,3,1,19],
 "functions_func_u.html":[5,3,1,20],
 "functions_func_v.html":[5,3,1,21],
-"functions_func_w.html":[5,3,1,22]
+"functions_func_w.html":[5,3,1,22],
+"functions_func_x.html":[5,3,1,23],
+"functions_func_y.html":[5,3,1,24]
 };

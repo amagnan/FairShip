@@ -754,7 +754,7 @@ The earliest hit per straw will be marked valid, all later ones invalid.
 <div class="line"><span class="lineno">  283</span>   self.input_hits = list_hits_above_threshold</div>
 <div class="line"><span class="lineno">  284</span>   list_clusters_of_hits = self.Clustering()</div>
 <div class="line"><span class="lineno">  285</span> </div>
-<div class="line"><span class="lineno">  286</span>   <span class="comment"># step 2: to check if clusters can be split do clustering separtely in the XZ and YZ planes</span></div>
+<div class="line"><span class="lineno">  286</span>   <span class="comment"># step 2: to check if clusters can be split do clustering separately in the XZ and YZ planes</span></div>
 <div class="line"><span class="lineno">  287</span> </div>
 <div class="line"><span class="lineno">  288</span>   self.step = 2</div>
 <div class="line"><span class="lineno">  289</span>   <span class="comment"># print &quot;--- digitizeSplitcal ==== STEP 2 ==== &quot;</span></div>
@@ -1083,7 +1083,7 @@ The earliest hit per straw will be marked valid, all later ones invalid.
 <div class="line"><span class="lineno">  835</span>      atrack_smeared_hits = list(atrack_y12) + list(atrack_stereo12) + list(atrack_y34) + list(atrack_stereo34)</div>
 <div class="line"><span class="lineno">  836</span>      <span class="keywordflow">for</span> sm <span class="keywordflow">in</span> atrack_smeared_hits:</div>
 <div class="line"><span class="lineno">  837</span>        detID = sm[<span class="stringliteral">&#39;detID&#39;</span>]</div>
-<div class="line"><span class="lineno">  838</span>        station = int(detID//10000000)</div>
+<div class="line"><span class="lineno">  838</span>        station = self.digiStraw[sm[<span class="stringliteral">&#39;digiHit&#39;</span>]].GetStationNumber()</div>
 <div class="line"><span class="lineno">  839</span>        trID = i_track</div>
 <div class="line"><span class="lineno">  840</span>        <span class="comment"># Collect hits for track fit</span></div>
 <div class="line"><span class="lineno">  841</span>        <span class="keywordflow">if</span> trID <span class="keywordflow">not</span> <span class="keywordflow">in</span> hitPosLists:</div>
@@ -1101,7 +1101,7 @@ The earliest hit per straw will be marked valid, all later ones invalid.
 <div class="line"><span class="lineno">  853</span>  <span class="keywordflow">else</span>: <span class="comment"># do fake pattern recognition</span></div>
 <div class="line"><span class="lineno">  854</span>   <span class="keywordflow">for</span> sm <span class="keywordflow">in</span> self.SmearedHits:</div>
 <div class="line"><span class="lineno">  855</span>    detID = self.digiStraw[sm[<span class="stringliteral">&#39;digiHit&#39;</span>]].GetDetectorID()</div>
-<div class="line"><span class="lineno">  856</span>    station = int(detID//10000000)</div>
+<div class="line"><span class="lineno">  856</span>    station = self.digiStraw[sm[<span class="stringliteral">&#39;digiHit&#39;</span>]].GetStationNumber()</div>
 <div class="line"><span class="lineno">  857</span>    trID = self.sTree.strawtubesPoint[sm[<span class="stringliteral">&#39;digiHit&#39;</span>]].GetTrackID()</div>
 <div class="line"><span class="lineno">  858</span>    <span class="keywordflow">if</span> trID <span class="keywordflow">not</span> <span class="keywordflow">in</span> hitPosLists:</div>
 <div class="line"><span class="lineno">  859</span>      hitPosLists[trID]     = ROOT.std.vector(<span class="stringliteral">&#39;TVectorD&#39;</span>)()</div>
@@ -1137,7 +1137,7 @@ The earliest hit per straw will be marked valid, all later ones invalid.
 <div class="line"><span class="lineno">  889</span>    <span class="keywordflow">if</span> global_variables.debug:</div>
 <div class="line"><span class="lineno">  890</span>       mctrack = self.sTree.MCTrack[atrack]</div>
 <div class="line"><span class="lineno">  891</span>    <span class="comment"># charge = self.PDG.GetParticle(pdg).Charge()/(3.)</span></div>
-<div class="line"><span class="lineno">  892</span>    posM = ROOT.TVector3(0, 0, 0)</div>
+<div class="line"><span class="lineno">  892</span>    posM = ROOT.TVector3(0, 0, 5812.0) <span class="comment"># seed is at decay vessel centre</span></div>
 <div class="line"><span class="lineno">  893</span>    momM = ROOT.TVector3(0,0,3.*u.GeV)</div>
 <div class="line"><span class="lineno">  894</span><span class="comment"># approximate covariance</span></div>
 <div class="line"><span class="lineno">  895</span>    covM = ROOT.TMatrixDSym(6)</div>
@@ -1175,7 +1175,7 @@ The earliest hit per straw will be marked valid, all later ones invalid.
 <div class="line"><span class="lineno">  927</span>      tp.addRawMeasurement(measurement) <span class="comment"># package measurement in the TrackPoint</span></div>
 <div class="line"><span class="lineno">  928</span>      theTrack.insertPoint(tp)  <span class="comment"># add point to Track</span></div>
 <div class="line"><span class="lineno">  929</span>      hitID += 1</div>
-<div class="line"><span class="lineno">  930</span>   <span class="comment"># print &quot;debug meas&quot;,atrack,nM,stationCrossed[atrack],self.sTree.MCTrack[atrack],pdg</span></div>
+<div class="line"><span class="lineno">  930</span>    <span class="comment"># print(&quot;debug meas&quot;, atrack, nM, stationCrossed[atrack], self.sTree.MCTrack[atrack], pdg)</span></div>
 <div class="line"><span class="lineno">  931</span>    trackCandidates.append([theTrack,atrack])</div>
 <div class="line"><span class="lineno">  932</span> </div>
 <div class="line"><span class="lineno">  933</span>  <span class="keywordflow">for</span> entry <span class="keywordflow">in</span> trackCandidates:</div>

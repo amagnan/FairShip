@@ -1,13 +1,5 @@
 var NAVTREEINDEX27 =
 {
-"makeCascade_8py.html#a7fcf43963813765ec77be21c9eaf8047":[6,0,6,14,8],
-"makeCascade_8py.html#a84ddf46aec68748aa97d4395eabca427":[6,0,6,14,55],
-"makeCascade_8py.html#a850c7c17142d5f66455dd4491808ef25":[6,0,6,14,37],
-"makeCascade_8py.html#a897519cb1b024b7752c61d6a5b1aa46b":[6,0,6,14,43],
-"makeCascade_8py.html#a95ffd118cf42cfdd3012256cf4bac800":[6,0,6,14,21],
-"makeCascade_8py.html#aa97c8d74f62279eb53c5dfdcc7896606":[6,0,6,14,6],
-"makeCascade_8py.html#aabda958432623d59f199eccc2581ba6a":[6,0,6,14,35],
-"makeCascade_8py.html#ab0b1e642f6080b1d06a39c00531c6005":[6,0,6,14,1],
 "makeCascade_8py.html#ab856c202f2c9627c35c58fd90634855d":[6,0,6,14,34],
 "makeCascade_8py.html#abe2ac1ea6f108cc248cb30301ed79642":[6,0,6,14,47],
 "makeCascade_8py.html#ac348ab0e5d95802be181708385eb5153":[6,0,6,14,22],
@@ -187,7 +179,6 @@ var NAVTREEINDEX27 =
 "make__nTuple__Tr_8py.html#a3562a98b75521c312dbf74ba57ba9332":[6,0,8,2,52],
 "make__nTuple__Tr_8py.html#a37963ffded64fdce44ebb36f09f923ca":[6,0,8,2,46],
 "make__nTuple__Tr_8py.html#a41d5a4b3518db7eb2d36dd59960b9ea6":[6,0,8,2,16],
-"make__nTuple__Tr_8py.html#a41f878c3c7e82edf13dc1d96f6b85493":[6,0,8,2,47],
 "make__nTuple__Tr_8py.html#a429f87129746c00dd1899ac20597e7d9":[6,0,8,2,10],
 "make__nTuple__Tr_8py.html#a4311ade9b7c51ff5c528f3826a793919":[6,0,8,2,33],
 "make__nTuple__Tr_8py.html#a4aa1906029db6831bf4a216156896a77":[6,0,8,2,14],
@@ -225,6 +216,7 @@ var NAVTREEINDEX27 =
 "make__nTuple__Tr_8py.html#ad9a00a7271495349dc132c48ba57f464":[6,0,8,2,32],
 "make__nTuple__Tr_8py.html#ae1b46f63f35856ccf5c84822ea2a1524":[6,0,8,2,17],
 "make__nTuple__Tr_8py.html#ae1d5556d65936fd860274bc8eccd497c":[6,0,8,2,30],
+"make__nTuple__Tr_8py.html#ae6a5ee84b287e192a20978b96e818f1f":[6,0,8,2,47],
 "make__nTuple__Tr_8py.html#aeadc0e8af734d6526c41c0058ad58e4e":[6,0,8,2,29],
 "make__nTuple__Tr_8py.html#af42920c437a4cdd487f44e56a4ff9136":[6,0,8,2,42],
 "make__nTuple__Tr_8py.html#af65bab59837200488a377add862e6881":[6,0,8,2,49],
@@ -249,5 +241,13 @@ var NAVTREEINDEX27 =
 "md_CHANGELOG.html#autotoc_md6":[1,1],
 "md_CHANGELOG.html#autotoc_md7":[1,1,0],
 "md_CHANGELOG.html#autotoc_md8":[1,1,1],
-"md_CHANGELOG.html#autotoc_md9":[1,1,2]
+"md_CHANGELOG.html#autotoc_md9":[1,1,2],
+"md_README.html":[3],
+"md_README.html#autotoc_md23":[3,0],
+"md_README.html#autotoc_md24":[3,0,0],
+"md_README.html#autotoc_md25":[3,1],
+"md_README.html#autotoc_md26":[3,2],
+"md_README.html#autotoc_md27":[3,3],
+"md_README.html#autotoc_md28":[3,4],
+"md_README.html#autotoc_md29":[3,5]
 };

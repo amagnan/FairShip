@@ -1,7 +1,7 @@
 var searchData=
 [
   ['w_0',['w',['../classNtupleGenerator.html#ad7e4225758488655be034b3679318882',1,'NtupleGenerator::w'],['../classMuonBackGenerator.html#a80bbd4bdb61f50d5cb9dd0faacce82c5',1,'MuonBackGenerator::w'],['../namespacemakeMuonEM.html#a04298ed1d5fc7dbec7e764537bfec5d5',1,'makeMuonEM.w'],['../namespacemakeMuonDIS.html#a31069c861ee6564962a537e94c422254',1,'makeMuonDIS.w']]],
-  ['wallthickness_1',['WallThickness',['../namespacegeometry__config.html#ad587d8bd035f2b80e4ab452fbff9dc39',1,'geometry_config']]],
+  ['wall_5fthickness_1',['wall_thickness',['../namespacegeometry__config.html#a744ddc06a6a0a474a5c9e81840137e80',1,'geometry_config']]],
   ['wallxdim_2',['WallXDim',['../classTarget.html#a4e4dff000f17a11d625f32992a0e4dcc',1,'Target']]],
   ['wallydim_3',['WallYDim',['../classTarget.html#a993bd25c7dacd13e4929bea7d3e01ac7',1,'Target']]],
   ['wallzdim_4',['WallZDim',['../classTarget.html#ab78ce82ce4b6f4234e97b73f9376c8ab',1,'Target']]],
@@ -30,7 +30,7 @@ var searchData=
   ['width_5fnu_5ff_5ffbar_27',['Width_nu_f_fbar',['../classhnl_1_1HNLbranchings.html#af73a3b2b6983151be593b782c15d322e',1,'hnl::HNLbranchings']]],
   ['width_5fquarks_5flepton_28',['Width_quarks_lepton',['../classhnl_1_1HNLbranchings.html#a929aef61fbd9de655b41bd107e410623',1,'hnl::HNLbranchings']]],
   ['width_5fquarks_5fneutrino_29',['Width_quarks_neutrino',['../classhnl_1_1HNLbranchings.html#aa2843aaf92a74910417913bb22350179',1,'hnl::HNLbranchings']]],
-  ['windowbulge_30',['windowBulge',['../namespacegeometry__config.html#a0a3c134f9d442b8244b14cf1e5d71458',1,'geometry_config']]],
+  ['windowbulge_30',['windowBulge',['../namespacegeometry__config.html#a37c00ab3b5c28e8ee626d54ab14e059e',1,'geometry_config']]],
   ['wirethickness_31',['WireThickness',['../namespacegeometry__config.html#a5d8ade997b17adce899808142b17513c',1,'geometry_config']]],
   ['withchain_32',['withChain',['../namespaceana__ShipMuon.html#ab54b0884f0d0e9af5430d755b0f116b8',1,'ana_ShipMuon']]],
   ['withconstfield_33',['WithConstField',['../namespacegeometry__config.html#a0a24d61ac825d1743506d0e6ac77f390',1,'geometry_config']]],
