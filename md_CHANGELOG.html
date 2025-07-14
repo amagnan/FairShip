@@ -116,6 +116,11 @@ Added</h2>
 <li>Add access to decoded numbers (stations, views etc.) of strawtubes hits</li>
 <li>Add June 2025 target configuration</li>
 <li>Definition of Pressured Helium for the target, two version 200 Celsius degree and 90 Celsius degree.</li>
+<li>Add backport for new TFile/TDirectory <code>__get_item__</code> pythonisation</li>
+<li>SND/EmulsionTarget folder, with the <a class="el" href="classTarget.html">Target</a> and <a class="el" href="classTargetTracker.html">TargetTracker</a> classes from nutaudet</li>
+<li>Added fibre structure for MTC and digitization. Fibre &lt;-&gt; SiPM mapping is done in <code><a class="el" href="MTCDetector_8cxx.html">SND/MTC/MTCDetector.cxx</a></code>, can be extracted and tested in <code><a class="el" href="SciFiMapping_8py.html">python/SciFiMapping.py</a></code>, that is subsequently used in <code><a class="el" href="shipDigiReco_8py.html">python/shipDigiReco.py</a></code></li>
+<li>Implement proximity shielding design from 26/06/2025 by G. Humphreys</li>
+<li>Added the hole for SND in the Muon Shield, that is created automatically if SND key is enabled (works so far for SND_design == 2) </li>
 </ul>
 <h2><a class="anchor" id="autotoc_md3"></a>
 Fixed</h2>
@@ -140,6 +145,9 @@ Fixed</h2>
 <li>Fix: How the cavern is translated in z direction</li>
 <li>Fix: Preliminary fix of the length of the <a class="el" href="classTarget.html">Target</a> (to be refine)</li>
 <li>Fix: in <code><a class="el" href="ShieldUtils_8py.html">python/ShieldUtils.py</a></code> still used old coordinate system (SND was not correctly positioned in <code><a class="el" href="shipDet__conf_8py.html">python/shipDet_conf.py</a></code>)</li>
+<li>Fix <code>beam smearing</code>: replace incorrect Gaussian radius with proper 2D Gaussian sampling. Ensures physical consistency; radius now follows Rayleigh distribution as expected.</li>
+<li>Reconstruction: reverse nmeas &gt; 0 check to make sure 𝜒² is defined</li>
+<li>Fix: MTC geometry overlap</li>
 </ul>
 <h2><a class="anchor" id="autotoc_md4"></a>
 Changed</h2>
@@ -174,6 +182,9 @@ Changed</h2>
 <li>Removed old stuff legacy in <code>shipMuonShield.cxx</code> (like LE and fFloor)</li>
 <li>Event Display: Don't try to recreate geometry config</li>
 <li>Geometry: Make the tungsten target the default (Jun25 config)</li>
+<li>Change EmulsionTarget detID decode function to tuple output</li>
+<li>Particle Gun has been updated: now user can set the coordinates of the PG via keys &ndash;V{x,y,z} and use &ndash;D{x,y} to uniformly smear the signal in a given x and y range</li>
+<li><a class="el" href="namespacemakeCascade.html">makeCascade</a>: Added new default target, moved to argparse</li>
 </ul>
 <h2><a class="anchor" id="autotoc_md5"></a>
 Removed</h2>
@@ -195,6 +206,14 @@ Removed</h2>
 <li>Removed outdated version <code>sc_v6</code> since it is not fitting in the Cavern (also in the build-run)</li>
 <li>feat(geometry): remove TP liquid scintillator variables</li>
 <li>Remove unused python/shipMuShield_only.py</li>
+<li>Remove (broken?) support for Nuage generator</li>
+<li>Remove nuTauTargetDesign variable, options</li>
+<li>Remove reloading of the <code><a class="el" href="geometry__config_8py.html">geometry_config.py</a></code> in <code><a class="el" href="shipDet__conf_8py.html">shipDet_conf.py</a></code></li>
+<li>Remove nutaudet folder, replaced by SND folder</li>
+<li>Remove deprecated NuTauDet field map</li>
+<li>Remove tankDesign variable, options</li>
+<li>Remove target versions older than CDR</li>
+<li>Remove hadron absorber in <a class="el" href="ShipTargetStation_8cxx.html">ShipTargetStation.cxx</a></li>
 </ul>
 <h1><a class="anchor" id="autotoc_md6"></a>
 25.01</h1>

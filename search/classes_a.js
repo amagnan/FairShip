@@ -1,8 +1,8 @@
 var searchData=
 [
-  ['magneticspectrometer_0',['MagneticSpectrometer',['../classMagneticSpectrometer.html',1,'']]],
-  ['methodlogger_1',['MethodLogger',['../classmethod__logger_1_1MethodLogger.html',1,'method_logger']]],
-  ['mtcdetector_2',['MTCDetector',['../classMTCDetector.html',1,'']]],
+  ['methodlogger_0',['MethodLogger',['../classmethod__logger_1_1MethodLogger.html',1,'method_logger']]],
+  ['mtcdetector_1',['MTCDetector',['../classMTCDetector.html',1,'']]],
+  ['mtcdethit_2',['MtcDetHit',['../classMtcDetHit.html',1,'']]],
   ['mtcdetpoint_3',['MtcDetPoint',['../classMtcDetPoint.html',1,'']]],
   ['mudisgenerator_4',['MuDISGenerator',['../classMuDISGenerator.html',1,'']]],
   ['muon_5',['muon',['../classmuon.html',1,'']]],

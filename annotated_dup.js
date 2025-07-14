@@ -68,6 +68,9 @@ var annotated_dup =
       [ "RPVSUSY", "classrpvsusy_1_1RPVSUSY.html", "classrpvsusy_1_1RPVSUSY" ],
       [ "RPVSUSYbranchings", "classrpvsusy_1_1RPVSUSYbranchings.html", "classrpvsusy_1_1RPVSUSYbranchings" ]
     ] ],
+    [ "SciFiMapping", "namespaceSciFiMapping.html", [
+      [ "SciFiMapping", "classSciFiMapping_1_1SciFiMapping.html", "classSciFiMapping_1_1SciFiMapping" ]
+    ] ],
     [ "shipDigiReco", "namespaceshipDigiReco.html", [
       [ "ShipDigiReco", "classshipDigiReco_1_1ShipDigiReco.html", "classshipDigiReco_1_1ShipDigiReco" ]
     ] ],
@@ -138,7 +141,6 @@ var annotated_dup =
     [ "ecalReconstructed", "classecalReconstructed.html", "classecalReconstructed" ],
     [ "ecalStructure", "classecalStructure.html", "classecalStructure" ],
     [ "ecalStructureFiller", "classecalStructureFiller.html", "classecalStructureFiller" ],
-    [ "EmulsionMagnet", "classEmulsionMagnet.html", "classEmulsionMagnet" ],
     [ "EvtCalcGenerator", "classEvtCalcGenerator.html", "classEvtCalcGenerator" ],
     [ "exitHadronAbsorber", "classexitHadronAbsorber.html", "classexitHadronAbsorber" ],
     [ "FixedTargetGenerator", "classFixedTargetGenerator.html", "classFixedTargetGenerator" ],
@@ -154,10 +156,8 @@ var annotated_dup =
     [ "hcalStructure", "classhcalStructure.html", "classhcalStructure" ],
     [ "hcalStructureFiller", "classhcalStructureFiller.html", "classhcalStructureFiller" ],
     [ "HNLPythia8Generator", "classHNLPythia8Generator.html", "classHNLPythia8Generator" ],
-    [ "Hpt", "classHpt.html", "classHpt" ],
-    [ "HptPoint", "classHptPoint.html", "classHptPoint" ],
-    [ "MagneticSpectrometer", "classMagneticSpectrometer.html", "classMagneticSpectrometer" ],
     [ "MTCDetector", "classMTCDetector.html", "classMTCDetector" ],
+    [ "MtcDetHit", "classMtcDetHit.html", "classMtcDetHit" ],
     [ "MtcDetPoint", "classMtcDetPoint.html", "classMtcDetPoint" ],
     [ "MuDISGenerator", "classMuDISGenerator.html", "classMuDISGenerator" ],
     [ "muon", "classmuon.html", "classmuon" ],
@@ -166,9 +166,6 @@ var annotated_dup =
     [ "muonHit", "classmuonHit.html", "classmuonHit" ],
     [ "muonPoint", "classmuonPoint.html", "classmuonPoint" ],
     [ "NtupleGenerator", "classNtupleGenerator.html", "classNtupleGenerator" ],
-    [ "NuageGenerator", "classNuageGenerator.html", "classNuageGenerator" ],
-    [ "NutaudetContFact", "classNutaudetContFact.html", "classNutaudetContFact" ],
-    [ "NuTauMudet", "classNuTauMudet.html", "classNuTauMudet" ],
     [ "pid", "classpid.html", "classpid" ],
     [ "pyFairModule", "classpyFairModule.html", "classpyFairModule" ],
     [ "Pythia6Generator", "classPythia6Generator.html", "classPythia6Generator" ],
@@ -194,7 +191,6 @@ var annotated_dup =
     [ "ShipMuonShield", "classShipMuonShield.html", "classShipMuonShield" ],
     [ "ShipParticle", "classShipParticle.html", "classShipParticle" ],
     [ "ShipPassiveContFact", "classShipPassiveContFact.html", "classShipPassiveContFact" ],
-    [ "ShipRpcPoint", "classShipRpcPoint.html", "classShipRpcPoint" ],
     [ "ShipStack", "classShipStack.html", "classShipStack" ],
     [ "ShipTargetStation", "classShipTargetStation.html", "classShipTargetStation" ],
     [ "ShipTAUMagneticSpectrometer", "classShipTAUMagneticSpectrometer.html", "classShipTAUMagneticSpectrometer" ],

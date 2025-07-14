@@ -23,7 +23,6 @@ var hierarchy =
     [ "ecalPreCluster", "classecalPreCluster.html", null ],
     [ "experimental.analysis_toolkit.event_inspector", "classexperimental_1_1analysis__toolkit_1_1event__inspector.html", null ],
     [ "FairContFact", null, [
-      [ "NutaudetContFact", "classNutaudetContFact.html", null ],
       [ "ShipPassiveContFact", "classShipPassiveContFact.html", null ],
       [ "ecalContFact", "classecalContFact.html", null ],
       [ "hcalContFact", "classhcalContFact.html", null ],
@@ -33,10 +32,7 @@ var hierarchy =
       [ "vetoContFact", "classvetoContFact.html", null ]
     ] ],
     [ "FairDetector", null, [
-      [ "Hpt", "classHpt.html", null ],
       [ "MTCDetector", "classMTCDetector.html", null ],
-      [ "MagneticSpectrometer", "classMagneticSpectrometer.html", null ],
-      [ "NuTauMudet", "classNuTauMudet.html", null ],
       [ "Target", "classTarget.html", null ],
       [ "TargetTracker", "classTargetTracker.html", null ],
       [ "TimeDet", "classTimeDet.html", null ],
@@ -70,7 +66,6 @@ var hierarchy =
       [ "MuDISGenerator", "classMuDISGenerator.html", null ],
       [ "MuonBackGenerator", "classMuonBackGenerator.html", null ],
       [ "NtupleGenerator", "classNtupleGenerator.html", null ],
-      [ "NuageGenerator", "classNuageGenerator.html", null ],
       [ "Pythia6Generator", "classPythia6Generator.html", null ],
       [ "Pythia8Generator", "classPythia8Generator.html", null ],
       [ "tPythia6Generator", "classtPythia6Generator.html", null ]
@@ -82,9 +77,7 @@ var hierarchy =
       [ "ShipGeoCave", "classShipGeoCave.html", null ]
     ] ],
     [ "FairMCPoint", null, [
-      [ "HptPoint", "classHptPoint.html", null ],
       [ "MtcDetPoint", "classMtcDetPoint.html", null ],
-      [ "ShipRpcPoint", "classShipRpcPoint.html", null ],
       [ "TTPoint", "classTTPoint.html", null ],
       [ "TargetPoint", "classTargetPoint.html", null ],
       [ "TimeDetPoint", "classTimeDetPoint.html", null ],
@@ -97,7 +90,6 @@ var hierarchy =
       [ "vetoPoint", "classvetoPoint.html", null ]
     ] ],
     [ "FairModule", null, [
-      [ "EmulsionMagnet", "classEmulsionMagnet.html", null ],
       [ "ShipCave", "classShipCave.html", null ],
       [ "ShipChamber", "classShipChamber.html", null ],
       [ "ShipGoliath", "classShipGoliath.html", null ],
@@ -190,6 +182,7 @@ var hierarchy =
     [ "rpvsusy.RPVSUSYbranchings", "classrpvsusy_1_1RPVSUSYbranchings.html", [
       [ "rpvsusy.RPVSUSY", "classrpvsusy_1_1RPVSUSY.html", null ]
     ] ],
+    [ "SciFiMapping.SciFiMapping", "classSciFiMapping_1_1SciFiMapping.html", null ],
     [ "experimental.analysis_toolkit.selection_check", "classexperimental_1_1analysis__toolkit_1_1selection__check.html", null ],
     [ "shipDigiReco.ShipDigiReco", "classshipDigiReco_1_1ShipDigiReco.html", null ],
     [ "ShipGeo.ShipGeo", "classShipGeo_1_1ShipGeo.html", null ],
@@ -214,6 +207,7 @@ var hierarchy =
     ] ],
     [ "TObject", null, [
       [ "ShipHit", "classShipHit.html", [
+        [ "MtcDetHit", "classMtcDetHit.html", null ],
         [ "TimeDetHit", "classTimeDetHit.html", null ],
         [ "UpstreamTaggerHit", "classUpstreamTaggerHit.html", null ],
         [ "muonHit", "classmuonHit.html", null ],
