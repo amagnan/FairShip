@@ -122,6 +122,16 @@ Added</h2>
 <li>Implement proximity shielding design from 26/06/2025 by G. Humphreys</li>
 <li>Added the hole for SND in the Muon Shield, that is created automatically if SND key is enabled (works so far for SND_design == 2)</li>
 <li>Implement vacuum in target facility</li>
+<li>Implement target helium vessel</li>
+<li>feat(python): Add z-offset to <a class="el" href="classFixedTargetGenerator.html">FixedTargetGenerator</a></li>
+<li>Add missing &ndash;FixedTarget option to <a class="el" href="run__simScript_8py.html">run_simScript.py</a></li>
+<li>feat: Support for multiple SND designs in simulation setup<ul>
+<li>The <code>--SND_design</code> option in <code><a class="el" href="run__simScript_8py.html">macro/run_simScript.py</a></code> now accepts multiple values and an 'all' option to enable all available SND designs.</li>
+<li>The geometry configuration and detector setup (<code><a class="el" href="geometry__config_8py.html">geometry/geometry_config.py</a></code>, <code><a class="el" href="shipDet__conf_8py.html">python/shipDet_conf.py</a></code>) have been updated to instantiate all requested SND detectors.</li>
+<li>This enables running with multiple SND subdetectors simultaneously and is future-proof for additional SND designs.</li>
+</ul>
+</li>
+<li>Add support for Pythia 8.3xx. 8.2xx is still supported via preprocessor macros for the time being.</li>
 </ul>
 <h2><a class="anchor" id="autotoc_md3"></a>
 Fixed</h2>
@@ -149,6 +159,9 @@ Fixed</h2>
 <li>Fix <code>beam smearing</code>: replace incorrect Gaussian radius with proper 2D Gaussian sampling. Ensures physical consistency; radius now follows Rayleigh distribution as expected.</li>
 <li>Reconstruction: reverse nmeas &gt; 0 check to make sure 𝜒² is defined</li>
 <li>Fix: MTC geometry overlap</li>
+<li>fix(FixedTargetGenerator): Don't assume anything about the target substructure</li>
+<li>Fix crash in <a class="el" href="run__simScript_8py.html">run_simScript.py</a></li>
+<li>Fix crash caused by <a class="el" href="decorators_8py.html">decorators.py</a></li>
 </ul>
 <h2><a class="anchor" id="autotoc_md4"></a>
 Changed</h2>
@@ -186,6 +199,23 @@ Changed</h2>
 <li>Change EmulsionTarget detID decode function to tuple output</li>
 <li>Particle Gun has been updated: now user can set the coordinates of the PG via keys &ndash;V{x,y,z} and use &ndash;D{x,y} to uniformly smear the signal in a given x and y range</li>
 <li><a class="el" href="namespacemakeCascade.html">makeCascade</a>: Added new default target, moved to argparse</li>
+<li><a class="el" href="run__simScript_8py.html">run_simScript.py</a>: use options directly internally instead of using intermediate variables</li>
+<li>Update spectrometer yoke pit size according to EDMS no. 3309666</li>
+<li>feat: Improve <a class="el" href="classFixedTargetGenerator.html">FixedTargetGenerator</a> geometry handling<ul>
+<li>Replace fragile hardcoded TGeo navigation paths with geometry constants from <code>ship_geo.target</code></li>
+<li>Add <code>SetTargetCoordinates()</code> method to accept geometry-based start/end z-coordinates from <code><a class="el" href="run__simScript_8py.html">run_simScript.py</a></code></li>
+<li>Use robust <code>ship_geo.target.z0</code> and <code>ship_geo.target.length</code> instead of brittle <code>"cave_1/target_vacuum_box_1/TargetArea_1/HeVolume_1"</code> path</li>
+<li>Maintain backward compatibility with legacy TGeo navigation as fallback</li>
+</ul>
+</li>
+<li>feat: Improve <a class="el" href="classPythia8Generator.html">Pythia8Generator</a> geometry handling<ul>
+<li>Apply same geometry robustness improvements as <a class="el" href="classFixedTargetGenerator.html">FixedTargetGenerator</a></li>
+<li>Replace fragile <code>"volTarget_1"</code> TGeo navigation with geometry constants from <code>ship_geo.target</code></li>
+<li>Add <code>SetTargetCoordinates()</code> method for robust geometry-based target configuration</li>
+<li>Maintain backward compatibility with legacy TGeo navigation as fallback</li>
+</ul>
+</li>
+<li>The decorators from <a class="el" href="decorators_8py.html">decorators.py</a> now need to be applied explicitly using the new <code>apply_decorators</code> function.</li>
 </ul>
 <h2><a class="anchor" id="autotoc_md5"></a>
 Removed</h2>

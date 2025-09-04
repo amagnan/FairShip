@@ -449,7 +449,7 @@ Additional Inherited Members</h2></td></tr>
 <div class="ttc" id="aclassmuonHit_html_af09f602e34bd7e3b2c2fb846fe2406fd"><div class="ttname"><a href="classmuonHit.html#af09f602e34bd7e3b2c2fb846fe2406fd">muonHit::stInit</a></div><div class="ttdeci">void stInit()</div><div class="ttdef"><b>Definition</b> <a href="muonHit_8cxx_source.html#l00133">muonHit.cxx:133</a></div></div>
 <div class="ttc" id="amuonHit_8cxx_html_adb2fd51dde6b103200cf018b3350223c"><div class="ttname"><a href="muonHit_8cxx.html#adb2fd51dde6b103200cf018b3350223c">tileYdim</a></div><div class="ttdeci">const Double_t tileYdim</div><div class="ttdef"><b>Definition</b> <a href="muonHit_8cxx_source.html#l00019">muonHit.cxx:19</a></div></div>
 <div class="ttc" id="amuonHit_8cxx_html_af3814c9f683c7fe89890d50440951bdb"><div class="ttname"><a href="muonHit_8cxx.html#af3814c9f683c7fe89890d50440951bdb">tileXdim</a></div><div class="ttdeci">const Double_t tileXdim</div><div class="ttdef"><b>Definition</b> <a href="muonHit_8cxx_source.html#l00019">muonHit.cxx:19</a></div></div>
-<div class="ttc" id="anamespaceShipAna_html_aa4bf87f4d17f9d38b1d8f4d009bb54b3"><div class="ttname"><a href="namespaceShipAna.html#aa4bf87f4d17f9d38b1d8f4d009bb54b3">ShipAna.i</a></div><div class="ttdeci">int i</div><div class="ttdef"><b>Definition</b> <a href="ShipAna_8py_source.html#l00075">ShipAna.py:75</a></div></div>
+<div class="ttc" id="anamespaceShipAna_html_aa4bf87f4d17f9d38b1d8f4d009bb54b3"><div class="ttname"><a href="namespaceShipAna.html#aa4bf87f4d17f9d38b1d8f4d009bb54b3">ShipAna.i</a></div><div class="ttdeci">int i</div><div class="ttdef"><b>Definition</b> <a href="ShipAna_8py_source.html#l00076">ShipAna.py:76</a></div></div>
 <div class="ttc" id="anamespacemake__nTuple__SBT_html_adad3143572780a2fde967f05ef62ba37"><div class="ttname"><a href="namespacemake__nTuple__SBT.html#adad3143572780a2fde967f05ef62ba37">make_nTuple_SBT.detID</a></div><div class="ttdeci">detID</div><div class="ttdef"><b>Definition</b> <a href="make__nTuple__SBT_8py_source.html#l00252">make_nTuple_SBT.py:252</a></div></div>
 </div><!-- fragment -->
 </div>
@@ -659,13 +659,13 @@ Additional Inherited Members</h2></td></tr>
 <div class="line"><span class="lineno">  144</span>    TObjArray* nodes =  node-&gt;GetVolume()-&gt;GetNodes();</div>
 <div class="line"><span class="lineno">  145</span><span class="comment">//</span></div>
 <div class="line"><span class="lineno">  146</span>    <span class="keywordflow">for</span> (Int_t i = 0; <a class="code hl_variable" href="namespaceShipAna.html#aa4bf87f4d17f9d38b1d8f4d009bb54b3">i</a> &lt; nodes-&gt;GetEntries(); <a class="code hl_variable" href="namespaceShipAna.html#aa4bf87f4d17f9d38b1d8f4d009bb54b3">i</a>++) {</div>
-<div class="line"><span class="lineno">  147</span>      node = (TGeoNode*)nodes-&gt;At(i);</div>
+<div class="line"><span class="lineno">  147</span>      node = <span class="keyword">dynamic_cast&lt;</span>TGeoNode*<span class="keyword">&gt;</span>(nodes-&gt;At(i));</div>
 <div class="line"><span class="lineno">  148</span>      Int_t muStNs = 0;</div>
 <div class="line"><span class="lineno">  149</span>      <span class="keywordflow">if</span> (TString(node-&gt;GetName()).Contains(<span class="stringliteral">&quot;muondet&quot;</span>)) {</div>
 <div class="line"><span class="lineno">  150</span>        nav-&gt;cd(muDet+<span class="stringliteral">&quot;/&quot;</span>+node-&gt;GetName());</div>
 <div class="line"><span class="lineno">  151</span>        TGeoVolume* volu = node-&gt;GetVolume();</div>
 <div class="line"><span class="lineno">  152</span>        muShape = node-&gt;GetVolume()-&gt;GetShape();</div>
-<div class="line"><span class="lineno">  153</span>        muonBox = (TGeoBBox*) muShape;</div>
+<div class="line"><span class="lineno">  153</span>        muonBox = <span class="keyword">dynamic_cast&lt;</span>TGeoBBox*<span class="keyword">&gt;</span>(muShape);</div>
 <div class="line"><span class="lineno">  154</span>        muStxMax.push_back(muonBox-&gt;GetDX()); muStyMax.push_back(muonBox-&gt;GetDY());</div>
 <div class="line"><span class="lineno">  155</span>        muStzMax.push_back(muonBox-&gt;GetDZ());</div>
 <div class="line"><span class="lineno">  156</span>        nav-&gt;LocalToMaster(loc,global); muStZpos.push_back(global[2]);</div>
