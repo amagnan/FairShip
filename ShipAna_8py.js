@@ -4,7 +4,6 @@ var ShipAna_8py =
     [ "checkFiducialVolume", "ShipAna_8py.html#add600534e6df6909726258d95b473c75", null ],
     [ "checkHNLorigin", "ShipAna_8py.html#aa393bdafd0ce4a7a41237e3b068bcedd", null ],
     [ "dist2InnerWall", "ShipAna_8py.html#a62bc883cf46f34acd4ef73d4954837e8", null ],
-    [ "ecalCluster2MC", "ShipAna_8py.html#a65968c1d75f63677e2ac4a3c74ec887a", null ],
     [ "fitSingleGauss", "ShipAna_8py.html#add2591fbc7705442f8015a0bc6eb0d0b", null ],
     [ "getPtruthFirst", "ShipAna_8py.html#a49a051b5e84990d6249dd8f23d7c99b7", null ],
     [ "HNLKinematics", "ShipAna_8py.html#ace9d8fcbe3e1150e5f660c671c8e3a24", null ],
@@ -51,7 +50,6 @@ var ShipAna_8py =
     [ "sTree", "ShipAna_8py.html#aa4c23cfad61e9ccae6f79cbe3a4952e4", null ],
     [ "tmp", "ShipAna_8py.html#ab3d6f30f52033bf7b1555d56d728b925", null ],
     [ "type", "ShipAna_8py.html#a26546101b50872dc842fdba6bd3ca6f8", null ],
-    [ "upkl", "ShipAna_8py.html#a218767ec8dec0c3cf740de83b9817a3e", null ],
     [ "veto", "ShipAna_8py.html#aa3c51b90659f758713d2f7958b846614", null ],
     [ "vetoDets", "ShipAna_8py.html#a474780f2864445277c34ddc7ddc8828b", null ],
     [ "volDict", "ShipAna_8py.html#a23ccb7a304d314d18d7e31877052b68a", null ]

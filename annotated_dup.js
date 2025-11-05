@@ -1,10 +1,12 @@
 var annotated_dup =
 [
+    [ "BaseDetector", "namespaceBaseDetector.html", [
+      [ "BaseDetector", "classBaseDetector_1_1BaseDetector.html", "classBaseDetector_1_1BaseDetector" ]
+    ] ],
     [ "darkphoton", "namespacedarkphoton.html", [
       [ "DarkPhoton", "classdarkphoton_1_1DarkPhoton.html", "classdarkphoton_1_1DarkPhoton" ]
     ] ],
     [ "eventDisplay", "namespaceeventDisplay.html", [
-      [ "DrawEcalCluster", "classeventDisplay_1_1DrawEcalCluster.html", "classeventDisplay_1_1DrawEcalCluster" ],
       [ "DrawTracks", "classeventDisplay_1_1DrawTracks.html", "classeventDisplay_1_1DrawTracks" ],
       [ "DrawVetoDigi", "classeventDisplay_1_1DrawVetoDigi.html", "classeventDisplay_1_1DrawVetoDigi" ],
       [ "EventLoop", "classeventDisplay_1_1EventLoop.html", "classeventDisplay_1_1EventLoop" ],
@@ -54,11 +56,11 @@ var annotated_dup =
     [ "method_logger", "namespacemethod__logger.html", [
       [ "MethodLogger", "classmethod__logger_1_1MethodLogger.html", "classmethod__logger_1_1MethodLogger" ]
     ] ],
-    [ "rootpyPickler", "namespacerootpyPickler.html", [
-      [ "IO_Wrapper", "classrootpyPickler_1_1IO__Wrapper.html", "classrootpyPickler_1_1IO__Wrapper" ],
-      [ "Pickler", "classrootpyPickler_1_1Pickler.html", "classrootpyPickler_1_1Pickler" ],
-      [ "ROOT_Proxy", "classrootpyPickler_1_1ROOT__Proxy.html", "classrootpyPickler_1_1ROOT__Proxy" ],
-      [ "Unpickler", "classrootpyPickler_1_1Unpickler.html", "classrootpyPickler_1_1Unpickler" ]
+    [ "MTCDetector", "namespaceMTCDetector.html", [
+      [ "MTCDetector", "classMTCDetector_1_1MTCDetector.html", "classMTCDetector_1_1MTCDetector" ]
+    ] ],
+    [ "muonDetector", "namespacemuonDetector.html", [
+      [ "muonDetector", "classmuonDetector_1_1muonDetector.html", "classmuonDetector_1_1muonDetector" ]
     ] ],
     [ "rootUtils", "namespacerootUtils.html", [
       [ "PyListOfLeaves", "classrootUtils_1_1PyListOfLeaves.html", null ]
@@ -67,6 +69,9 @@ var annotated_dup =
       [ "constants", "classrpvsusy_1_1constants.html", "classrpvsusy_1_1constants" ],
       [ "RPVSUSY", "classrpvsusy_1_1RPVSUSY.html", "classrpvsusy_1_1RPVSUSY" ],
       [ "RPVSUSYbranchings", "classrpvsusy_1_1RPVSUSYbranchings.html", "classrpvsusy_1_1RPVSUSYbranchings" ]
+    ] ],
+    [ "SBTDetector", "namespaceSBTDetector.html", [
+      [ "SBTDetector", "classSBTDetector_1_1SBTDetector.html", "classSBTDetector_1_1SBTDetector" ]
     ] ],
     [ "SciFiMapping", "namespaceSciFiMapping.html", [
       [ "SciFiMapping", "classSciFiMapping_1_1SciFiMapping.html", "classSciFiMapping_1_1SciFiMapping" ]
@@ -83,14 +88,14 @@ var annotated_dup =
       [ "Config", "classShipGeoConfig_1_1Config.html", "classShipGeoConfig_1_1Config" ],
       [ "ConfigRegistry", "classShipGeoConfig_1_1ConfigRegistry.html", "classShipGeoConfig_1_1ConfigRegistry" ]
     ] ],
-    [ "shipPid", "namespaceshipPid.html", [
-      [ "Task", "classshipPid_1_1Task.html", "classshipPid_1_1Task" ]
-    ] ],
     [ "shipVertex", "namespaceshipVertex.html", [
       [ "Task", "classshipVertex_1_1Task.html", "classshipVertex_1_1Task" ]
     ] ],
     [ "shipVeto", "namespaceshipVeto.html", [
       [ "Task", "classshipVeto_1_1Task.html", "classshipVeto_1_1Task" ]
+    ] ],
+    [ "strawtubesDetector", "namespacestrawtubesDetector.html", [
+      [ "strawtubesDetector", "classstrawtubesDetector_1_1strawtubesDetector.html", "classstrawtubesDetector_1_1strawtubesDetector" ]
     ] ],
     [ "study_GammaConv", "namespacestudy__GammaConv.html", [
       [ "Block", "classstudy__GammaConv_1_1Block.html", "classstudy__GammaConv_1_1Block" ]
@@ -108,57 +113,26 @@ var annotated_dup =
       [ "TestStringNewLine", "classtest__shipGeoConfig_1_1TestStringNewLine.html", "classtest__shipGeoConfig_1_1TestStringNewLine" ],
       [ "TestStringSingleConfig", "classtest__shipGeoConfig_1_1TestStringSingleConfig.html", "classtest__shipGeoConfig_1_1TestStringSingleConfig" ]
     ] ],
+    [ "timeDetector", "namespacetimeDetector.html", [
+      [ "timeDetector", "classtimeDetector_1_1timeDetector.html", "classtimeDetector_1_1timeDetector" ]
+    ] ],
     [ "TTCluster", "namespaceTTCluster.html", [
       [ "TTCluster", "classTTCluster_1_1TTCluster.html", "classTTCluster_1_1TTCluster" ]
     ] ],
-    [ "__ecalCellWrapper", "struct____ecalCellWrapper.html", "struct____ecalCellWrapper" ],
+    [ "UpstreamTaggerDetector", "namespaceUpstreamTaggerDetector.html", [
+      [ "UpstreamTaggerDetector", "classUpstreamTaggerDetector_1_1UpstreamTaggerDetector.html", "classUpstreamTaggerDetector_1_1UpstreamTaggerDetector" ]
+    ] ],
     [ "Co3Rng", "classCo3Rng.html", "classCo3Rng" ],
     [ "CosmicsGenerator", "classCosmicsGenerator.html", "classCosmicsGenerator" ],
     [ "DPPythia8Generator", "classDPPythia8Generator.html", "classDPPythia8Generator" ],
-    [ "ecal", "classecal.html", "classecal" ],
-    [ "ecalAnalysisMaterial", "classecalAnalysisMaterial.html", "classecalAnalysisMaterial" ],
-    [ "ecalAnalysisSimple", "classecalAnalysisSimple.html", "classecalAnalysisSimple" ],
-    [ "ecalCell", "classecalCell.html", "classecalCell" ],
-    [ "ecalCellMC", "classecalCellMC.html", "classecalCellMC" ],
-    [ "ecalCluster", "classecalCluster.html", "classecalCluster" ],
-    [ "ecalClusterCalibration", "classecalClusterCalibration.html", "classecalClusterCalibration" ],
-    [ "ecalClusterFinder", "classecalClusterFinder.html", "classecalClusterFinder" ],
-    [ "ecalClusterSortProcess", "structecalClusterSortProcess.html", "structecalClusterSortProcess" ],
-    [ "ecalContFact", "classecalContFact.html", "classecalContFact" ],
-    [ "ecalDigi", "classecalDigi.html", "classecalDigi" ],
-    [ "ecalDrawer", "classecalDrawer.html", "classecalDrawer" ],
-    [ "ecalDrawerItem", "classecalDrawerItem.html", "classecalDrawerItem" ],
-    [ "ecalInf", "classecalInf.html", "classecalInf" ],
-    [ "ecalLightMap", "classecalLightMap.html", "classecalLightMap" ],
-    [ "ecalMatch", "classecalMatch.html", "classecalMatch" ],
-    [ "ecalMaximum", "classecalMaximum.html", "classecalMaximum" ],
-    [ "ecalMaximumLocator", "classecalMaximumLocator.html", "classecalMaximumLocator" ],
-    [ "ecalModule", "classecalModule.html", "classecalModule" ],
-    [ "ecalPoint", "classecalPoint.html", "classecalPoint" ],
-    [ "ecalPreCluster", "classecalPreCluster.html", "classecalPreCluster" ],
-    [ "ecalPrepare", "classecalPrepare.html", "classecalPrepare" ],
-    [ "ecalReco", "classecalReco.html", "classecalReco" ],
-    [ "ecalReconstructed", "classecalReconstructed.html", "classecalReconstructed" ],
-    [ "ecalStructure", "classecalStructure.html", "classecalStructure" ],
-    [ "ecalStructureFiller", "classecalStructureFiller.html", "classecalStructureFiller" ],
     [ "EvtCalcGenerator", "classEvtCalcGenerator.html", "classEvtCalcGenerator" ],
     [ "exitHadronAbsorber", "classexitHadronAbsorber.html", "classexitHadronAbsorber" ],
     [ "FixedTargetGenerator", "classFixedTargetGenerator.html", "classFixedTargetGenerator" ],
     [ "GenieGenerator", "classGenieGenerator.html", "classGenieGenerator" ],
-    [ "hcal", "classhcal.html", "classhcal" ],
-    [ "hcalAnalysisSimple", "classhcalAnalysisSimple.html", "classhcalAnalysisSimple" ],
-    [ "hcalContFact", "classhcalContFact.html", "classhcalContFact" ],
-    [ "hcalInf", "classhcalInf.html", "classhcalInf" ],
-    [ "hcalLightMap", "classhcalLightMap.html", "classhcalLightMap" ],
-    [ "hcalModule", "classhcalModule.html", "classhcalModule" ],
-    [ "hcalModuleMC", "classhcalModuleMC.html", "classhcalModuleMC" ],
-    [ "hcalPoint", "classhcalPoint.html", "classhcalPoint" ],
-    [ "hcalStructure", "classhcalStructure.html", "classhcalStructure" ],
-    [ "hcalStructureFiller", "classhcalStructureFiller.html", "classhcalStructureFiller" ],
     [ "HNLPythia8Generator", "classHNLPythia8Generator.html", "classHNLPythia8Generator" ],
     [ "MTCDetector", "classMTCDetector.html", "classMTCDetector" ],
-    [ "MtcDetHit", "classMtcDetHit.html", "classMtcDetHit" ],
-    [ "MtcDetPoint", "classMtcDetPoint.html", "classMtcDetPoint" ],
+    [ "MTCDetHit", "classMTCDetHit.html", "classMTCDetHit" ],
+    [ "MTCDetPoint", "classMTCDetPoint.html", "classMTCDetPoint" ],
     [ "MuDISGenerator", "classMuDISGenerator.html", "classMuDISGenerator" ],
     [ "muon", "classmuon.html", "classmuon" ],
     [ "MuonBackGenerator", "classMuonBackGenerator.html", "classMuonBackGenerator" ],
@@ -194,6 +168,9 @@ var annotated_dup =
     [ "ShipStack", "classShipStack.html", "classShipStack" ],
     [ "ShipTargetStation", "classShipTargetStation.html", "classShipTargetStation" ],
     [ "ShipTAUMagneticSpectrometer", "classShipTAUMagneticSpectrometer.html", "classShipTAUMagneticSpectrometer" ],
+    [ "SiliconTarget", "classSiliconTarget.html", "classSiliconTarget" ],
+    [ "SiliconTargetHit", "classSiliconTargetHit.html", "classSiliconTargetHit" ],
+    [ "SiliconTargetPoint", "classSiliconTargetPoint.html", "classSiliconTargetPoint" ],
     [ "simpleTarget", "classsimpleTarget.html", "classsimpleTarget" ],
     [ "splitcal", "classsplitcal.html", "classsplitcal" ],
     [ "splitcalCluster", "classsplitcalCluster.html", "classsplitcalCluster" ],
@@ -207,6 +184,7 @@ var annotated_dup =
     [ "Target", "classTarget.html", "classTarget" ],
     [ "TargetPoint", "classTargetPoint.html", "classTargetPoint" ],
     [ "TargetTracker", "classTargetTracker.html", "classTargetTracker" ],
+    [ "TEvtGenDecayer", "classTEvtGenDecayer.html", "classTEvtGenDecayer" ],
     [ "TimeDet", "classTimeDet.html", "classTimeDet" ],
     [ "TimeDetHit", "classTimeDetHit.html", "classTimeDetHit" ],
     [ "TimeDetPoint", "classTimeDetPoint.html", "classTimeDetPoint" ],

@@ -1,11 +1,7 @@
 var hierarchy =
 [
-    [ "__ecalCellWrapper", "struct____ecalCellWrapper.html", null ],
     [ "AbsBField", null, [
       [ "genfit::FairShipFields", "classgenfit_1_1FairShipFields.html", null ]
-    ] ],
-    [ "std::binary_function", null, [
-      [ "ecalClusterSortProcess", "structecalClusterSortProcess.html", null ]
     ] ],
     [ "hnl.CKMmatrix", "classhnl_1_1CKMmatrix.html", null ],
     [ "Co3Rng", "classCo3Rng.html", null ],
@@ -19,13 +15,9 @@ var hierarchy =
       [ "ShipGeoConfig.ConfigRegistry", "classShipGeoConfig_1_1ConfigRegistry.html", null ],
       [ "rootUtils.PyListOfLeaves", "classrootUtils_1_1PyListOfLeaves.html", null ]
     ] ],
-    [ "ecalDrawerItem", "classecalDrawerItem.html", null ],
-    [ "ecalPreCluster", "classecalPreCluster.html", null ],
     [ "experimental.analysis_toolkit.event_inspector", "classexperimental_1_1analysis__toolkit_1_1event__inspector.html", null ],
     [ "FairContFact", null, [
       [ "ShipPassiveContFact", "classShipPassiveContFact.html", null ],
-      [ "ecalContFact", "classecalContFact.html", null ],
-      [ "hcalContFact", "classhcalContFact.html", null ],
       [ "muonContFact", "classmuonContFact.html", null ],
       [ "splitcalContFact", "classsplitcalContFact.html", null ],
       [ "strawtubesContFact", "classstrawtubesContFact.html", null ],
@@ -33,15 +25,12 @@ var hierarchy =
     ] ],
     [ "FairDetector", null, [
       [ "MTCDetector", "classMTCDetector.html", null ],
+      [ "SiliconTarget", "classSiliconTarget.html", null ],
       [ "Target", "classTarget.html", null ],
       [ "TargetTracker", "classTargetTracker.html", null ],
       [ "TimeDet", "classTimeDet.html", null ],
-      [ "UpstreamTagger", "classUpstreamTagger.html", [
-        [ "UpstreamTaggerHit", "classUpstreamTaggerHit.html", null ]
-      ] ],
-      [ "ecal", "classecal.html", null ],
+      [ "UpstreamTagger", "classUpstreamTagger.html", null ],
       [ "exitHadronAbsorber", "classexitHadronAbsorber.html", null ],
-      [ "hcal", "classhcal.html", null ],
       [ "muon", "classmuon.html", null ],
       [ "simpleTarget", "classsimpleTarget.html", null ],
       [ "splitcal", "classsplitcal.html", null ],
@@ -77,13 +66,12 @@ var hierarchy =
       [ "ShipGeoCave", "classShipGeoCave.html", null ]
     ] ],
     [ "FairMCPoint", null, [
-      [ "MtcDetPoint", "classMtcDetPoint.html", null ],
+      [ "MTCDetPoint", "classMTCDetPoint.html", null ],
+      [ "SiliconTargetPoint", "classSiliconTargetPoint.html", null ],
       [ "TTPoint", "classTTPoint.html", null ],
       [ "TargetPoint", "classTargetPoint.html", null ],
       [ "TimeDetPoint", "classTimeDetPoint.html", null ],
       [ "UpstreamTaggerPoint", "classUpstreamTaggerPoint.html", null ],
-      [ "ecalPoint", "classecalPoint.html", null ],
-      [ "hcalPoint", "classhcalPoint.html", null ],
       [ "muonPoint", "classmuonPoint.html", null ],
       [ "splitcalPoint", "classsplitcalPoint.html", null ],
       [ "strawtubesPoint", "classstrawtubesPoint.html", null ],
@@ -102,23 +90,7 @@ var hierarchy =
     [ "FairParGenericSet", null, [
       [ "ShipFieldPar", "classShipFieldPar.html", null ]
     ] ],
-    [ "FairTask", null, [
-      [ "ecalAnalysisMaterial", "classecalAnalysisMaterial.html", null ],
-      [ "ecalAnalysisSimple", "classecalAnalysisSimple.html", null ],
-      [ "ecalClusterCalibration", "classecalClusterCalibration.html", null ],
-      [ "ecalClusterFinder", "classecalClusterFinder.html", null ],
-      [ "ecalDigi", "classecalDigi.html", null ],
-      [ "ecalDrawer", "classecalDrawer.html", null ],
-      [ "ecalMatch", "classecalMatch.html", null ],
-      [ "ecalMaximumLocator", "classecalMaximumLocator.html", null ],
-      [ "ecalPrepare", "classecalPrepare.html", null ],
-      [ "ecalReco", "classecalReco.html", null ],
-      [ "ecalStructureFiller", "classecalStructureFiller.html", null ],
-      [ "hcalAnalysisSimple", "classhcalAnalysisSimple.html", null ],
-      [ "hcalStructureFiller", "classhcalStructureFiller.html", null ]
-    ] ],
     [ "ROOT.FairTask", null, [
-      [ "eventDisplay.DrawEcalCluster", "classeventDisplay_1_1DrawEcalCluster.html", null ],
       [ "eventDisplay.DrawTracks", "classeventDisplay_1_1DrawTracks.html", null ],
       [ "eventDisplay.DrawVetoDigi", "classeventDisplay_1_1DrawVetoDigi.html", null ],
       [ "eventDisplay.EventLoop", "classeventDisplay_1_1EventLoop.html", null ],
@@ -160,14 +132,10 @@ var hierarchy =
       [ "hnl.HNL", "classhnl_1_1HNL.html", null ]
     ] ],
     [ "eventDisplay.IO", "classeventDisplay_1_1IO.html", null ],
-    [ "rootpyPickler.IO_Wrapper", "classrootpyPickler_1_1IO__Wrapper.html", null ],
     [ "metaclass", null, [
       [ "ShipGeoConfig.ConfigRegistry", "classShipGeoConfig_1_1ConfigRegistry.html", null ]
     ] ],
     [ "method_logger.MethodLogger", "classmethod__logger_1_1MethodLogger.html", null ],
-    [ "pickle.Pickler", null, [
-      [ "rootpyPickler.Pickler", "classrootpyPickler_1_1Pickler.html", null ]
-    ] ],
     [ "ROOT.pyFairModule", null, [
       [ "study_GammaConv.Block", "classstudy__GammaConv_1_1Block.html", null ],
       [ "study_muMSC.Block", "classstudy__muMSC_1_1Block.html", null ],
@@ -178,7 +146,6 @@ var hierarchy =
       [ "PyTr1Rng", "classPyTr1Rng.html", null ],
       [ "PyTr3Rng", "classPyTr3Rng.html", null ]
     ] ],
-    [ "rootpyPickler.ROOT_Proxy", "classrootpyPickler_1_1ROOT__Proxy.html", null ],
     [ "rpvsusy.RPVSUSYbranchings", "classrpvsusy_1_1RPVSUSYbranchings.html", [
       [ "rpvsusy.RPVSUSY", "classrpvsusy_1_1RPVSUSY.html", null ]
     ] ],
@@ -186,7 +153,6 @@ var hierarchy =
     [ "experimental.analysis_toolkit.selection_check", "classexperimental_1_1analysis__toolkit_1_1selection__check.html", null ],
     [ "shipDigiReco.ShipDigiReco", "classshipDigiReco_1_1ShipDigiReco.html", null ],
     [ "ShipGeo.ShipGeo", "classShipGeo_1_1ShipGeo.html", null ],
-    [ "shipPid.Task", "classshipPid_1_1Task.html", null ],
     [ "shipVertex.Task", "classshipVertex_1_1Task.html", null ],
     [ "shipVeto.Task", "classshipVeto_1_1Task.html", null ],
     [ "unittest.TestCase", null, [
@@ -199,15 +165,10 @@ var hierarchy =
     [ "TG4VUserPostDetConstruction", null, [
       [ "ShipFieldMaker", "classShipFieldMaker.html", null ]
     ] ],
-    [ "TNamed", null, [
-      [ "ecalLightMap", "classecalLightMap.html", null ],
-      [ "ecalStructure", "classecalStructure.html", null ],
-      [ "hcalLightMap", "classhcalLightMap.html", null ],
-      [ "hcalStructure", "classhcalStructure.html", null ]
-    ] ],
     [ "TObject", null, [
       [ "ShipHit", "classShipHit.html", [
-        [ "MtcDetHit", "classMtcDetHit.html", null ],
+        [ "MTCDetHit", "classMTCDetHit.html", null ],
+        [ "SiliconTargetHit", "classSiliconTargetHit.html", null ],
         [ "TimeDetHit", "classTimeDetHit.html", null ],
         [ "UpstreamTaggerHit", "classUpstreamTaggerHit.html", null ],
         [ "muonHit", "classmuonHit.html", null ],
@@ -218,18 +179,6 @@ var hierarchy =
       [ "ShipMCTrack", "classShipMCTrack.html", null ],
       [ "TrackInfo", "classTrackInfo.html", null ],
       [ "Tracklet", "classTracklet.html", null ],
-      [ "ecalCell", "classecalCell.html", [
-        [ "ecalCellMC", "classecalCellMC.html", null ],
-        [ "ecalModule", "classecalModule.html", null ]
-      ] ],
-      [ "ecalCluster", "classecalCluster.html", null ],
-      [ "ecalInf", "classecalInf.html", null ],
-      [ "ecalMaximum", "classecalMaximum.html", null ],
-      [ "ecalReconstructed", "classecalReconstructed.html", null ],
-      [ "hcalInf", "classhcalInf.html", null ],
-      [ "hcalModule", "classhcalModule.html", [
-        [ "hcalModuleMC", "classhcalModuleMC.html", null ]
-      ] ],
       [ "pid", "classpid.html", null ],
       [ "splitcalCluster", "classsplitcalCluster.html", null ],
       [ "vetoHitOnTrack", "classvetoHitOnTrack.html", null ]
@@ -243,13 +192,23 @@ var hierarchy =
       [ "ShipBFieldMap", "classShipBFieldMap.html", null ],
       [ "ShipCompField", "classShipCompField.html", null ]
     ] ],
+    [ "TVirtualMCDecayer", null, [
+      [ "TEvtGenDecayer", "classTEvtGenDecayer.html", null ]
+    ] ],
     [ "type", null, [
       [ "ShipGeoConfig._SingletonDict", "classShipGeoConfig_1_1__SingletonDict.html", [
         [ "ShipGeoConfig.ConfigRegistry", "classShipGeoConfig_1_1ConfigRegistry.html", null ]
       ] ]
     ] ],
-    [ "pickle.Unpickler", null, [
-      [ "rootpyPickler.Unpickler", "classrootpyPickler_1_1Unpickler.html", null ]
-    ] ],
-    [ "Veto", "classVeto.html", null ]
+    [ "Veto", "classVeto.html", null ],
+    [ "ABC", null, [
+      [ "BaseDetector.BaseDetector", "classBaseDetector_1_1BaseDetector.html", [
+        [ "MTCDetector.MTCDetector", "classMTCDetector_1_1MTCDetector.html", null ],
+        [ "SBTDetector.SBTDetector", "classSBTDetector_1_1SBTDetector.html", null ],
+        [ "UpstreamTaggerDetector.UpstreamTaggerDetector", "classUpstreamTaggerDetector_1_1UpstreamTaggerDetector.html", null ],
+        [ "muonDetector.muonDetector", "classmuonDetector_1_1muonDetector.html", null ],
+        [ "strawtubesDetector.strawtubesDetector", "classstrawtubesDetector_1_1strawtubesDetector.html", null ],
+        [ "timeDetector.timeDetector", "classtimeDetector_1_1timeDetector.html", null ]
+      ] ]
+    ] ]
 ];

@@ -119,9 +119,7 @@ Variables</h2></td></tr>
 <tr class="separator:a3963f93fd1393158dd0ecb6e55478e2f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abf62f929da8b1ca869de3f1331e012be" id="r_abf62f929da8b1ca869de3f1331e012be"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceSciFiMapping.html#abf62f929da8b1ca869de3f1331e012be">fgeo</a> = ROOT.TFile.Open(<a class="el" href="namespaceSciFiMapping.html#a3963f93fd1393158dd0ecb6e55478e2f">geoFile</a>)</td></tr>
 <tr class="separator:abf62f929da8b1ca869de3f1331e012be"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab4075dc17ad026f5d1c730437f4cd314" id="r_ab4075dc17ad026f5d1c730437f4cd314"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceSciFiMapping.html#ab4075dc17ad026f5d1c730437f4cd314">upkl</a> = <a class="el" href="classrootpyPickler_1_1Unpickler.html">Unpickler</a>(<a class="el" href="namespaceSciFiMapping.html#abf62f929da8b1ca869de3f1331e012be">fgeo</a>)</td></tr>
-<tr class="separator:ab4075dc17ad026f5d1c730437f4cd314"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a952a23c26a5134abc05d3b3eb5925649" id="r_a952a23c26a5134abc05d3b3eb5925649"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceSciFiMapping.html#a952a23c26a5134abc05d3b3eb5925649">ship_geo</a> = upkl.load(&quot;ShipGeo&quot;)</td></tr>
+<tr class="memitem:a952a23c26a5134abc05d3b3eb5925649" id="r_a952a23c26a5134abc05d3b3eb5925649"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceSciFiMapping.html#a952a23c26a5134abc05d3b3eb5925649">ship_geo</a> = load_from_root_file(<a class="el" href="namespaceSciFiMapping.html#abf62f929da8b1ca869de3f1331e012be">fgeo</a>, &quot;ShipGeo&quot;)</td></tr>
 <tr class="separator:a952a23c26a5134abc05d3b3eb5925649"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acea6f06d4bf32a21bafbb9ebf00f2d51" id="r_acea6f06d4bf32a21bafbb9ebf00f2d51"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceSciFiMapping.html#acea6f06d4bf32a21bafbb9ebf00f2d51">run</a> = ROOT.FairRunSim()</td></tr>
 <tr class="separator:acea6f06d4bf32a21bafbb9ebf00f2d51"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -133,10 +131,21 @@ Variables</h2></td></tr>
 <tr class="separator:afd115a916bc26005c27a865d524cd352"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae7b45f62289f6f7a88b886ce3111eaea" id="r_ae7b45f62289f6f7a88b886ce3111eaea"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceSciFiMapping.html#ae7b45f62289f6f7a88b886ce3111eaea">top</a> = sGeo.GetTopVolume()</td></tr>
 <tr class="separator:ae7b45f62289f6f7a88b886ce3111eaea"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a21bdee0897a451f80b84bf1fd2fed8e1" id="r_a21bdee0897a451f80b84bf1fd2fed8e1"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceSciFiMapping.html#a21bdee0897a451f80b84bf1fd2fed8e1">SciFiMapping</a> = <a class="el" href="classSciFiMapping_1_1SciFiMapping.html">SciFiMapping</a>(<a class="el" href="namespaceSciFiMapping.html#a4d4d2b95c95e28c26bc019e92fa55052">modules</a>)</td></tr>
-<tr class="separator:a21bdee0897a451f80b84bf1fd2fed8e1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a88064553cb360b62aa9e06d78245a8ca" id="r_a88064553cb360b62aa9e06d78245a8ca"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceSciFiMapping.html#a88064553cb360b62aa9e06d78245a8ca">mapping</a> = <a class="el" href="classSciFiMapping_1_1SciFiMapping.html">SciFiMapping</a>(<a class="el" href="namespaceSciFiMapping.html#a4d4d2b95c95e28c26bc019e92fa55052">modules</a>)</td></tr>
+<tr class="separator:a88064553cb360b62aa9e06d78245a8ca"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a10eca142a442661ad9b44e8b062da22f" id="r_a10eca142a442661ad9b44e8b062da22f"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceSciFiMapping.html#a10eca142a442661ad9b44e8b062da22f">number_of_channels</a></td></tr>
+<tr class="separator:a10eca142a442661ad9b44e8b062da22f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5d762ddc817357f5096fe57b847c0aa4" id="r_a5d762ddc817357f5096fe57b847c0aa4"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceSciFiMapping.html#a5d762ddc817357f5096fe57b847c0aa4">output_file</a></td></tr>
+<tr class="separator:a5d762ddc817357f5096fe57b847c0aa4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae6a40898320afa1e936d877135073ab6" id="r_ae6a40898320afa1e936d877135073ab6"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceSciFiMapping.html#ae6a40898320afa1e936d877135073ab6">labeling</a></td></tr>
+<tr class="separator:ae6a40898320afa1e936d877135073ab6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac56b90cfa7dce12563a4a660d59634de" id="r_ac56b90cfa7dce12563a4a660d59634de"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceSciFiMapping.html#ac56b90cfa7dce12563a4a660d59634de">real_event</a></td></tr>
+<tr class="separator:ac56b90cfa7dce12563a4a660d59634de"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a71088a9c9a0cc959154503e8d51b916e" id="r_a71088a9c9a0cc959154503e8d51b916e"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceSciFiMapping.html#a71088a9c9a0cc959154503e8d51b916e">x_coords</a></td></tr>
+<tr class="separator:a71088a9c9a0cc959154503e8d51b916e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Variable Documentation</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><pre class="fragment">Mapping between detector modules and SciFi channels.</pre> </div><h2 class="groupheader">Variable Documentation</h2>
 <a id="a5fb157ab8751e9dfc269a25fddc0d173" name="a5fb157ab8751e9dfc269a25fddc0d173"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a5fb157ab8751e9dfc269a25fddc0d173">&#9670;&#160;</a></span>args</h2>
 
@@ -149,7 +158,7 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00334">334</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00832">832</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
 
 </div>
 </div>
@@ -165,7 +174,7 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00331">331</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00829">829</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
 
 </div>
 </div>
@@ -181,7 +190,7 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00329">329</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00827">827</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
 
 </div>
 </div>
@@ -197,7 +206,7 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00336">336</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00834">834</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
 
 </div>
 </div>
@@ -213,7 +222,7 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00335">335</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00833">833</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
 
 </div>
 </div>
@@ -229,7 +238,39 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00332">332</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00830">830</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
+
+</div>
+</div>
+<a id="ae6a40898320afa1e936d877135073ab6" name="ae6a40898320afa1e936d877135073ab6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae6a40898320afa1e936d877135073ab6">&#9670;&#160;</a></span>labeling</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">SciFiMapping.labeling</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00858">858</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
+
+</div>
+</div>
+<a id="a88064553cb360b62aa9e06d78245a8ca" name="a88064553cb360b62aa9e06d78245a8ca"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a88064553cb360b62aa9e06d78245a8ca">&#9670;&#160;</a></span>mapping</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">SciFiMapping.mapping = <a class="el" href="classSciFiMapping_1_1SciFiMapping.html">SciFiMapping</a>(<a class="el" href="namespaceSciFiMapping.html#a4d4d2b95c95e28c26bc019e92fa55052">modules</a>)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00851">851</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
 
 </div>
 </div>
@@ -245,7 +286,39 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00348">348</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00845">845</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
+
+</div>
+</div>
+<a id="a10eca142a442661ad9b44e8b062da22f" name="a10eca142a442661ad9b44e8b062da22f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a10eca142a442661ad9b44e8b062da22f">&#9670;&#160;</a></span>number_of_channels</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">SciFiMapping.number_of_channels</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00856">856</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
+
+</div>
+</div>
+<a id="a5d762ddc817357f5096fe57b847c0aa4" name="a5d762ddc817357f5096fe57b847c0aa4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5d762ddc817357f5096fe57b847c0aa4">&#9670;&#160;</a></span>output_file</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">SciFiMapping.output_file</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00857">857</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
 
 </div>
 </div>
@@ -261,7 +334,23 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00326">326</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00824">824</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
+
+</div>
+</div>
+<a id="ac56b90cfa7dce12563a4a660d59634de" name="ac56b90cfa7dce12563a4a660d59634de"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac56b90cfa7dce12563a4a660d59634de">&#9670;&#160;</a></span>real_event</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">SciFiMapping.real_event</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00865">865</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
 
 </div>
 </div>
@@ -277,7 +366,7 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00347">347</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00844">844</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
 
 </div>
 </div>
@@ -293,23 +382,7 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00341">341</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
-
-</div>
-</div>
-<a id="a21bdee0897a451f80b84bf1fd2fed8e1" name="a21bdee0897a451f80b84bf1fd2fed8e1"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a21bdee0897a451f80b84bf1fd2fed8e1">&#9670;&#160;</a></span>SciFiMapping</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="classSciFiMapping_1_1SciFiMapping.html">SciFiMapping.SciFiMapping</a> = <a class="el" href="classSciFiMapping_1_1SciFiMapping.html">SciFiMapping</a>(<a class="el" href="namespaceSciFiMapping.html#a4d4d2b95c95e28c26bc019e92fa55052">modules</a>)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00354">354</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00838">838</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
 
 </div>
 </div>
@@ -325,7 +398,7 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00351">351</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00848">848</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
 
 </div>
 </div>
@@ -336,12 +409,12 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">SciFiMapping.ship_geo = upkl.load(&quot;ShipGeo&quot;)</td>
+          <td class="memname">SciFiMapping.ship_geo = load_from_root_file(<a class="el" href="namespaceSciFiMapping.html#abf62f929da8b1ca869de3f1331e012be">fgeo</a>, &quot;ShipGeo&quot;)</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00338">338</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00835">835</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
 
 </div>
 </div>
@@ -357,7 +430,7 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00352">352</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00849">849</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
 
 </div>
 </div>
@@ -373,23 +446,23 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00330">330</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00828">828</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
 
 </div>
 </div>
-<a id="ab4075dc17ad026f5d1c730437f4cd314" name="ab4075dc17ad026f5d1c730437f4cd314"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab4075dc17ad026f5d1c730437f4cd314">&#9670;&#160;</a></span>upkl</h2>
+<a id="a71088a9c9a0cc959154503e8d51b916e" name="a71088a9c9a0cc959154503e8d51b916e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a71088a9c9a0cc959154503e8d51b916e">&#9670;&#160;</a></span>x_coords</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">SciFiMapping.upkl = <a class="el" href="classrootpyPickler_1_1Unpickler.html">Unpickler</a>(<a class="el" href="namespaceSciFiMapping.html#abf62f929da8b1ca869de3f1331e012be">fgeo</a>)</td>
+          <td class="memname">SciFiMapping.x_coords</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00337">337</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SciFiMapping_8py_source.html#l00866">866</a> of file <a class="el" href="SciFiMapping_8py_source.html">SciFiMapping.py</a>.</p>
 
 </div>
 </div>
