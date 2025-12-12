@@ -96,6 +96,7 @@ $(document).ready(function(){initNavTree('splitcalCluster_8h.html',''); initResi
 <div class="contents">
 <div class="textblock"><code>#include &quot;TObject.h&quot;</code><br />
 <code>#include &quot;<a class="el" href="splitcalHit_8h_source.html">splitcalHit.h</a>&quot;</code><br />
+<code>#include &lt;array&gt;</code><br />
 <code>#include &lt;vector&gt;</code><br />
 <code>#include &lt;TVector3.h&gt;</code><br />
 </div><div class="textblock"><div class="dynheader">
@@ -103,33 +104,32 @@ Include dependency graph for splitcalCluster.h:</div>
 <div class="dyncontent">
 <div class="center"><img src="splitcalCluster_8h__incl.png" border="0" usemap="#asplitcal_2splitcalCluster_8h" alt=""/></div>
 <map name="asplitcal_2splitcalCluster_8h" id="asplitcal_2splitcalCluster_8h">
-<area shape="rect" title=" " alt="" coords="532,5,709,31"/>
-<area shape="rect" title=" " alt="" coords="5,233,89,258"/>
-<area shape="poly" title=" " alt="" coords="579,33,419,81,320,115,220,154,144,192,80,228,77,223,141,187,218,150,318,110,418,76,577,28"/>
-<area shape="rect" href="splitcalHit_8h.html" title=" " alt="" coords="499,79,599,104"/>
-<area shape="poly" title=" " alt="" coords="611,33,572,71,568,67,607,29"/>
-<area shape="rect" title=" " alt="" coords="685,233,775,258"/>
-<area shape="poly" title=" " alt="" coords="629,30,721,219,716,221,624,32"/>
-<area shape="rect" title=" " alt="" coords="732,79,795,104"/>
-<area shape="poly" title=" " alt="" coords="645,28,729,70,727,75,642,33"/>
-<area shape="poly" title=" " alt="" coords="499,106,407,127,303,155,186,194,89,230,87,225,184,189,301,149,406,121,498,100"/>
-<area shape="rect" href="ShipHit_8h.html" title=" " alt="" coords="315,152,396,177"/>
-<area shape="poly" title=" " alt="" coords="519,107,400,150,399,145,517,102"/>
-<area shape="poly" title=" " alt="" coords="564,102,708,222,704,226,561,106"/>
-<area shape="rect" href="splitcalPoint_8h.html" title=" " alt="" coords="491,152,606,177"/>
-<area shape="poly" title=" " alt="" coords="551,104,551,138,546,138,546,104"/>
-<area shape="poly" title=" " alt="" coords="315,177,217,198,101,228,92,231,90,226,100,223,216,193,314,172"/>
-<area shape="rect" title=" " alt="" coords="280,233,359,258"/>
-<area shape="poly" title=" " alt="" coords="352,179,333,221,328,219,348,176"/>
-<area shape="poly" title=" " alt="" coords="397,169,521,190,673,223,685,226,684,231,672,228,520,195,396,175"/>
-<area shape="rect" title=" " alt="" coords="383,225,525,265"/>
-<area shape="poly" title=" " alt="" coords="372,175,421,215,418,219,368,180"/>
-<area shape="rect" title=" " alt="" coords="113,225,256,265"/>
-<area shape="poly" title=" " alt="" coords="332,180,239,222,237,217,329,175"/>
-<area shape="poly" title=" " alt="" coords="492,175,285,199,178,214,101,228,90,231,88,226,100,223,177,209,284,194,491,169"/>
-<area shape="poly" title=" " alt="" coords="576,175,692,225,690,230,574,180"/>
-<area shape="rect" title=" " alt="" coords="549,233,660,258"/>
-<area shape="poly" title=" " alt="" coords="559,176,591,220,586,223,555,179"/>
+<area shape="rect" title=" " alt="" coords="349,5,527,31"/>
+<area shape="rect" title=" " alt="" coords="5,225,89,251"/>
+<area shape="poly" title=" " alt="" coords="350,30,281,44,207,67,170,83,134,103,102,126,73,154,58,182,51,212,46,211,53,180,69,150,99,122,132,98,167,79,205,62,280,39,349,25"/>
+<area shape="rect" href="splitcalHit_8h.html" title=" " alt="" coords="263,79,363,104"/>
+<area shape="poly" title=" " alt="" coords="419,33,346,74,344,69,417,28"/>
+<area shape="rect" title=" " alt="" coords="351,225,442,251"/>
+<area shape="poly" title=" " alt="" coords="449,30,466,57,483,95,492,137,490,158,483,179,463,203,438,221,435,217,460,199,478,176,485,157,486,137,478,96,461,59,444,32"/>
+<area shape="rect" title=" " alt="" coords="407,152,469,177"/>
+<area shape="poly" title=" " alt="" coords="441,31,441,138,435,138,435,31"/>
+<area shape="rect" title=" " alt="" coords="545,79,601,104"/>
+<area shape="poly" title=" " alt="" coords="461,28,540,70,537,74,458,33"/>
+<area shape="poly" title=" " alt="" coords="263,99,224,104,182,115,139,131,100,154,75,182,58,214,54,211,70,179,96,150,136,126,180,110,223,99,262,93"/>
+<area shape="rect" href="ShipHit_8h.html" title=" " alt="" coords="111,152,192,177"/>
+<area shape="poly" title=" " alt="" coords="288,106,191,149,189,144,286,102"/>
+<area shape="poly" title=" " alt="" coords="322,103,385,212,381,215,317,106"/>
+<area shape="rect" href="splitcalPoint_8h.html" title=" " alt="" coords="217,152,331,177"/>
+<area shape="poly" title=" " alt="" coords="309,106,289,141,284,139,304,103"/>
+<area shape="poly" title=" " alt="" coords="334,102,407,143,404,147,331,106"/>
+<area shape="poly" title=" " alt="" coords="136,180,77,219,74,215,133,175"/>
+<area shape="rect" title=" " alt="" coords="113,225,192,251"/>
+<area shape="poly" title=" " alt="" coords="154,178,155,212,150,212,149,178"/>
+<area shape="poly" title=" " alt="" coords="191,175,345,219,343,224,190,180"/>
+<area shape="poly" title=" " alt="" coords="238,180,98,224,96,219,237,175"/>
+<area shape="poly" title=" " alt="" coords="295,175,366,216,364,221,292,180"/>
+<area shape="rect" title=" " alt="" coords="216,225,327,251"/>
+<area shape="poly" title=" " alt="" coords="276,178,275,212,270,212,271,178"/>
 </map>
 </div>
 </div><div class="textblock"><div class="dynheader">
@@ -137,9 +137,11 @@ This graph shows which files directly or indirectly include this file:</div>
 <div class="dyncontent">
 <div class="center"><img src="splitcalCluster_8h__dep__incl.png" border="0" usemap="#asplitcal_2splitcalCluster_8hdep" alt=""/></div>
 <map name="asplitcal_2splitcalCluster_8hdep" id="asplitcal_2splitcalCluster_8hdep">
-<area shape="rect" title=" " alt="" coords="13,5,190,31"/>
-<area shape="rect" href="splitcalCluster_8cxx.html" title=" " alt="" coords="5,79,197,104"/>
-<area shape="poly" title=" " alt="" coords="104,44,104,79,99,79,99,44"/>
+<area shape="rect" title=" " alt="" coords="106,5,283,31"/>
+<area shape="rect" href="splitcalCluster_8cxx.html" title=" " alt="" coords="5,86,197,111"/>
+<area shape="poly" title=" " alt="" coords="172,42,117,88,113,84,169,38"/>
+<area shape="rect" href="test__rntuple__io_8cxx.html" title=" " alt="" coords="221,79,357,119"/>
+<area shape="poly" title=" " alt="" coords="221,37,268,76,265,81,217,41"/>
 </map>
 </div>
 </div>

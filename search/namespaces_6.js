@@ -10,5 +10,5 @@ var searchData=
   ['geomgeant4_7',['geomGeant4',['../namespacegeomGeant4.html',1,'']]],
   ['getgeoinformation_8',['getGeoInformation',['../namespacegetGeoInformation.html',1,'']]],
   ['getinteractionandradiationlength_9',['getInteractionAndRadiationLength',['../namespacegetInteractionAndRadiationLength.html',1,'']]],
-  ['goliath2root_10',['goliath2root',['../namespacegoliath2root.html',1,'']]]
+  ['global_5fvariables_10',['global_variables',['../namespaceglobal__variables.html',1,'']]]
 ];

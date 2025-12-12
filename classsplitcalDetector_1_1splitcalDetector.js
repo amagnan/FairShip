@@ -1,6 +1,6 @@
 var classsplitcalDetector_1_1splitcalDetector =
 [
-    [ "__init__", "classsplitcalDetector_1_1splitcalDetector.html#a065d837608fcc92bfc1327d7a686817d", null ],
+    [ "__init__", "classsplitcalDetector_1_1splitcalDetector.html#a31c633beec0952bfd9e8e609344b0ce6", null ],
     [ "_clustering", "classsplitcalDetector_1_1splitcalDetector.html#a3af47a5d2a74d476ad5af3e3aaa33009", null ],
     [ "_get_cluster_energy", "classsplitcalDetector_1_1splitcalDetector.html#a0451c1c20e993526797f2321dd10252e", null ],
     [ "_get_neighbours", "classsplitcalDetector_1_1splitcalDetector.html#abddfe6e74d4a3d109758d15d2526d9cf", null ],
@@ -9,7 +9,6 @@ var classsplitcalDetector_1_1splitcalDetector =
     [ "delete", "classsplitcalDetector_1_1splitcalDetector.html#a7f157ee50338493039c29d1e7415ff57", null ],
     [ "digitize", "classsplitcalDetector_1_1splitcalDetector.html#ae2bff9ed9baa836c882da943745d7503", null ],
     [ "fill", "classsplitcalDetector_1_1splitcalDetector.html#aa68e237211745e8ce78b62dedbbbe123", null ],
-    [ "branch", "classsplitcalDetector_1_1splitcalDetector.html#a82f1e63b83fa4edda1e1932ffef772aa", null ],
     [ "det", "classsplitcalDetector_1_1splitcalDetector.html#a6e67f1fbdc7bf994cfd44bbcb9bd7536", null ],
     [ "input_hits", "classsplitcalDetector_1_1splitcalDetector.html#a7bfd26cc42f7bad16c967d4a578d9791", null ],
     [ "list_subclusters_of_hits", "classsplitcalDetector_1_1splitcalDetector.html#a9f08393fb860da4760951d5e321d28bb", null ],

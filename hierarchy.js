@@ -17,7 +17,6 @@ var hierarchy =
     [ "experimental.analysis_toolkit.event_inspector", "classexperimental_1_1analysis__toolkit_1_1event__inspector.html", null ],
     [ "FairContFact", null, [
       [ "ShipPassiveContFact", "classShipPassiveContFact.html", null ],
-      [ "muonContFact", "classmuonContFact.html", null ],
       [ "splitcalContFact", "classsplitcalContFact.html", null ],
       [ "strawtubesContFact", "classstrawtubesContFact.html", null ],
       [ "vetoContFact", "classvetoContFact.html", null ]
@@ -30,16 +29,13 @@ var hierarchy =
       [ "TimeDet", "classTimeDet.html", null ],
       [ "UpstreamTagger", "classUpstreamTagger.html", null ],
       [ "exitHadronAbsorber", "classexitHadronAbsorber.html", null ],
-      [ "muon", "classmuon.html", null ],
-      [ "simpleTarget", "classsimpleTarget.html", null ],
       [ "splitcal", "classsplitcal.html", null ],
       [ "strawtubes", "classstrawtubes.html", null ],
       [ "veto", "classveto.html", null ]
     ] ],
     [ "FairField", null, [
       [ "ShipBellField", "classShipBellField.html", null ],
-      [ "ShipConstField", "classShipConstField.html", null ],
-      [ "ShipGoliathField", "classShipGoliathField.html", null ]
+      [ "ShipConstField", "classShipConstField.html", null ]
     ] ],
     [ "FairFieldFactory", null, [
       [ "ShipFieldCreator", "classShipFieldCreator.html", null ]
@@ -71,14 +67,12 @@ var hierarchy =
       [ "TargetPoint", "classTargetPoint.html", null ],
       [ "TimeDetPoint", "classTimeDetPoint.html", null ],
       [ "UpstreamTaggerPoint", "classUpstreamTaggerPoint.html", null ],
-      [ "muonPoint", "classmuonPoint.html", null ],
       [ "splitcalPoint", "classsplitcalPoint.html", null ],
       [ "strawtubesPoint", "classstrawtubesPoint.html", null ],
       [ "vetoPoint", "classvetoPoint.html", null ]
     ] ],
     [ "FairModule", null, [
       [ "ShipCave", "classShipCave.html", null ],
-      [ "ShipGoliath", "classShipGoliath.html", null ],
       [ "ShipMagnet", "classShipMagnet.html", null ],
       [ "ShipMuonShield", "classShipMuonShield.html", null ],
       [ "ShipTAUMagneticSpectrometer", "classShipTAUMagneticSpectrometer.html", null ],
@@ -159,7 +153,6 @@ var hierarchy =
         [ "SiliconTargetHit", "classSiliconTargetHit.html", null ],
         [ "TimeDetHit", "classTimeDetHit.html", null ],
         [ "UpstreamTaggerHit", "classUpstreamTaggerHit.html", null ],
-        [ "muonHit", "classmuonHit.html", null ],
         [ "splitcalHit", "classsplitcalHit.html", null ],
         [ "strawtubesHit", "classstrawtubesHit.html", null ],
         [ "vetoHit", "classvetoHit.html", null ]
@@ -168,12 +161,10 @@ var hierarchy =
       [ "ShipParticle", "classShipParticle.html", null ],
       [ "TrackInfo", "classTrackInfo.html", null ],
       [ "Tracklet", "classTracklet.html", null ],
-      [ "pid", "classpid.html", null ],
       [ "splitcalCluster", "classsplitcalCluster.html", null ],
       [ "vetoHitOnTrack", "classvetoHitOnTrack.html", null ]
     ] ],
     [ "ShipFieldMaker::transformInfo", "structShipFieldMaker_1_1transformInfo.html", null ],
-    [ "TTCluster.TTCluster", "classTTCluster_1_1TTCluster.html", null ],
     [ "TVirtualMagField", null, [
       [ "ShipBFieldMap", "classShipBFieldMap.html", null ],
       [ "ShipCompField", "classShipCompField.html", null ]
@@ -187,7 +178,6 @@ var hierarchy =
         [ "MTCDetector.MTCDetector", "classMTCDetector_1_1MTCDetector.html", null ],
         [ "SBTDetector.SBTDetector", "classSBTDetector_1_1SBTDetector.html", null ],
         [ "UpstreamTaggerDetector.UpstreamTaggerDetector", "classUpstreamTaggerDetector_1_1UpstreamTaggerDetector.html", null ],
-        [ "muonDetector.muonDetector", "classmuonDetector_1_1muonDetector.html", null ],
         [ "splitcalDetector.splitcalDetector", "classsplitcalDetector_1_1splitcalDetector.html", null ],
         [ "strawtubesDetector.strawtubesDetector", "classstrawtubesDetector_1_1strawtubesDetector.html", null ],
         [ "timeDetector.timeDetector", "classtimeDetector_1_1timeDetector.html", null ]
