@@ -19,31 +19,6 @@ var annotated_dup =
         [ "selection_check", "classexperimental_1_1analysis__toolkit_1_1selection__check.html", "classexperimental_1_1analysis__toolkit_1_1selection__check" ]
       ] ]
     ] ],
-    [ "g4Ex", "namespaceg4Ex.html", [
-      [ "MyEventAction", "classg4Ex_1_1MyEventAction.html", "classg4Ex_1_1MyEventAction" ],
-      [ "MyGeneratorAction", "classg4Ex_1_1MyGeneratorAction.html", "classg4Ex_1_1MyGeneratorAction" ],
-      [ "MyRunAction", "classg4Ex_1_1MyRunAction.html", "classg4Ex_1_1MyRunAction" ],
-      [ "MySteppingAction", "classg4Ex_1_1MySteppingAction.html", "classg4Ex_1_1MySteppingAction" ],
-      [ "MyTrackingAction", "classg4Ex_1_1MyTrackingAction.html", "classg4Ex_1_1MyTrackingAction" ],
-      [ "ScoreSD", "classg4Ex_1_1ScoreSD.html", "classg4Ex_1_1ScoreSD" ]
-    ] ],
-    [ "g4Ex_args", "namespaceg4Ex__args.html", [
-      [ "MyEventAction", "classg4Ex__args_1_1MyEventAction.html", "classg4Ex__args_1_1MyEventAction" ],
-      [ "MyGeneratorAction", "classg4Ex__args_1_1MyGeneratorAction.html", "classg4Ex__args_1_1MyGeneratorAction" ],
-      [ "MyRunAction", "classg4Ex__args_1_1MyRunAction.html", "classg4Ex__args_1_1MyRunAction" ],
-      [ "MySteppingAction", "classg4Ex__args_1_1MySteppingAction.html", "classg4Ex__args_1_1MySteppingAction" ],
-      [ "MyTrackingAction", "classg4Ex__args_1_1MyTrackingAction.html", "classg4Ex__args_1_1MyTrackingAction" ],
-      [ "ScoreSD", "classg4Ex__args_1_1ScoreSD.html", "classg4Ex__args_1_1ScoreSD" ]
-    ] ],
-    [ "g4Ex_gap", "namespaceg4Ex__gap.html", [
-      [ "MyEventAction", "classg4Ex__gap_1_1MyEventAction.html", "classg4Ex__gap_1_1MyEventAction" ],
-      [ "MyGeneratorAction", "classg4Ex__gap_1_1MyGeneratorAction.html", "classg4Ex__gap_1_1MyGeneratorAction" ],
-      [ "MyRunAction", "classg4Ex__gap_1_1MyRunAction.html", "classg4Ex__gap_1_1MyRunAction" ],
-      [ "MySteppingAction", "classg4Ex__gap_1_1MySteppingAction.html", "classg4Ex__gap_1_1MySteppingAction" ],
-      [ "MyTrackingAction", "classg4Ex__gap_1_1MyTrackingAction.html", "classg4Ex__gap_1_1MyTrackingAction" ],
-      [ "MyTrackingActionD", "classg4Ex__gap_1_1MyTrackingActionD.html", "classg4Ex__gap_1_1MyTrackingActionD" ],
-      [ "ScoreSD", "classg4Ex__gap_1_1ScoreSD.html", "classg4Ex__gap_1_1ScoreSD" ]
-    ] ],
     [ "genfit", "namespacegenfit.html", [
       [ "FairShipFields", "classgenfit_1_1FairShipFields.html", "classgenfit_1_1FairShipFields" ]
     ] ],
@@ -59,9 +34,6 @@ var annotated_dup =
     [ "MTCDetector", "namespaceMTCDetector.html", [
       [ "MTCDetector", "classMTCDetector_1_1MTCDetector.html", "classMTCDetector_1_1MTCDetector" ]
     ] ],
-    [ "rootUtils", "namespacerootUtils.html", [
-      [ "PyListOfLeaves", "classrootUtils_1_1PyListOfLeaves.html", null ]
-    ] ],
     [ "rpvsusy", "namespacerpvsusy.html", [
       [ "constants", "classrpvsusy_1_1constants.html", "classrpvsusy_1_1constants" ],
       [ "RPVSUSY", "classrpvsusy_1_1RPVSUSY.html", "classrpvsusy_1_1RPVSUSY" ],
@@ -73,11 +45,13 @@ var annotated_dup =
     [ "SciFiMapping", "namespaceSciFiMapping.html", [
       [ "SciFiMapping", "classSciFiMapping_1_1SciFiMapping.html", "classSciFiMapping_1_1SciFiMapping" ]
     ] ],
+    [ "SHiP", "namespaceSHiP.html", [
+      [ "Detector", "classSHiP_1_1Detector.html", "classSHiP_1_1Detector" ],
+      [ "DetectorPoint", "classSHiP_1_1DetectorPoint.html", "classSHiP_1_1DetectorPoint" ],
+      [ "Generator", "classSHiP_1_1Generator.html", "classSHiP_1_1Generator" ]
+    ] ],
     [ "shipDigiReco", "namespaceshipDigiReco.html", [
       [ "ShipDigiReco", "classshipDigiReco_1_1ShipDigiReco.html", "classshipDigiReco_1_1ShipDigiReco" ]
-    ] ],
-    [ "ShipGeo", "namespaceShipGeo.html", [
-      [ "ShipGeo", "classShipGeo_1_1ShipGeo.html", "classShipGeo_1_1ShipGeo" ]
     ] ],
     [ "ShipGeoConfig", "namespaceShipGeoConfig.html", [
       [ "AttrDict", "classShipGeoConfig_1_1AttrDict.html", "classShipGeoConfig_1_1AttrDict" ],
@@ -130,7 +104,6 @@ var annotated_dup =
     [ "Pythia8Generator", "classPythia8Generator.html", "classPythia8Generator" ],
     [ "PyTr1Rng", "classPyTr1Rng.html", "classPyTr1Rng" ],
     [ "PyTr3Rng", "classPyTr3Rng.html", "classPyTr3Rng" ],
-    [ "regression", "structregression.html", "structregression" ],
     [ "ShipBellField", "classShipBellField.html", "classShipBellField" ],
     [ "ShipBFieldMap", "classShipBFieldMap.html", "classShipBFieldMap" ],
     [ "ShipCave", "classShipCave.html", "classShipCave" ],
@@ -175,8 +148,8 @@ var annotated_dup =
     [ "UpstreamTagger", "classUpstreamTagger.html", "classUpstreamTagger" ],
     [ "UpstreamTaggerHit", "classUpstreamTaggerHit.html", "classUpstreamTaggerHit" ],
     [ "UpstreamTaggerPoint", "classUpstreamTaggerPoint.html", "classUpstreamTaggerPoint" ],
-    [ "Veto", "classVeto.html", null ],
     [ "veto", "classveto.html", "classveto" ],
+    [ "Veto", "classVeto.html", null ],
     [ "vetoContFact", "classvetoContFact.html", "classvetoContFact" ],
     [ "vetoHit", "classvetoHit.html", "classvetoHit" ],
     [ "vetoHitOnTrack", "classvetoHitOnTrack.html", "classvetoHitOnTrack" ],

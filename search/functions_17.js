@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['yandexprod_0',['YandexProd',['../namespacecompactingBackgroundProduction.html#a48643cfc6f370799896025f505c79c4e',1,'compactingBackgroundProduction']]],
-  ['ybeam_1',['yBeam',['../namespacerunPythia8.html#a39d499a5fe28c977faaf7e9635e57e05',1,'runPythia8']]]
+  ['yandexprod_0',['YandexProd',['../namespacecompactingBackgroundProduction.html#a708e024acb290e4040ca0976c1be15f0',1,'compactingBackgroundProduction']]],
+  ['ybeam_1',['yBeam',['../namespacerunPythia8.html#a0773b179ce66354584f56325e5da1bc0',1,'runPythia8']]]
 ];

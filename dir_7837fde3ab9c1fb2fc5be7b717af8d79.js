@@ -1,6 +1,5 @@
 var dir_7837fde3ab9c1fb2fc5be7b717af8d79 =
 [
-    [ "backports", "dir_aa41bf573a2149ad0a210208dfc3c884.html", "dir_aa41bf573a2149ad0a210208dfc3c884" ],
     [ "detectors", "dir_339c7ec00789b632e2695cc72d150984.html", "dir_339c7ec00789b632e2695cc72d150984" ],
     [ "experimental", "dir_2e0e69ef539ddd9cb94ea6b3ad993e89.html", "dir_2e0e69ef539ddd9cb94ea6b3ad993e89" ],
     [ "ACTSReco.py", "ACTSReco_8py.html", "ACTSReco_8py" ],
@@ -30,15 +29,12 @@ var dir_7837fde3ab9c1fb2fc5be7b717af8d79 =
     [ "rpvsusy.py", "rpvsusy_8py.html", "rpvsusy_8py" ],
     [ "saveBasicParameters.py", "saveBasicParameters_8py.html", "saveBasicParameters_8py" ],
     [ "SciFiMapping.py", "SciFiMapping_8py.html", "SciFiMapping_8py" ],
-    [ "ShieldUtils.py", "ShieldUtils_8py.html", "ShieldUtils_8py" ],
     [ "shipDet_conf.py", "shipDet__conf_8py.html", "shipDet__conf_8py" ],
     [ "shipDigiReco.py", "shipDigiReco_8py.html", "shipDigiReco_8py" ],
-    [ "ShipGeo.py", "ShipGeo_8py.html", "ShipGeo_8py" ],
     [ "ShipGeoConfig.py", "ShipGeoConfig_8py.html", "ShipGeoConfig_8py" ],
     [ "shipPatRec.py", "shipPatRec_8py.html", "shipPatRec_8py" ],
     [ "shipRoot_conf.py", "shipRoot__conf_8py.html", "shipRoot__conf_8py" ],
     [ "shipStrawTracking.py", "shipStrawTracking_8py.html", "shipStrawTracking_8py" ],
-    [ "ShipStyle.py", "ShipStyle_8py.html", "ShipStyle_8py" ],
     [ "shipunit.py", "shipunit_8py.html", "shipunit_8py" ],
     [ "shipVertex.py", "shipVertex_8py.html", "shipVertex_8py" ],
     [ "shipVeto.py", "shipVeto_8py.html", "shipVeto_8py" ],

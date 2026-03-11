@@ -89,111 +89,102 @@ $(document).ready(function(){initNavTree('TimeDetHit_8cxx.html',''); initResizab
 </div>
 
 <div class="header">
-  <div class="summary">
-<a href="#var-members">Variables</a>  </div>
   <div class="headertitle"><div class="title">TimeDetHit.cxx File Reference</div></div>
 </div><!--header-->
 <div class="contents">
 <div class="textblock"><code>#include &quot;<a class="el" href="TimeDetHit_8h_source.html">TimeDetHit.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="TimeDet_8h_source.html">TimeDet.h</a>&quot;</code><br />
-<code>#include &quot;TVector3.h&quot;</code><br />
+<code>#include &lt;cmath&gt;</code><br />
+<code>#include &lt;iostream&gt;</code><br />
+<code>#include &quot;TGeoBBox.h&quot;</code><br />
+<code>#include &quot;TGeoManager.h&quot;</code><br />
+<code>#include &quot;TGeoNode.h&quot;</code><br />
 <code>#include &quot;TMath.h&quot;</code><br />
 <code>#include &quot;TRandom1.h&quot;</code><br />
 <code>#include &quot;TRandom3.h&quot;</code><br />
-<code>#include &quot;TGeoManager.h&quot;</code><br />
-<code>#include &quot;TGeoBBox.h&quot;</code><br />
-<code>#include &quot;TGeoNode.h&quot;</code><br />
-<code>#include &lt;iostream&gt;</code><br />
-<code>#include &lt;cmath&gt;</code><br />
+<code>#include &quot;TVector3.h&quot;</code><br />
+<code>#include &quot;<a class="el" href="TimeDet_8h_source.html">TimeDet.h</a>&quot;</code><br />
 </div><div class="textblock"><div class="dynheader">
 Include dependency graph for TimeDetHit.cxx:</div>
 <div class="dyncontent">
 <div class="center"><img src="TimeDetHit_8cxx__incl.png" border="0" usemap="#aTimeDet_2TimeDetHit_8cxx" alt=""/></div>
 <map name="aTimeDet_2TimeDetHit_8cxx" id="aTimeDet_2TimeDetHit_8cxx">
-<area shape="rect" title=" " alt="" coords="1345,5,1529,31"/>
-<area shape="rect" href="TimeDetHit_8h.html" title=" " alt="" coords="409,79,518,104"/>
-<area shape="poly" title=" " alt="" coords="1345,29,532,88,532,82,1344,23"/>
-<area shape="rect" title=" " alt="" coords="629,225,719,251"/>
-<area shape="poly" title=" " alt="" coords="1345,27,1196,44,1113,60,1032,81,989,97,957,113,886,154,842,180,782,204,726,224,724,219,780,199,839,175,883,150,955,108,987,92,1031,76,1112,55,1196,39,1344,22"/>
-<area shape="rect" href="TimeDet_8h.html" title=" " alt="" coords="1043,79,1134,104"/>
-<area shape="poly" title=" " alt="" coords="1381,33,1148,81,1147,75,1380,28"/>
-<area shape="rect" title=" " alt="" coords="1158,79,1233,104"/>
-<area shape="poly" title=" " alt="" coords="1399,33,1247,78,1245,73,1397,28"/>
-<area shape="rect" title=" " alt="" coords="1257,79,1361,104"/>
-<area shape="poly" title=" " alt="" coords="1417,33,1343,74,1341,69,1415,28"/>
-<area shape="rect" title=" " alt="" coords="1385,79,1489,104"/>
-<area shape="poly" title=" " alt="" coords="1439,31,1439,65,1434,65,1434,31"/>
-<area shape="rect" title=" " alt="" coords="1513,79,1637,104"/>
-<area shape="poly" title=" " alt="" coords="1460,28,1542,70,1539,75,1458,33"/>
-<area shape="rect" title=" " alt="" coords="1661,79,1764,104"/>
-<area shape="poly" title=" " alt="" coords="1482,28,1655,73,1654,78,1480,33"/>
-<area shape="rect" title=" " alt="" coords="1788,79,1891,104"/>
-<area shape="poly" title=" " alt="" coords="1503,28,1774,76,1774,81,1502,33"/>
-<area shape="rect" title=" " alt="" coords="1915,79,1995,104"/>
-<area shape="poly" title=" " alt="" coords="1529,26,1698,46,1902,76,1901,81,1698,51,1528,31"/>
-<area shape="rect" title=" " alt="" coords="2020,79,2083,104"/>
-<area shape="poly" title=" " alt="" coords="1529,22,1743,40,1873,56,2007,76,2006,82,1873,61,1743,46,1528,27"/>
-<area shape="rect" title=" " alt="" coords="722,152,829,177"/>
-<area shape="poly" title=" " alt="" coords="514,101,712,146,711,152,513,107"/>
-<area shape="rect" href="ShipHit_8h.html" title=" " alt="" coords="304,152,385,177"/>
-<area shape="poly" title=" " alt="" coords="446,106,377,147,375,142,443,102"/>
-<area shape="rect" title=" " alt="" coords="223,225,307,251"/>
-<area shape="poly" title=" " alt="" coords="409,101,348,119,319,134,293,154,277,182,269,212,264,211,272,180,289,150,316,129,346,114,408,96"/>
-<area shape="rect" href="TimeDetPoint_8h.html" title=" " alt="" coords="106,152,229,177"/>
-<area shape="poly" title=" " alt="" coords="416,107,229,151,228,146,415,101"/>
-<area shape="rect" title=" " alt="" coords="409,152,517,177"/>
-<area shape="poly" title=" " alt="" coords="466,104,466,138,461,138,461,104"/>
-<area shape="rect" title=" " alt="" coords="541,152,697,177"/>
-<area shape="poly" title=" " alt="" coords="489,102,582,144,580,149,487,106"/>
-<area shape="poly" title=" " alt="" coords="334,179,290,218,286,214,330,175"/>
-<area shape="rect" title=" " alt="" coords="331,225,409,251"/>
-<area shape="poly" title=" " alt="" coords="351,177,364,212,359,213,346,179"/>
-<area shape="poly" title=" " alt="" coords="386,172,397,175,616,222,615,227,396,180,385,178"/>
-<area shape="poly" title=" " alt="" coords="185,175,239,215,236,219,181,180"/>
-<area shape="poly" title=" " alt="" coords="229,172,615,226,615,231,229,177"/>
-<area shape="rect" title=" " alt="" coords="5,225,116,251"/>
-<area shape="poly" title=" " alt="" coords="152,180,91,220,88,215,149,175"/>
-<area shape="rect" title=" " alt="" coords="141,225,197,251"/>
-<area shape="poly" title=" " alt="" coords="170,178,171,212,166,212,165,178"/>
-<area shape="poly" title=" " alt="" coords="1060,107,943,154,886,180,806,205,733,225,732,220,805,200,884,175,941,150,1058,102"/>
-<area shape="rect" title=" " alt="" coords="954,152,1066,177"/>
-<area shape="poly" title=" " alt="" coords="1078,106,1035,145,1031,141,1074,102"/>
-<area shape="rect" href="ISTLPointContainer_8h.html" title=" " alt="" coords="1091,152,1247,177"/>
-<area shape="poly" title=" " alt="" coords="1103,102,1147,141,1144,145,1100,106"/>
-<area shape="rect" title=" " alt="" coords="1322,225,1373,251"/>
-<area shape="poly" title=" " alt="" coords="1135,99,1146,101,1228,106,1334,108,1387,111,1436,118,1476,131,1504,150,1513,167,1510,182,1498,195,1480,205,1434,222,1387,233,1386,228,1433,217,1478,201,1495,191,1505,179,1507,167,1500,154,1474,136,1435,124,1387,117,1334,113,1227,111,1146,107,1134,105"/>
-<area shape="rect" title=" " alt="" coords="1271,152,1402,177"/>
-<area shape="poly" title=" " alt="" coords="1129,101,1284,146,1283,151,1128,107"/>
-<area shape="rect" title=" " alt="" coords="1427,152,1489,177"/>
-<area shape="poly" title=" " alt="" coords="1135,99,1146,101,1278,124,1414,149,1413,155,1277,129,1146,107,1134,104"/>
-<area shape="poly" title=" " alt="" coords="1198,175,1310,219,1308,224,1196,180"/>
+<area shape="rect" title=" " alt="" coords="1055,5,1239,31"/>
+<area shape="rect" href="TimeDetHit_8h.html" title=" " alt="" coords="317,79,427,104"/>
+<area shape="poly" title=" " alt="" coords="1055,30,440,86,440,81,1054,25"/>
+<area shape="rect" title=" " alt="" coords="715,299,805,324"/>
+<area shape="poly" title=" " alt="" coords="1055,23,969,27,880,36,803,54,774,66,756,80,750,110,751,166,760,285,755,285,746,167,745,109,751,77,772,61,801,49,879,31,969,21,1054,17"/>
+<area shape="rect" title=" " alt="" coords="766,79,829,104"/>
+<area shape="poly" title=" " alt="" coords="1083,33,843,81,842,76,1082,28"/>
+<area shape="rect" title=" " alt="" coords="853,79,933,104"/>
+<area shape="poly" title=" " alt="" coords="1107,33,948,78,946,72,1105,28"/>
+<area shape="rect" title=" " alt="" coords="958,79,1061,104"/>
+<area shape="poly" title=" " alt="" coords="1126,33,1045,75,1043,70,1123,28"/>
+<area shape="rect" title=" " alt="" coords="1085,79,1209,104"/>
+<area shape="poly" title=" " alt="" coords="1149,31,1149,65,1144,65,1144,31"/>
+<area shape="rect" title=" " alt="" coords="1233,79,1335,104"/>
+<area shape="poly" title=" " alt="" coords="1170,28,1251,70,1248,75,1168,33"/>
+<area shape="rect" title=" " alt="" coords="1360,79,1435,104"/>
+<area shape="poly" title=" " alt="" coords="1188,28,1347,73,1346,78,1186,33"/>
+<area shape="rect" title=" " alt="" coords="1459,79,1563,104"/>
+<area shape="poly" title=" " alt="" coords="1206,28,1446,75,1445,80,1205,33"/>
+<area shape="rect" title=" " alt="" coords="1587,79,1691,104"/>
+<area shape="poly" title=" " alt="" coords="1236,28,1574,76,1573,81,1235,33"/>
+<area shape="rect" href="TimeDet_8h.html" title=" " alt="" coords="1715,79,1805,104"/>
+<area shape="poly" title=" " alt="" coords="1239,24,1447,44,1701,76,1701,81,1446,49,1239,29"/>
+<area shape="rect" title=" " alt="" coords="5,152,112,177"/>
+<area shape="poly" title=" " alt="" coords="322,107,123,152,122,146,321,101"/>
+<area shape="rect" href="ShipHit_8h.html" title=" " alt="" coords="137,152,218,177"/>
+<area shape="poly" title=" " alt="" coords="342,107,223,150,221,145,340,102"/>
+<area shape="rect" title=" " alt="" coords="254,225,338,251"/>
+<area shape="poly" title=" " alt="" coords="342,106,309,125,295,138,284,153,279,167,279,182,286,212,281,213,274,183,274,166,279,151,291,134,306,121,339,102"/>
+<area shape="rect" title=" " alt="" coords="294,152,450,177"/>
+<area shape="poly" title=" " alt="" coords="375,104,375,138,369,138,369,104"/>
+<area shape="rect" title=" " alt="" coords="474,152,582,177"/>
+<area shape="poly" title=" " alt="" coords="398,102,491,144,489,149,396,106"/>
+<area shape="rect" href="TimeDetPoint_8h.html" title=" " alt="" coords="607,152,729,177"/>
+<area shape="poly" title=" " alt="" coords="420,101,607,146,606,151,419,107"/>
+<area shape="rect" title=" " alt="" coords="99,225,178,251"/>
+<area shape="poly" title=" " alt="" coords="173,179,154,215,149,212,169,176"/>
+<area shape="poly" title=" " alt="" coords="198,175,266,216,263,220,195,180"/>
+<area shape="poly" title=" " alt="" coords="185,176,206,213,223,233,243,248,283,264,335,275,463,285,593,290,694,296,702,297,701,302,693,301,593,295,463,291,335,280,281,269,240,253,219,237,202,217,180,179"/>
+<area shape="poly" title=" " alt="" coords="609,180,352,229,351,224,608,175"/>
+<area shape="poly" title=" " alt="" coords="678,176,748,286,743,289,673,179"/>
+<area shape="rect" title=" " alt="" coords="491,299,547,324"/>
+<area shape="poly" title=" " alt="" coords="624,180,583,198,563,211,546,227,531,255,523,285,518,284,526,253,542,224,560,207,580,193,622,175"/>
+<area shape="rect" href="DetectorPoint_8h.html" title=" " alt="" coords="556,225,679,251"/>
+<area shape="poly" title=" " alt="" coords="662,179,636,216,631,213,657,176"/>
+<area shape="poly" title=" " alt="" coords="641,248,726,290,723,295,639,253"/>
+<area shape="poly" title=" " alt="" coords="603,253,547,293,544,288,600,249"/>
+<area shape="rect" title=" " alt="" coords="571,299,682,324"/>
+<area shape="poly" title=" " alt="" coords="622,251,626,285,621,286,616,251"/>
+<area shape="poly" title=" " alt="" coords="1715,105,1703,107,1577,121,1469,127,1283,132,1195,139,1103,154,1002,182,885,228,830,259,785,292,782,288,827,254,883,223,1000,177,1102,149,1195,133,1283,127,1468,122,1577,116,1702,101,1714,99"/>
+<area shape="rect" title=" " alt="" coords="1636,299,1687,324"/>
+<area shape="poly" title=" " alt="" coords="1767,104,1774,132,1781,170,1780,212,1775,233,1766,252,1753,269,1737,282,1701,301,1699,296,1734,278,1749,265,1762,249,1770,231,1774,211,1775,170,1769,133,1762,105"/>
+<area shape="rect" title=" " alt="" coords="1689,225,1751,251"/>
+<area shape="poly" title=" " alt="" coords="1759,105,1729,213,1724,211,1754,104"/>
+<area shape="rect" href="Detector_8h.html" title=" " alt="" coords="1213,152,1302,177"/>
+<area shape="poly" title=" " alt="" coords="1715,105,1703,107,1490,138,1316,159,1316,154,1489,133,1702,101,1714,99"/>
+<area shape="rect" title=" " alt="" coords="1533,225,1664,251"/>
+<area shape="poly" title=" " alt="" coords="1749,106,1623,218,1620,214,1745,102"/>
+<area shape="poly" title=" " alt="" coords="1213,174,1094,194,1024,209,954,228,868,261,795,295,793,290,865,256,953,223,1023,204,1093,188,1212,169"/>
+<area shape="poly" title=" " alt="" coords="1213,174,692,231,692,226,1212,168"/>
+<area shape="poly" title=" " alt="" coords="1303,168,1463,188,1675,223,1675,228,1462,193,1302,173"/>
+<area shape="rect" title=" " alt="" coords="966,225,1026,251"/>
+<area shape="poly" title=" " alt="" coords="1216,180,1040,228,1038,222,1215,175"/>
+<area shape="rect" title=" " alt="" coords="1051,225,1163,251"/>
+<area shape="poly" title=" " alt="" coords="1234,180,1145,222,1143,217,1232,175"/>
+<area shape="rect" title=" " alt="" coords="1186,225,1329,251"/>
+<area shape="poly" title=" " alt="" coords="1260,178,1260,212,1255,212,1255,178"/>
+<area shape="rect" href="ISTLPointContainer_8h.html" title=" " alt="" coords="1353,225,1509,251"/>
+<area shape="poly" title=" " alt="" coords="1286,175,1391,218,1389,222,1284,180"/>
+<area shape="poly" title=" " alt="" coords="1303,173,1531,220,1530,225,1302,178"/>
+<area shape="poly" title=" " alt="" coords="1469,248,1624,296,1622,301,1467,253"/>
+<area shape="rect" title=" " alt="" coords="1376,299,1485,324"/>
+<area shape="poly" title=" " alt="" coords="1433,251,1433,285,1428,285,1428,251"/>
 </map>
 </div>
 </div>
 <p><a href="TimeDetHit_8cxx_source.html">Go to the source code of this file.</a></p>
-<table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
-Variables</h2></td></tr>
-<tr class="memitem:a2a4e3defa01c68456688479ba32a6a02" id="r_a2a4e3defa01c68456688479ba32a6a02"><td class="memItemLeft" align="right" valign="top">Double_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="TimeDetHit_8cxx.html#a2a4e3defa01c68456688479ba32a6a02">speedOfLight</a> = TMath::C() *100./1000000000.0</td></tr>
-<tr class="separator:a2a4e3defa01c68456688479ba32a6a02"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table>
-<h2 class="groupheader">Variable Documentation</h2>
-<a id="a2a4e3defa01c68456688479ba32a6a02" name="a2a4e3defa01c68456688479ba32a6a02"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a2a4e3defa01c68456688479ba32a6a02">&#9670;&#160;</a></span>speedOfLight</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">Double_t speedOfLight = TMath::C() *100./1000000000.0</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p class="definition">Definition at line <a class="el" href="TimeDetHit_8cxx_source.html#l00020">20</a> of file <a class="el" href="TimeDetHit_8cxx_source.html">TimeDetHit.cxx</a>.</p>
-
-</div>
-</div>
 </div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->
