@@ -1,31 +1,71 @@
 var hierarchy =
 [
+    [ "A", "classA.html", [
+      [ "C", "classC.html", null ],
+      [ "D", "classD.html", [
+        [ "E", "classE.html", null ]
+      ] ]
+    ] ],
     [ "AbsBField", null, [
       [ "genfit::FairShipFields", "classgenfit_1_1FairShipFields.html", null ]
     ] ],
+    [ "Afterdoc_Test", "classAfterdoc__Test.html", null ],
+    [ "Autolink_Test", "classAutolink__Test.html", null ],
+    [ "B", "classB.html", [
+      [ "D", "classD.html", null ]
+    ] ],
+    [ "C1", "classC1.html", null ],
+    [ "C2", "classC2.html", null ],
+    [ "C3", "classC3.html", null ],
+    [ "C4", "classC4.html", null ],
+    [ "C5", "classC5.html", null ],
     [ "hnl.CKMmatrix", "classhnl_1_1CKMmatrix.html", null ],
     [ "Co3Rng", "classCo3Rng.html", null ],
     [ "hnl.constants", "classhnl_1_1constants.html", null ],
     [ "rpvsusy.constants", "classrpvsusy_1_1constants.html", null ],
+    [ "CoordStruct", "structCoordStruct.html", null ],
     [ "darkphoton.DarkPhoton", "classdarkphoton_1_1DarkPhoton.html", null ],
     [ "dict", null, [
       [ "ShipGeoConfig.AttrDict", "classShipGeoConfig_1_1AttrDict.html", [
         [ "ShipGeoConfig.Config", "classShipGeoConfig_1_1Config.html", null ]
       ] ]
     ] ],
+    [ "Enum_Test", "classEnum__Test.html", null ],
     [ "experimental.analysis_toolkit.event_inspector", "classexperimental_1_1analysis__toolkit_1_1event__inspector.html", null ],
+    [ "Example_Test", "classExample__Test.html", [
+      [ "Tag", "classTag.html", null ]
+    ] ],
     [ "FairContFact", null, [
       [ "ShipPassiveContFact", "classShipPassiveContFact.html", null ],
       [ "splitcalContFact", "classsplitcalContFact.html", null ],
       [ "strawtubesContFact", "classstrawtubesContFact.html", null ],
       [ "vetoContFact", "classvetoContFact.html", null ]
     ] ],
+    [ "FairDataSourceI", null, [
+      [ "VectorMCPointSource< PointType >", "classVectorMCPointSource.html", null ]
+    ] ],
     [ "FairDetector", null, [
+      [ "SHiP::Detector< MTCDetPoint >", "classSHiP_1_1Detector.html", [
+        [ "MTCDetector", "classMTCDetector.html", null ]
+      ] ],
+      [ "SHiP::Detector< SiliconTargetPoint >", "classSHiP_1_1Detector.html", [
+        [ "SiliconTarget", "classSiliconTarget.html", null ]
+      ] ],
+      [ "SHiP::Detector< TargetPoint >", "classSHiP_1_1Detector.html", [
+        [ "Target", "classTarget.html", null ]
+      ] ],
+      [ "SHiP::Detector< TTPoint >", "classSHiP_1_1Detector.html", [
+        [ "TargetTracker", "classTargetTracker.html", null ]
+      ] ],
       [ "SHiP::Detector< TimeDetPoint >", "classSHiP_1_1Detector.html", [
         [ "TimeDet", "classTimeDet.html", null ]
       ] ],
       [ "SHiP::Detector< UpstreamTaggerPoint >", "classSHiP_1_1Detector.html", [
         [ "UpstreamTagger", "classUpstreamTagger.html", null ]
+      ] ],
+      [ "SHiP::Detector< vetoPoint >", "classSHiP_1_1Detector.html", [
+        [ "exitHadronAbsorber", "classexitHadronAbsorber.html", null ],
+        [ "veto", "classveto.html", null ]
       ] ],
       [ "SHiP::Detector< splitcalPoint >", "classSHiP_1_1Detector.html", [
         [ "splitcal", "classsplitcal.html", null ]
@@ -33,15 +73,7 @@ var hierarchy =
       [ "SHiP::Detector< strawtubesPoint >", "classSHiP_1_1Detector.html", [
         [ "strawtubes", "classstrawtubes.html", null ]
       ] ],
-      [ "SHiP::Detector< vetoPoint >", "classSHiP_1_1Detector.html", [
-        [ "veto", "classveto.html", null ]
-      ] ],
-      [ "MTCDetector", "classMTCDetector.html", null ],
-      [ "SHiP::Detector< PointType >", "classSHiP_1_1Detector.html", null ],
-      [ "SiliconTarget", "classSiliconTarget.html", null ],
-      [ "Target", "classTarget.html", null ],
-      [ "TargetTracker", "classTargetTracker.html", null ],
-      [ "exitHadronAbsorber", "classexitHadronAbsorber.html", null ]
+      [ "SHiP::Detector< PointType >", "classSHiP_1_1Detector.html", null ]
     ] ],
     [ "FairField", null, [
       [ "ShipBellField", "classShipBellField.html", null ],
@@ -103,29 +135,43 @@ var hierarchy =
       [ "eventDisplay.Rulers", "classeventDisplay_1_1Rulers.html", null ]
     ] ],
     [ "ShipFieldMaker::fieldInfo", "structShipFieldMaker_1_1fieldInfo.html", null ],
+    [ "Fn_Test", "classFn__Test.html", null ],
     [ "hnl.HNLbranchings", "classhnl_1_1HNLbranchings.html", [
       [ "hnl.HNL", "classhnl_1_1HNL.html", null ]
     ] ],
+    [ "Include_Test", "classInclude__Test.html", null ],
     [ "eventDisplay.IO", "classeventDisplay_1_1IO.html", null ],
     [ "ISTLPointContainer", "classISTLPointContainer.html", [
+      [ "SHiP::Detector< MTCDetPoint >", "classSHiP_1_1Detector.html", null ],
+      [ "SHiP::Detector< SiliconTargetPoint >", "classSHiP_1_1Detector.html", null ],
+      [ "SHiP::Detector< TargetPoint >", "classSHiP_1_1Detector.html", null ],
+      [ "SHiP::Detector< TTPoint >", "classSHiP_1_1Detector.html", null ],
       [ "SHiP::Detector< TimeDetPoint >", "classSHiP_1_1Detector.html", null ],
       [ "SHiP::Detector< UpstreamTaggerPoint >", "classSHiP_1_1Detector.html", null ],
+      [ "SHiP::Detector< vetoPoint >", "classSHiP_1_1Detector.html", null ],
       [ "SHiP::Detector< splitcalPoint >", "classSHiP_1_1Detector.html", null ],
       [ "SHiP::Detector< strawtubesPoint >", "classSHiP_1_1Detector.html", null ],
-      [ "SHiP::Detector< vetoPoint >", "classSHiP_1_1Detector.html", null ],
-      [ "MTCDetector", "classMTCDetector.html", null ],
-      [ "SHiP::Detector< PointType >", "classSHiP_1_1Detector.html", null ],
-      [ "SiliconTarget", "classSiliconTarget.html", null ],
-      [ "Target", "classTarget.html", null ],
-      [ "TargetTracker", "classTargetTracker.html", null ],
-      [ "exitHadronAbsorber", "classexitHadronAbsorber.html", null ]
+      [ "SHiP::Detector< PointType >", "classSHiP_1_1Detector.html", null ]
     ] ],
+    [ "Javadoc_Test", "classJavadoc__Test.html", null ],
+    [ "Memgrp_Test", "classMemgrp__Test.html", null ],
     [ "method_logger.MethodLogger", "classmethod__logger_1_1MethodLogger.html", null ],
+    [ "Object", "structObject.html", [
+      [ "Vehicle", "structVehicle.html", [
+        [ "Car", "structCar.html", null ],
+        [ "Truck", "structTruck.html", null ]
+      ] ]
+    ] ],
+    [ "Overload_Test", "classOverload__Test.html", null ],
+    [ "Par_Test", "classPar__Test.html", null ],
+    [ "docstring.PyClass", "classdocstring_1_1PyClass.html", null ],
+    [ "pyexample.PyClass", "classpyexample_1_1PyClass.html", null ],
     [ "ROOT.pyFairModule", null, [
       [ "study_GammaConv.Block", "classstudy__GammaConv_1_1Block.html", null ],
       [ "study_muMSC.Block", "classstudy__muMSC_1_1Block.html", null ],
       [ "study_thinTarget.Block", "classstudy__thinTarget_1_1Block.html", null ]
     ] ],
+    [ "QTstyle_Test", "classQTstyle__Test.html", null ],
     [ "Pythia8::RndmEngine", null, [
       [ "PyTr1Rng", "classPyTr1Rng.html", null ],
       [ "PyTr3Rng", "classPyTr3Rng.html", null ]
@@ -136,13 +182,19 @@ var hierarchy =
     [ "SciFiMapping.SciFiMapping", "classSciFiMapping_1_1SciFiMapping.html", null ],
     [ "experimental.analysis_toolkit.selection_check", "classexperimental_1_1analysis__toolkit_1_1selection__check.html", null ],
     [ "shipDigiReco.ShipDigiReco", "classshipDigiReco_1_1ShipDigiReco.html", null ],
+    [ "SomeNiceClass", "classSomeNiceClass.html", null ],
+    [ "String", "classString.html", null ],
     [ "shipVertex.Task", "classshipVertex_1_1Task.html", null ],
     [ "shipVeto.Task", "classshipVeto_1_1Task.html", null ],
+    [ "Test< T, i >", "classTest.html", null ],
+    [ "Test< void *, 200 >", "classTest_3_01void_01_5_00_01200_01_4.html", [
+      [ "Test< T * >", "classTest_3_01T_01_5_01_4.html", null ]
+    ] ],
     [ "TG4VUserPostDetConstruction", null, [
       [ "ShipFieldMaker", "classShipFieldMaker.html", null ]
     ] ],
     [ "TObject", null, [
-      [ "ShipHit", "classShipHit.html", [
+      [ "SHiP::DetectorHit", "classSHiP_1_1DetectorHit.html", [
         [ "MTCDetHit", "classMTCDetHit.html", null ],
         [ "SiliconTargetHit", "classSiliconTargetHit.html", null ],
         [ "TimeDetHit", "classTimeDetHit.html", null ],
@@ -158,6 +210,7 @@ var hierarchy =
       [ "splitcalCluster", "classsplitcalCluster.html", null ],
       [ "vetoHitOnTrack", "classvetoHitOnTrack.html", null ]
     ] ],
+    [ "tracking_benchmark.TrackingBenchmark", "classtracking__benchmark_1_1TrackingBenchmark.html", null ],
     [ "ShipFieldMaker::transformInfo", "structShipFieldMaker_1_1transformInfo.html", null ],
     [ "TVirtualMagField", null, [
       [ "ShipBFieldMap", "classShipBFieldMap.html", null ],
