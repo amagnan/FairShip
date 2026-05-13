@@ -400,30 +400,30 @@ Private Attributes</h2></td></tr>
 <div class="line"><span class="lineno">   27</span>  <span class="comment">// weighted average per layer</span></div>
 <div class="line"><span class="lineno">   28</span>  <span class="keywordtype">double</span> <a class="code hl_function" href="namespaceproton__bremsstrahlung.html#a346de5637f6811443ef313e5b10ef9bc">energy</a> = 0.;</div>
 <div class="line"><span class="lineno">   29</span>  <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; <a class="code hl_variable" href="namespaceShipAna.html#aa4bf87f4d17f9d38b1d8f4d009bb54b3">i</a> &lt; <a class="code hl_variable" href="classsplitcalCluster.html#a8308e91cf36231937c25e43f7ed265a9">_hitIndices</a>.size(); ++<a class="code hl_variable" href="namespaceShipAna.html#aa4bf87f4d17f9d38b1d8f4d009bb54b3">i</a>) {</div>
-<div class="line"><span class="lineno">   30</span>    <span class="keyword">const</span> <span class="keyword">auto</span>&amp; hit = hits[<a class="code hl_variable" href="classsplitcalCluster.html#a8308e91cf36231937c25e43f7ed265a9">_hitIndices</a>[<a class="code hl_variable" href="namespaceShipAna.html#aa4bf87f4d17f9d38b1d8f4d009bb54b3">i</a>]];</div>
+<div class="line"><span class="lineno">   30</span>    <span class="keyword">const</span> <span class="keyword">auto</span>&amp; <a class="code hl_variable" href="namespacemake__nTuples.html#a5d4637f3fa14cf49984f251dd6a6980c">hit</a> = hits[<a class="code hl_variable" href="classsplitcalCluster.html#a8308e91cf36231937c25e43f7ed265a9">_hitIndices</a>[<a class="code hl_variable" href="namespaceShipAna.html#aa4bf87f4d17f9d38b1d8f4d009bb54b3">i</a>]];</div>
 <div class="line"><span class="lineno">   31</span>    <span class="keywordtype">double</span> hitEnergy =</div>
-<div class="line"><span class="lineno">   32</span>        hit.GetEnergy() * <a class="code hl_variable" href="classsplitcalCluster.html#a668d371cbc5ff4661dfbd9f222bf8c2e">_hitWeights</a>[<a class="code hl_variable" href="namespaceShipAna.html#aa4bf87f4d17f9d38b1d8f4d009bb54b3">i</a>];  <span class="comment">// Use weight from cluster</span></div>
+<div class="line"><span class="lineno">   32</span>        <a class="code hl_variable" href="namespacemake__nTuples.html#a5d4637f3fa14cf49984f251dd6a6980c">hit</a>.GetEnergy() * <a class="code hl_variable" href="classsplitcalCluster.html#a668d371cbc5ff4661dfbd9f222bf8c2e">_hitWeights</a>[<a class="code hl_variable" href="namespaceShipAna.html#aa4bf87f4d17f9d38b1d8f4d009bb54b3">i</a>];  <span class="comment">// Use weight from cluster</span></div>
 <div class="line"><span class="lineno">   33</span>    <a class="code hl_function" href="namespaceproton__bremsstrahlung.html#a346de5637f6811443ef313e5b10ef9bc">energy</a> += hitEnergy;</div>
-<div class="line"><span class="lineno">   34</span>    <span class="keywordtype">int</span> layer = hit.GetLayerNumber();</div>
+<div class="line"><span class="lineno">   34</span>    <span class="keywordtype">int</span> layer = <a class="code hl_variable" href="namespacemake__nTuples.html#a5d4637f3fa14cf49984f251dd6a6980c">hit</a>.GetLayerNumber();</div>
 <div class="line"><span class="lineno">   35</span>    <span class="comment">// hits from high precision layers give both x and y coordinates --&gt; use</span></div>
 <div class="line"><span class="lineno">   36</span>    <span class="comment">// if-if instead of if-else</span></div>
-<div class="line"><span class="lineno">   37</span>    <span class="keywordflow">if</span> (hit.IsX()) {</div>
+<div class="line"><span class="lineno">   37</span>    <span class="keywordflow">if</span> (<a class="code hl_variable" href="namespacemake__nTuples.html#a5d4637f3fa14cf49984f251dd6a6980c">hit</a>.IsX()) {</div>
 <div class="line"><span class="lineno">   38</span>      <span class="keywordflow">if</span> (!mapLayerWeigthedX.contains(layer)) {</div>
 <div class="line"><span class="lineno">   39</span>        mapLayerWeigthedX[layer] = 0.;</div>
 <div class="line"><span class="lineno">   40</span>        mapLayerSumWeigthsX[layer] = 0.;</div>
 <div class="line"><span class="lineno">   41</span>      }</div>
-<div class="line"><span class="lineno">   42</span>      mapLayerWeigthedX[layer] += hit.GetX() * hitEnergy;</div>
+<div class="line"><span class="lineno">   42</span>      mapLayerWeigthedX[layer] += <a class="code hl_variable" href="namespacemake__nTuples.html#a5d4637f3fa14cf49984f251dd6a6980c">hit</a>.GetX() * hitEnergy;</div>
 <div class="line"><span class="lineno">   43</span>      mapLayerSumWeigthsX[layer] += hitEnergy;</div>
-<div class="line"><span class="lineno">   44</span>      mapLayerZ1[layer] = hit.GetZ();</div>
+<div class="line"><span class="lineno">   44</span>      mapLayerZ1[layer] = <a class="code hl_variable" href="namespacemake__nTuples.html#a5d4637f3fa14cf49984f251dd6a6980c">hit</a>.GetZ();</div>
 <div class="line"><span class="lineno">   45</span>    }</div>
-<div class="line"><span class="lineno">   46</span>    <span class="keywordflow">if</span> (hit.IsY()) {</div>
+<div class="line"><span class="lineno">   46</span>    <span class="keywordflow">if</span> (<a class="code hl_variable" href="namespacemake__nTuples.html#a5d4637f3fa14cf49984f251dd6a6980c">hit</a>.IsY()) {</div>
 <div class="line"><span class="lineno">   47</span>      <span class="keywordflow">if</span> (!mapLayerWeigthedY.contains(layer)) {</div>
 <div class="line"><span class="lineno">   48</span>        mapLayerWeigthedY[layer] = 0.;</div>
 <div class="line"><span class="lineno">   49</span>        mapLayerSumWeigthsY[layer] = 0.;</div>
 <div class="line"><span class="lineno">   50</span>      }</div>
-<div class="line"><span class="lineno">   51</span>      mapLayerWeigthedY[layer] += hit.GetY() * hitEnergy;</div>
+<div class="line"><span class="lineno">   51</span>      mapLayerWeigthedY[layer] += <a class="code hl_variable" href="namespacemake__nTuples.html#a5d4637f3fa14cf49984f251dd6a6980c">hit</a>.GetY() * hitEnergy;</div>
 <div class="line"><span class="lineno">   52</span>      mapLayerSumWeigthsY[layer] += hitEnergy;</div>
-<div class="line"><span class="lineno">   53</span>      mapLayerZ2[layer] = hit.GetZ();</div>
+<div class="line"><span class="lineno">   53</span>      mapLayerZ2[layer] = <a class="code hl_variable" href="namespacemake__nTuples.html#a5d4637f3fa14cf49984f251dd6a6980c">hit</a>.GetZ();</div>
 <div class="line"><span class="lineno">   54</span>    }</div>
 <div class="line"><span class="lineno">   55</span>  }  <span class="comment">// end loop on hit</span></div>
 <div class="line"><span class="lineno">   56</span> </div>
@@ -466,6 +466,7 @@ Private Attributes</h2></td></tr>
 <div class="ttc" id="aclasssplitcalCluster_html_ac338c112622c66ee0c755d16ebeae63f"><div class="ttname"><a href="classsplitcalCluster.html#ac338c112622c66ee0c755d16ebeae63f">splitcalCluster::_start</a></div><div class="ttdeci">std::array&lt; double, 3 &gt; _start</div><div class="ttdef"><b>Definition</b> <a href="splitcalCluster_8h_source.html#l00078">splitcalCluster.h:78</a></div></div>
 <div class="ttc" id="anamespaceShipAna_html_aa4bf87f4d17f9d38b1d8f4d009bb54b3"><div class="ttname"><a href="namespaceShipAna.html#aa4bf87f4d17f9d38b1d8f4d009bb54b3">ShipAna.i</a></div><div class="ttdeci">int i</div><div class="ttdef"><b>Definition</b> <a href="ShipAna_8py_source.html#l00097">ShipAna.py:97</a></div></div>
 <div class="ttc" id="anamespacemakeMuonDIS_html_a46fd07d81c633221657121b3f0589fb3"><div class="ttname"><a href="namespacemakeMuonDIS.html#a46fd07d81c633221657121b3f0589fb3">makeMuonDIS.phi</a></div><div class="ttdeci">phi</div><div class="ttdef"><b>Definition</b> <a href="muonShieldOptimization_2makeMuonDIS_8py_source.html#l00098">makeMuonDIS.py:98</a></div></div>
+<div class="ttc" id="anamespacemake__nTuples_html_a5d4637f3fa14cf49984f251dd6a6980c"><div class="ttname"><a href="namespacemake__nTuples.html#a5d4637f3fa14cf49984f251dd6a6980c">make_nTuples.hit</a></div><div class="ttdeci">hit</div><div class="ttdef"><b>Definition</b> <a href="make__nTuples_8py_source.html#l00400">make_nTuples.py:400</a></div></div>
 <div class="ttc" id="anamespaceproton__bremsstrahlung_html_a346de5637f6811443ef313e5b10ef9bc"><div class="ttname"><a href="namespaceproton__bremsstrahlung.html#a346de5637f6811443ef313e5b10ef9bc">proton_bremsstrahlung.energy</a></div><div class="ttdeci">energy(p, m)</div><div class="ttdef"><b>Definition</b> <a href="proton__bremsstrahlung_8py_source.html#l00038">proton_bremsstrahlung.py:38</a></div></div>
 </div><!-- fragment -->
 </div>

@@ -450,13 +450,13 @@ $(document).ready(function(){initNavTree('run__simScript_8py_source.html',''); i
 <div class="line"><a id="l00351" name="l00351"></a><span class="lineno">  351</span><span class="comment"># Configure FairLogger verbosity based on debug level</span></div>
 <div class="line"><a id="l00352" name="l00352"></a><span class="lineno">  352</span>ROOT.gInterpreter.ProcessLine(<span class="stringliteral">&#39;#include &quot;FairLogger.h&quot;&#39;</span>)</div>
 <div class="line"><a id="l00353" name="l00353"></a><span class="lineno">  353</span><span class="keywordflow">if</span> options.debug == 0:</div>
-<div class="line"><a id="l00354" name="l00354"></a><span class="lineno">  354</span>    ROOT.gInterpreter.ProcessLine(<span class="stringliteral">&#39;fair::Logger::SetConsoleSeverity(&quot;info&quot;);&#39;</span>)</div>
+<div class="line"><a id="l00354" name="l00354"></a><span class="lineno">  354</span>    ROOT.gInterpreter.ProcessLine(<span class="stringliteral">&#39;fair::Logger::SetConsoleSeverity(&quot;warn&quot;);&#39;</span>)</div>
 <div class="line"><a id="l00355" name="l00355"></a><span class="lineno">  355</span><span class="keywordflow">elif</span> options.debug == 1:</div>
-<div class="line"><a id="l00356" name="l00356"></a><span class="lineno">  356</span>    ROOT.gInterpreter.ProcessLine(<span class="stringliteral">&#39;fair::Logger::SetConsoleSeverity(&quot;debug&quot;);&#39;</span>)</div>
+<div class="line"><a id="l00356" name="l00356"></a><span class="lineno">  356</span>    ROOT.gInterpreter.ProcessLine(<span class="stringliteral">&#39;fair::Logger::SetConsoleSeverity(&quot;info&quot;);&#39;</span>)</div>
 <div class="line"><a id="l00357" name="l00357"></a><span class="lineno">  357</span><span class="keywordflow">elif</span> options.debug == 2:</div>
-<div class="line"><a id="l00358" name="l00358"></a><span class="lineno">  358</span>    ROOT.gInterpreter.ProcessLine(<span class="stringliteral">&#39;fair::Logger::SetConsoleSeverity(&quot;debug1&quot;);&#39;</span>)</div>
+<div class="line"><a id="l00358" name="l00358"></a><span class="lineno">  358</span>    ROOT.gInterpreter.ProcessLine(<span class="stringliteral">&#39;fair::Logger::SetConsoleSeverity(&quot;debug&quot;);&#39;</span>)</div>
 <div class="line"><a id="l00359" name="l00359"></a><span class="lineno">  359</span><span class="keywordflow">elif</span> options.debug == 3:</div>
-<div class="line"><a id="l00360" name="l00360"></a><span class="lineno">  360</span>    ROOT.gInterpreter.ProcessLine(<span class="stringliteral">&#39;fair::Logger::SetConsoleSeverity(&quot;debug2&quot;);&#39;</span>)</div>
+<div class="line"><a id="l00360" name="l00360"></a><span class="lineno">  360</span>    ROOT.gInterpreter.ProcessLine(<span class="stringliteral">&#39;fair::Logger::SetConsoleSeverity(&quot;debug1&quot;);&#39;</span>)</div>
 <div class="line"><a id="l00361" name="l00361"></a><span class="lineno"><a class="line" href="namespacerun__simScript.html#a151c419ab07f58189111d09a490975f5">  361</a></span>ship_geo = <a class="code hl_function" href="namespacegeometry__config.html#afb514e222a0f704f678c3b3f465ee7e7">geometry_config.create_config</a>(</div>
 <div class="line"><a id="l00362" name="l00362"></a><span class="lineno">  362</span>    Yheight=options.dy,</div>
 <div class="line"><a id="l00363" name="l00363"></a><span class="lineno">  363</span>    strawDesign=options.strawDesign,</div>
