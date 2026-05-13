@@ -79,7 +79,7 @@ var searchData=
   ['ntuplegen_76',['Ntuplegen',['../namespacerun__simScript.html#ab93e824396c27419daefc1d01f0ab022',1,'run_simScript']]],
   ['nu_77',['nu',['../namespaceradio.html#acee94e200c829ee5b7c9a40f760e602d',1,'radio']]],
   ['nuel_78',['nuel',['../classGenieGenerator.html#ad946874c5703b0bc83863a3247c37da2',1,'GenieGenerator']]],
-  ['num_5flastbitmshits_79',['num_lastbitmshits',['../namespacemake__nTuples.html#ad15b833f408eeb115e8c20c7e1ee664c',1,'make_nTuples']]],
+  ['num_5flastbitmshits_79',['num_lastbitmshits',['../namespacemake__nTuples.html#a955065051d270f903e3f6f23a6415f49',1,'make_nTuples']]],
   ['num_5fmuonhits_80',['num_muonhits',['../namespacemake__nTuple__SBT.html#ad9cbca9f2ac1d12791d6293d80405706',1,'make_nTuple_SBT.num_muonhits'],['../namespacemake__nTuple__Tr.html#a6c531b091b6cb065bd0240a829191cad',1,'make_nTuple_Tr.num_muonhits']]],
   ['num_5fsbthits_81',['num_sbthits',['../namespacemake__nTuples.html#aa4b51aad221e0df3aa2f80a2e156fefb',1,'make_nTuples']]],
   ['num_5fssthits_82',['num_ssthits',['../namespacemake__nTuples.html#adc0482c0f9422f347cdc9a00ed66938b',1,'make_nTuples']]],
