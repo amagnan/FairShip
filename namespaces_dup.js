@@ -912,6 +912,26 @@ var namespaces_dup =
       [ "y", "namespacemakeMuonDIS.html#abc7c6de41f52743b9b4aef06f979bf8a", null ],
       [ "z", "namespacemakeMuonDIS.html#a2b4e630f0163fb403afd6440c31de817", null ]
     ] ],
+    [ "makeMuonDIS_AM", "namespacemakeMuonDIS__AM.html", [
+      [ "inspect_file", "namespacemakeMuonDIS__AM.html#a706f2fc3be631b80c50ecbcf5cf34afc", null ],
+      [ "makeMuonDIS", "namespacemakeMuonDIS__AM.html#a63c6adfd790e55ede56c089a1738025e", null ],
+      [ "rotate", "namespacemakeMuonDIS__AM.html#ae573e637b1e2c83d65b8d263c163b77d", null ],
+      [ "update_file", "namespacemakeMuonDIS__AM.html#a7c918a105f4f75c4e36a53ed3efbd4c8", null ],
+      [ "args", "namespacemakeMuonDIS__AM.html#a7aafee9e9c75c8dd9764376c1779c5c3", null ],
+      [ "default", "namespacemakeMuonDIS__AM.html#afa4f24cfd9b179ee42d3e0bb72936644", null ],
+      [ "dest", "namespacemakeMuonDIS__AM.html#ab31772d50246fefc6f858067d65b3a81", null ],
+      [ "False", "namespacemakeMuonDIS__AM.html#a1cea58f37f1c8501bfd66fe1fb319398", null ],
+      [ "first_mu_event", "namespacemakeMuonDIS__AM.html#a113ba0a65415f5f6ab8a03e5f28a2108", null ],
+      [ "Fixtarget", "namespacemakeMuonDIS__AM.html#aba54de59df1f32a1549225755ac0102a", null ],
+      [ "headers", "namespacemakeMuonDIS__AM.html#aecf95fd14ad3f7fb103b4bc2fed27768", null ],
+      [ "help", "namespacemakeMuonDIS__AM.html#ac7401f794500cd7ad0a501a70e793075", null ],
+      [ "level", "namespacemakeMuonDIS__AM.html#abf290efc41c3c4773b1942c6a2a45603", null ],
+      [ "n_events", "namespacemakeMuonDIS__AM.html#afc48e6720cdd71b1d05ab5d2e8531937", null ],
+      [ "parser", "namespacemakeMuonDIS__AM.html#a1fe8b5a7ff8e2785140c90f55aa2fa90", null ],
+      [ "PDG", "namespacemakeMuonDIS__AM.html#aed73b5a9260be5d07949ea7f5149c774", null ],
+      [ "required", "namespacemakeMuonDIS__AM.html#a6f915a9a05241ce3734ba57a5ee30930", null ],
+      [ "type", "namespacemakeMuonDIS__AM.html#ad6067b82d8b00ad856a0280f7cc6ea1d", null ]
+    ] ],
     [ "makeMuonEM", "namespacemakeMuonEM.html", [
       [ "getMasssq", "namespacemakeMuonEM.html#a18f9fe1922ed604c12ef952e88ff7d7a", null ],
       [ "dPart", "namespacemakeMuonEM.html#a8ec85f23b43031db348adadd29fc3169", null ],

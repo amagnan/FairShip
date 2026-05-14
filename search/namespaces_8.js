@@ -8,9 +8,10 @@ var searchData=
   ['makedecay_5',['makeDecay',['../namespacemakeDecay.html',1,'']]],
   ['makegenieevents_6',['makeGenieEvents',['../namespacemakeGenieEvents.html',1,'']]],
   ['makemuondis_7',['makeMuonDIS',['../namespacemakeMuonDIS.html',1,'']]],
-  ['makemuonem_8',['makeMuonEM',['../namespacemakeMuonEM.html',1,'']]],
-  ['mergembias_9',['mergeMbias',['../namespacemergeMbias.html',1,'']]],
-  ['method_5flogger_10',['method_logger',['../namespacemethod__logger.html',1,'']]],
-  ['mtcdetector_11',['MTCDetector',['../namespaceMTCDetector.html',1,'']]],
-  ['mudis_5fmergefiles_12',['muDIS_mergeFiles',['../namespacemuDIS__mergeFiles.html',1,'']]]
+  ['makemuondis_5fam_8',['makeMuonDIS_AM',['../namespacemakeMuonDIS__AM.html',1,'']]],
+  ['makemuonem_9',['makeMuonEM',['../namespacemakeMuonEM.html',1,'']]],
+  ['mergembias_10',['mergeMbias',['../namespacemergeMbias.html',1,'']]],
+  ['method_5flogger_11',['method_logger',['../namespacemethod__logger.html',1,'']]],
+  ['mtcdetector_12',['MTCDetector',['../namespaceMTCDetector.html',1,'']]],
+  ['mudis_5fmergefiles_13',['muDIS_mergeFiles',['../namespacemuDIS__mergeFiles.html',1,'']]]
 ];
