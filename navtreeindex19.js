@@ -1,5 +1,8 @@
 var NAVTREEINDEX19 =
 {
+"namespaceShipReco.html#af216c8c8b08ff8f49fcb82220bed70c4":[5,0,87,15],
+"namespaceShipReco.html#af29bc13f95d9544b1f56ece16b06a4c6":[5,0,87,29],
+"namespaceShipReco.html#afb5b701e9d769b20a4bf56ac2b4e5600":[5,0,87,19],
 "namespaceShipUnit.html":[5,0,90],
 "namespaceTrackExtrapolateTool.html":[5,0,100],
 "namespaceTrackExtrapolateTool.html#a1104e7a5752dd65cba8fc8bdb76a5ce5":[5,0,100,3],
@@ -246,8 +249,5 @@ var NAVTREEINDEX19 =
 "namespaceeventDisplay.html":[5,0,29],
 "namespaceeventDisplay.html#a02d796b1588b1728f5ea48bdd9fed8ca":[5,0,29,22],
 "namespaceeventDisplay.html#a03c547b4464c9c1e6b71675fd6e7ed48":[5,0,29,66],
-"namespaceeventDisplay.html#a0925933764e809af45c19bf6c2f98e57":[5,0,29,26],
-"namespaceeventDisplay.html#a0a84a2d532271fea564b34c870a0d252":[5,0,29,75],
-"namespaceeventDisplay.html#a144dbca11c477c3ec53188acdefbad03":[5,0,29,10],
-"namespaceeventDisplay.html#a1626b6fc6379661daaff046f9e1eb57c":[5,0,29,7]
+"namespaceeventDisplay.html#a0925933764e809af45c19bf6c2f98e57":[5,0,29,26]
 };
