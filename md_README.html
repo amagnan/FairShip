@@ -131,17 +131,25 @@ Branches</h2>
 <h1><a class="anchor" id="autotoc_md81"></a>
 Using pixi</h1>
 <p><a href="https://pixi.sh">Pixi</a> manages all dependencies via the <code>pixi.toml</code> and <code>activate.sh</code> already included in this repository. The activation script sets <code>FAIRSHIP</code> and <code>GEOMPATH</code> (among others) to <code>PIXI_PROJECT_ROOT</code>, so the pixi project root <b>must</b> be the FairShip clone itself — it contains the required <code>geometry/</code> and <code>files/</code> directories.</p>
+<p>PS: no need to source the environment from cvmfs with this...</p>
 <h2><a class="anchor" id="autotoc_md82"></a>
 Build from source (recommended)</h2>
 <ol type="1">
-<li><a href="https://pixi.sh/latest/#installation">Install pixi</a> if you haven't already.</li>
+<li><p class="startli"><a href="https://pixi.sh/latest/#installation">Install pixi</a> if you haven't already.</p>
+<p class="startli">Note on lxplus: execute this command from an area in which you have enough disk space </p><div class="fragment"><div class="line">curl -fsSL https://pixi.sh/install.sh | sh</div>
+</div><!-- fragment --><p> Check the location of .pixi and .cache files that it has enough space, about </p><div class="fragment"><div class="line">pixi info</div>
+</div><!-- fragment --><p> And if required, set the environment variables in .bashrc: </p><div class="fragment"><div class="line">export PATH=&quot;&lt;your_path&gt;/.pixi/bin:$PATH&quot;</div>
+<div class="line">export PIXI_HOME=&lt;your_path&gt;/.pixi</div>
+<div class="line">export PIXI_CACHE_DIR=&lt;your_path&gt;/.cache</div>
+</div><!-- fragment --></li>
 <li>Clone and build: <div class="fragment"><div class="line">git clone https://github.com/ShipSoft/FairShip.git</div>
 <div class="line">cd FairShip</div>
 <div class="line">pixi run build</div>
 </div><!-- fragment --></li>
-<li><p class="startli">Run commands inside the environment: </p><div class="fragment"><div class="line">pixi run python macro/run_simScript.py --tag my-simulation</div>
-</div><!-- fragment --><p class="startli">Or start a shell: </p><div class="fragment"><div class="line">pixi shell</div>
-<div class="line">python macro/run_simScript.py --tag my-simulation</div>
+<li><p class="startli">Run commands inside the environment: The following requires to be inside FairShip/ </p><div class="fragment"><div class="line">pixi run python macro/run_simScript.py --tag my-simulation</div>
+</div><!-- fragment --><p class="startli">Or start a shell, within FairShip/, from which you can "cd" into any workdir of your choice: </p><div class="fragment"><div class="line">pixi shell</div>
+<div class="line">cd &lt;../your_workdir&gt;</div>
+<div class="line">python ../FairShip/macro/run_simScript.py --tag my-simulation</div>
 </div><!-- fragment --></li>
 </ol>
 <h2><a class="anchor" id="autotoc_md83"></a>
