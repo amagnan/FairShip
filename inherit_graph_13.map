@@ -22,9 +22,9 @@
 <area shape="poly" id="edge58_Node000001_Node000010" title=" " alt="" coords="256,333,294,360,338,385,370,397,369,402,336,390,291,364,253,337"/>
 <area shape="rect" id="Node000011" href="$classParticleGunGenerator.html" title=" " alt="" coords="338,449,499,475"/>
 <area shape="poly" id="edge59_Node000001_Node000011" title=" " alt="" coords="246,337,284,386,310,412,339,434,364,447,362,452,336,439,307,416,280,390,241,340"/>
-<area shape="rect" id="Node000012" href="$classPythia6Generator.html" title=" " alt="" coords="351,499,487,524"/>
+<area shape="rect" id="Node000012" href="$classPythia8Generator.html" title=" " alt="" coords="351,499,487,524"/>
 <area shape="poly" id="edge60_Node000001_Node000012" title=" " alt="" coords="240,339,255,372,276,411,305,450,339,484,361,496,359,501,336,488,300,454,272,414,250,374,235,341"/>
-<area shape="rect" id="Node000013" href="$classPythia8Generator.html" title=" " alt="" coords="351,548,487,573"/>
+<area shape="rect" id="Node000013" href="$classSHiP_1_1TTreeGenerator.html" title="A FairRoot generator that reads particle data from ROOT TTrees." alt="" coords="339,548,499,573"/>
 <area shape="poly" id="edge61_Node000001_Node000013" title=" " alt="" coords="236,340,249,382,269,434,299,488,318,512,339,533,359,546,357,550,336,537,314,515,295,491,264,436,244,384,231,341"/>
 <area shape="rect" id="Node000014" href="$classtPythia6Generator.html" title=" " alt="" coords="348,597,489,623"/>
 <area shape="poly" id="edge62_Node000001_Node000014" title=" " alt="" coords="234,340,243,391,262,456,293,524,314,555,339,583,358,595,355,599,336,587,310,559,289,527,257,458,238,392,229,341"/>

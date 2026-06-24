@@ -136,8 +136,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a3944dd2c249c64aa9da0eb4fd70d9b72"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a92d33831d3c62dd579fcf5a25e6c1b70" id="r_a92d33831d3c62dd579fcf5a25e6c1b70"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classvetoHitOnTrack.html#a92d33831d3c62dd579fcf5a25e6c1b70">SetHitID</a> (Int_t hitID)</td></tr>
 <tr class="separator:a92d33831d3c62dd579fcf5a25e6c1b70"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a37d31f07b1868d30d61d865889a65c15" id="r_a37d31f07b1868d30d61d865889a65c15"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classvetoHitOnTrack.html#a37d31f07b1868d30d61d865889a65c15">Print</a> (const Option_t *opt=&quot;&quot;) const</td></tr>
-<tr class="separator:a37d31f07b1868d30d61d865889a65c15"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a51a914d469cb01bf992a0d02a57d561e" id="r_a51a914d469cb01bf992a0d02a57d561e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classvetoHitOnTrack.html#a51a914d469cb01bf992a0d02a57d561e">Print</a> (const Option_t *opt=&quot;&quot;) const override</td></tr>
+<tr class="separator:a51a914d469cb01bf992a0d02a57d561e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-methods" name="pro-methods"></a>
 Protected Member Functions</h2></td></tr>
@@ -231,15 +231,12 @@ Protected Attributes</h2></td></tr>
       </table>
   </td>
   <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">override</span></span>  </td>
+<span class="mlabels"><span class="mlabel">override</span><span class="mlabel">default</span></span>  </td>
   </tr>
 </table>
 </div><div class="memdoc">
 <p>Destructor </p>
 
-<p class="definition">Definition at line <a class="el" href="vetoHitOnTrack_8cxx_source.html#l00018">18</a> of file <a class="el" href="vetoHitOnTrack_8cxx_source.html">vetoHitOnTrack.cxx</a>.</p>
-<div class="fragment"><div class="line"><span class="lineno">   18</span>{}</div>
-</div><!-- fragment -->
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
@@ -336,8 +333,8 @@ Protected Attributes</h2></td></tr>
 </div><!-- fragment -->
 </div>
 </div>
-<a id="a37d31f07b1868d30d61d865889a65c15" name="a37d31f07b1868d30d61d865889a65c15"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a37d31f07b1868d30d61d865889a65c15">&#9670;&#160;</a></span>Print()</h2>
+<a id="a51a914d469cb01bf992a0d02a57d561e" name="a51a914d469cb01bf992a0d02a57d561e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a51a914d469cb01bf992a0d02a57d561e">&#9670;&#160;</a></span>Print()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -346,7 +343,7 @@ Protected Attributes</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">virtual void vetoHitOnTrack::Print </td>
+          <td class="memname">void vetoHitOnTrack::Print </td>
           <td>(</td>
           <td class="paramtype">const Option_t *&#160;</td>
           <td class="paramname"><em>opt</em> = <code>&quot;&quot;</code></td><td>)</td>
@@ -355,7 +352,7 @@ Protected Attributes</h2></td></tr>
       </table>
   </td>
   <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">virtual</span></span>  </td>
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">override</span></span>  </td>
   </tr>
 </table>
 </div><div class="memdoc">
@@ -392,7 +389,7 @@ Protected Attributes</h2></td></tr>
 
 <p class="definition">Definition at line <a class="el" href="vetoHitOnTrack_8h_source.html#l00031">31</a> of file <a class="el" href="vetoHitOnTrack_8h_source.html">vetoHitOnTrack.h</a>.</p>
 <div class="fragment"><div class="line"><span class="lineno">   31</span>{ <a class="code hl_variable" href="classvetoHitOnTrack.html#a907d5e8db4a2750e8da70c658c52f0cb">fDist</a> = <a class="code hl_variable" href="namespacerun__fixedTarget.html#a045016c4a394a8cdd58a6cef4292de46">d</a>; }</div>
-<div class="ttc" id="anamespacerun__fixedTarget_html_a045016c4a394a8cdd58a6cef4292de46"><div class="ttname"><a href="namespacerun__fixedTarget.html#a045016c4a394a8cdd58a6cef4292de46">run_fixedTarget.d</a></div><div class="ttdeci">d</div><div class="ttdef"><b>Definition</b> <a href="run__fixedTarget_8py_source.html#l00286">run_fixedTarget.py:286</a></div></div>
+<div class="ttc" id="anamespacerun__fixedTarget_html_a045016c4a394a8cdd58a6cef4292de46"><div class="ttname"><a href="namespacerun__fixedTarget.html#a045016c4a394a8cdd58a6cef4292de46">run_fixedTarget.d</a></div><div class="ttdeci">d</div><div class="ttdef"><b>Definition</b> <a href="run__fixedTarget_8py_source.html#l00295">run_fixedTarget.py:295</a></div></div>
 </div><!-- fragment -->
 </div>
 </div>

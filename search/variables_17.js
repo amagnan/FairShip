@@ -5,9 +5,9 @@ var searchData=
   ['wallydim_2',['WallYDim',['../classTarget.html#a993bd25c7dacd13e4929bea7d3e01ac7',1,'Target']]],
   ['wallzdim_3',['WallZDim',['../classTarget.html#ab78ce82ce4b6f4234e97b73f9376c8ab',1,'Target']]],
   ['warranties_4',['WARRANTIES',['../BSD-3-Clause_8txt.html#a5b1a469b3036c0708ab593eae134f8ea',1,'BSD-3-Clause.txt']]],
-  ['watt_5',['watt',['../namespaceshipunit.html#a86f9ba53297f60184e521655c576baaf',1,'shipunit.watt'],['../namespacehepunit.html#a6c4dce04d025cd690e7322c56ed0014e',1,'hepunit.watt']]],
+  ['watt_5',['watt',['../namespacehepunit.html#a6c4dce04d025cd690e7322c56ed0014e',1,'hepunit.watt'],['../namespaceshipunit.html#a86f9ba53297f60184e521655c576baaf',1,'shipunit.watt']]],
   ['weber_6',['weber',['../namespaceshipunit.html#a0ef5d6a33e15f4c4fa62fb17c0bce1b2',1,'shipunit.weber'],['../namespacehepunit.html#a3a7df78e33eb5f64197fcc31604cfdd2',1,'hepunit.weber']]],
-  ['weight_7',['weight',['../namespacemake__nTuple__Tr.html#ac61bf72f3a4774df419e794604cab6a9',1,'make_nTuple_Tr.weight'],['../namespacemake__nTuples.html#afa2ffcf951220b37641339e0699f6a04',1,'make_nTuples.weight'],['../namespacemake__nTuple__SBT.html#a8b051082441b56e7c523a3cce45c1ebe',1,'make_nTuple_SBT.weight'],['../classCosmicsGenerator.html#a5f21b44c11bb8b2b8701e4a501dc4def',1,'CosmicsGenerator::weight']]],
+  ['weight_7',['weight',['../namespacemake__nTuples.html#afa2ffcf951220b37641339e0699f6a04',1,'make_nTuples.weight'],['../namespaceextractNeutrinosAndUpdateWeight.html#ab1c4c085cb09bdb2f2bfff978ea4273d',1,'extractNeutrinosAndUpdateWeight.weight'],['../namespaceextractMuonsAndUpdateWeight.html#ab67d73adf091feb460bcbabaae730de3',1,'extractMuonsAndUpdateWeight.weight'],['../namespacemake__nTuple__Tr.html#ac61bf72f3a4774df419e794604cab6a9',1,'make_nTuple_Tr.weight'],['../namespacemake__nTuple__SBT.html#a8b051082441b56e7c523a3cce45c1ebe',1,'make_nTuple_SBT.weight'],['../classCosmicsGenerator.html#a5f21b44c11bb8b2b8701e4a501dc4def',1,'CosmicsGenerator::weight']]],
   ['weightbeauty_8',['weightbeauty',['../namespaceextractMuonsAndUpdateWeight.html#adfec8af16ddc9104b3a740bc14d0759f',1,'extractMuonsAndUpdateWeight.weightBeauty'],['../namespaceextractNeutrinosAndUpdateWeight.html#a219530ce37f64738a48b1c1f4f1c30e7',1,'extractNeutrinosAndUpdateWeight.weightBeauty']]],
   ['weightcharm_9',['weightcharm',['../namespaceextractMuonsAndUpdateWeight.html#a6931ea78c2f6638c3581e970e932c7cd',1,'extractMuonsAndUpdateWeight.weightCharm'],['../namespaceextractNeutrinosAndUpdateWeight.html#aef3a69a66e9465622a1a4762e9d207cf',1,'extractNeutrinosAndUpdateWeight.weightCharm']]],
   ['weightcharm1gev_10',['weightCharm1GeV',['../namespaceextractNeutrinosAndUpdateWeight.html#ab760c708e24b90544e4fbd8e02fbf40c',1,'extractNeutrinosAndUpdateWeight']]],
@@ -24,5 +24,5 @@ var searchData=
   ['witht0_21',['withT0',['../namespaceShipReco.html#a273d50a8ed0a846b0a62a86bba9b1c20',1,'ShipReco']]],
   ['work_5fdir_22',['work_dir',['../namespacerun__fixedTarget.html#ae13a0ef257f9f8bc0985fd40a8b0bf79',1,'run_fixedTarget']]],
   ['world_23',['world',['../classShipCave.html#a8cbdea1cf52198304407f44a7a21e305',1,'ShipCave']]],
-  ['wspill_24',['wspill',['../classFixedTargetGenerator.html#a5c41df66f567cfaec9b1975609648829',1,'FixedTargetGenerator::wspill'],['../namespacemakeDecay.html#aba31d2bd4d941b30fc3604be92b089f7',1,'makeDecay.wspill']]]
+  ['wspill_24',['wspill',['../classFixedTargetGenerator.html#a5c41df66f567cfaec9b1975609648829',1,'FixedTargetGenerator::wspill'],['../namespacemakeDecay.html#aed984d568460be1190fc91c38130d6e9',1,'makeDecay.wspill']]]
 ];

@@ -28,12 +28,12 @@ var dir_077298d11411e0d78a9900d1a8de44bb =
     [ "NtupleGenerator.h", "NtupleGenerator_8h.html", "NtupleGenerator_8h" ],
     [ "ParticleGunGenerator.cxx", "ParticleGunGenerator_8cxx.html", null ],
     [ "ParticleGunGenerator.h", "ParticleGunGenerator_8h.html", "ParticleGunGenerator_8h" ],
-    [ "Pythia6Generator.cxx", "Pythia6Generator_8cxx.html", null ],
-    [ "Pythia6Generator.h", "Pythia6Generator_8h.html", "Pythia6Generator_8h" ],
     [ "Pythia8Generator.cxx", "Pythia8Generator_8cxx.html", "Pythia8Generator_8cxx" ],
     [ "Pythia8Generator.h", "Pythia8Generator_8h.html", "Pythia8Generator_8h" ],
     [ "TEvtGenDecayer.cxx", "TEvtGenDecayer_8cxx.html", "TEvtGenDecayer_8cxx" ],
     [ "TEvtGenDecayer.h", "TEvtGenDecayer_8h.html", "TEvtGenDecayer_8h" ],
     [ "tPythia6Generator.cxx", "tPythia6Generator_8cxx.html", null ],
-    [ "tPythia6Generator.h", "tPythia6Generator_8h.html", "tPythia6Generator_8h" ]
+    [ "tPythia6Generator.h", "tPythia6Generator_8h.html", "tPythia6Generator_8h" ],
+    [ "TTreeGenerator.cxx", "TTreeGenerator_8cxx.html", null ],
+    [ "TTreeGenerator.h", "TTreeGenerator_8h.html", "TTreeGenerator_8h" ]
 ];

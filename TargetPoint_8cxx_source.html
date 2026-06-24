@@ -125,9 +125,9 @@ $(document).ready(function(){initNavTree('TargetPoint_8cxx_source.html',''); ini
 <div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span><span class="comment">*/</span></div>
 <div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span> </div>
 <div class="foldopen" id="foldopen00028" data-start="{" data-end="}">
-<div class="line"><a id="l00028" name="l00028"></a><span class="lineno"><a class="line" href="classTargetPoint.html#acb394359de85dfcf3890ef2762e60d67">   28</a></span><a class="code hl_function" href="classTargetPoint.html#a4c2652fa960507f81a7bb5c2b849cebf">TargetPoint::TargetPoint</a>(Int_t trackID, Int_t detID, TVector3 pos, TVector3 mom,</div>
-<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span>                         Double_t tof, Double_t length, Double_t eLoss,</div>
-<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span>                         Int_t pdgcode)</div>
+<div class="line"><a id="l00028" name="l00028"></a><span class="lineno"><a class="line" href="classTargetPoint.html#afbecade4790e4dd5d6b79dd212ea79b5">   28</a></span><a class="code hl_function" href="classTargetPoint.html#a4c2652fa960507f81a7bb5c2b849cebf">TargetPoint::TargetPoint</a>(Int_t trackID, Int_t detID, <span class="keyword">const</span> TVector3&amp; pos,</div>
+<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span>                         <span class="keyword">const</span> TVector3&amp; mom, Double_t tof, Double_t length,</div>
+<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span>                         Double_t eLoss, Int_t pdgcode)</div>
 <div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span>    : FairMCPoint(trackID, detID, pos, mom, tof, length, eLoss),</div>
 <div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span>      fPdgCode(pdgcode) {}</div>
 </div>
@@ -136,7 +136,7 @@ $(document).ready(function(){initNavTree('TargetPoint_8cxx_source.html',''); ini
 <div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span> </div>
 <div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span><span class="comment">//,  EmTop, EmBot, EmCESTop,EmCESBot,TT,NPlate,NColumn,NRow,NWall</span></div>
 <div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span><span class="comment">// -----   Destructor   ----------------------------------------------------</span></div>
-<div class="line"><a id="l00038" name="l00038"></a><span class="lineno"><a class="line" href="classTargetPoint.html#abb1d1bfe40cd74e2efdd4c92d9eb98a5">   38</a></span><a class="code hl_function" href="classTargetPoint.html#abb1d1bfe40cd74e2efdd4c92d9eb98a5">TargetPoint::~TargetPoint</a>() {}</div>
+<div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span><a class="code hl_function" href="classTargetPoint.html#abb1d1bfe40cd74e2efdd4c92d9eb98a5">TargetPoint::~TargetPoint</a>() = <span class="keywordflow">default</span>;</div>
 <div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span><span class="comment">// -------------------------------------------------------------------------</span></div>
 <div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span> </div>
 <div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span><span class="comment">// -----   Public method Print   -------------------------------------------</span></div>
@@ -154,7 +154,7 @@ $(document).ready(function(){initNavTree('TargetPoint_8cxx_source.html',''); ini
 <div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span><span class="comment">// -------------------------------------------------------------------------</span></div>
 <div class="ttc" id="aTargetPoint_8h_html"><div class="ttname"><a href="TargetPoint_8h.html">TargetPoint.h</a></div></div>
 <div class="ttc" id="aclassTargetPoint_html_a4c2652fa960507f81a7bb5c2b849cebf"><div class="ttname"><a href="classTargetPoint.html#a4c2652fa960507f81a7bb5c2b849cebf">TargetPoint::TargetPoint</a></div><div class="ttdeci">TargetPoint()</div><div class="ttdef"><b>Definition</b> <a href="TargetPoint_8cxx_source.html#l00012">TargetPoint.cxx:12</a></div></div>
-<div class="ttc" id="aclassTargetPoint_html_abb1d1bfe40cd74e2efdd4c92d9eb98a5"><div class="ttname"><a href="classTargetPoint.html#abb1d1bfe40cd74e2efdd4c92d9eb98a5">TargetPoint::~TargetPoint</a></div><div class="ttdeci">~TargetPoint() override</div><div class="ttdef"><b>Definition</b> <a href="TargetPoint_8cxx_source.html#l00038">TargetPoint.cxx:38</a></div></div>
+<div class="ttc" id="aclassTargetPoint_html_abb1d1bfe40cd74e2efdd4c92d9eb98a5"><div class="ttname"><a href="classTargetPoint.html#abb1d1bfe40cd74e2efdd4c92d9eb98a5">TargetPoint::~TargetPoint</a></div><div class="ttdeci">~TargetPoint() override</div></div>
 <div class="ttc" id="aclassTargetPoint_html_aeb9a2ad86a623b77880e5c7b50f60a89"><div class="ttname"><a href="classTargetPoint.html#aeb9a2ad86a623b77880e5c7b50f60a89">TargetPoint::Print</a></div><div class="ttdeci">void Print(const Option_t *opt) const override</div><div class="ttdef"><b>Definition</b> <a href="TargetPoint_8cxx_source.html#l00042">TargetPoint.cxx:42</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
