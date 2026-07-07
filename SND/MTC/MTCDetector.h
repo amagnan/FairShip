@@ -86,6 +86,8 @@ class MTCDetector : public SHiP::Detector<MTCDetPoint> {
   Double_t fiberMatThick = 0.135;  // 1.35 mm
   Double_t fFiberLength;
   Double_t fFiberPitch = 0.025;  // cm
+  Int_t fnB;
+  Int_t fnLayPerBlock;
                                  // Define sublayer thicknesses (in cm)
   // These values mimic the GEANT4 setup:
   Double_t lowerIronThick = 0.3;  // 3 mm

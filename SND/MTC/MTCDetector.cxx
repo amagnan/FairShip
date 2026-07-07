@@ -164,6 +164,10 @@ void MTCDetector::SetMTCParameters(
   fFieldY = field_strength;
   fSciFiActiveX = fWidth - fWidth * tan(fSciFiBendingAngle * TMath::DegToRad());
   fSciFiActiveY = fHeight;
+  //Do 3 different blocks with 40x40, 50x50 then 60x60 sizes, each nLayers/3
+  fnB = 3;
+  fnLayPerBlock = fLayers/fnB;
+
 }
 
 // Updated SciFi module builder with fiber placements
@@ -332,51 +336,82 @@ void MTCDetector::ConstructGeometry() {
   Double_t moduleSpacing = fIronThick + fSciFiThick + fScintThick;
   Double_t totalLength = fLayers * moduleSpacing;
 
-  // --- Create an envelope volume for the detector (green, semi-transparent)
-  // ---
-  auto envBox =
-      new TGeoBBox("MTC_env", fWidth / 2, fHeight / 2, totalLength / 2);
-  auto envVol = new TGeoVolume("MTC", envBox, air);
-  envVol->SetLineColor(kGreen);
-  envVol->SetTransparency(50);
 
-  // --- Outer Iron Layer (gray) ---
-  auto ironBox =
-      new TGeoBBox("MTC_iron", fWidth / 2, fHeight / 2, fIronThick / 2);
-  auto ironVol = new TGeoVolume("MTC_iron", ironBox, ironMed);
-  ironVol->SetLineColor(kGray + 1);
-  ironVol->SetTransparency(20);
-  // Enable the field in the iron volume
-  if (fFieldY != 0) ironVol->SetField(new TGeoUniformMagField(0, fFieldY, 0));
+  LOG(info) << "-- Considering " << fnB << " blocks of " << fnLayPerBlock << " layers each.";
+  const int nB = fnB;
+  double lW[nB] = {fWidth-20,fWidth-10,fWidth};
+  double lH[nB] = {fHeight-20,fHeight-10,fHeight};
+  TGeoBBox* envBox[nB];
+  TGeoVolume* envVol[nB];
+  TGeoBBox* ironBox[nB];
+  TGeoVolume* ironVol[nB];
+  TGeoVolumeAssembly* sensitiveModule[nB];
+  for (int iB(0); iB<nB;++iB){
+    // --- Create an envelope volume for the detector (green, semi-transparent)
+    // ---
+    std::ostringstream label;
+    label << "MTC_env_" << iB; 
+    envBox[iB] =
+      new TGeoBBox(label.str().c_str(), lW[iB] / 2, lH[iB] / 2, totalLength / 2);
+    label.str("");
+    label << "MTC_" << iB; 
+    envVol[iB] = new TGeoVolume(label.str().c_str(), envBox[iB], air);
+    envVol[iB]->SetLineColor(kGreen);
+    envVol[iB]->SetTransparency(50);
 
-  // --- Assemble the layers into the envelope ---
-  TGeoVolumeAssembly* sensitiveModule = new TGeoVolumeAssembly("MTC_layer");
-  // Define a layer for the SciFi module
-  CreateSciFiModule("MTC", sensitiveModule, fWidth, fHeight, fSciFiThick, 1);
-  CreateScintModule("MTC", sensitiveModule, fSciFiThick / 2 + fScintThick / 2,
-                    fWidth, fHeight, fScintThick, fScintCellSize,
-                    fScintCellSize, scintMed, kAzure + 7, 30, 1);
-
-  for (Int_t i = 0; i < fLayers; i++) {
-    // Compute the center position (z) for the current module
-    Double_t zPos = -totalLength / 2 + i * moduleSpacing;
-
-    // Place the Outer Iron layer (shifted down by half the SciFi+scint
-    // thickness)
-    envVol->AddNode(ironVol, i,
-                    new TGeoTranslation(0, 0, zPos + fIronThick / 2));
-    // Place the sensitive module (SciFi + Scintillator) at the correct z
-    // position
-    envVol->AddNode(
-        sensitiveModule, i,
-        new TGeoTranslation(0, 0, zPos + fIronThick + fSciFiThick / 2));
+    // --- Outer Iron Layer (gray) ---
+    label.str("");
+    label << "MTC_iron_" << iB; 
+    ironBox[iB] =
+      new TGeoBBox(label.str().c_str(), lW[iB] / 2, lH[iB] / 2, fIronThick / 2);
+    label.str("");
+    label << "MTC_ironVol_" << iB; 
+    ironVol[iB] = new TGeoVolume(label.str().c_str(), ironBox[iB], ironMed);
+    ironVol[iB]->SetLineColor(kGray + 1);
+    ironVol[iB]->SetTransparency(20);
+    // Enable the field in the iron volume
+    if (fFieldY != 0) ironVol[iB]->SetField(new TGeoUniformMagField(0, fFieldY, 0));
+    
+    // --- Assemble the layers into the envelope ---
+    label.str("");
+    label << "MTC_layer_" << iB; 
+    
+    sensitiveModule[iB] = new TGeoVolumeAssembly(label.str().c_str());
+    // Define a layer for the SciFi module
+    CreateSciFiModule("MTC", sensitiveModule[iB], lW[iB], lH[iB], fSciFiThick, 1);
+    CreateScintModule("MTC", sensitiveModule[iB], fSciFiThick / 2 + fScintThick / 2,
+		      lW[iB], lH[iB], fScintThick, fScintCellSize,
+		      fScintCellSize, scintMed, kAzure + 7, 30, 1);
   }
 
+  // Keep overall layer index, access right block index depending on index layer.
+
+  for (Int_t i = 0; i < fLayers; i++) {
+    unsigned iB = static_cast<unsigned>(i/fnLayPerBlock);
+    // Compute the center position (z) for the current module
+    Double_t zPos = -totalLength / 2 + i * moduleSpacing;
+    
+    // Place the Outer Iron layer (shifted down by half the SciFi+scint
+    // thickness)
+    envVol[iB]->AddNode(ironVol[iB], i,
+			new TGeoTranslation(0, 0, zPos + fIronThick / 2));
+    // Place the sensitive module (SciFi + Scintillator) at the correct z
+    // position
+    envVol[iB]->AddNode(
+			sensitiveModule[iB], i,
+			new TGeoTranslation(0, 0, zPos + fIronThick + fSciFiThick / 2));
+  }
+  
   // Finally, add the envelope to the top volume with the global z offset
   // fZCenter
-  gGeoManager->GetTopVolume()->AddNode(envVol, 1,
-                                       new TGeoTranslation(0, 0, fZCenter));
+  for (int iB(0); iB<nB;++iB){
+    double lOffset = totalLength / 3. * (iB-1);
+    gGeoManager->GetTopVolume()->AddNode(envVol[iB], 1,
+					 new TGeoTranslation(0, 0, fZCenter+lOffset));
+  }
+  
 }
+
 
 Bool_t MTCDetector::ProcessHits(FairVolume* vol) {
   /** This method is called from the MC stepping */
