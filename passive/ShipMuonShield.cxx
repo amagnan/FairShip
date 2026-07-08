@@ -54,11 +54,12 @@ ShipMuonShield::ShipMuonShield(std::vector<double> in_params, Double_t z,
 }
 
 void ShipMuonShield::SetSNDSpace(Bool_t hole, Double_t hole_dx,
-                                 Double_t hole_dy) {
+                                 Double_t hole_dy, Double_t hole_dz) {
   snd_hole = hole;
   snd_hole_dx = hole_dx / 2.;  // since the hole is cut in 2 halves, we need to
                                // divide the width by 2
   snd_hole_dy = hole_dy;
+  snd_hole_dz = hole_dz;
 }
 
 void ShipMuonShield::CreateArb8(const TString& arbName, TGeoMedium* medium,
@@ -89,26 +90,50 @@ void ShipMuonShield::CreateArb8(const TString& arbName, TGeoMedium* medium,
     //
     // 2) Void box that’s 0.1 mm smaller on each half-length
     //
-    constexpr double eps = 0.01;  // mm anti-overlap
-    double void_dx = snd_hole_dx - eps;
-    double void_dy = snd_hole_dy - eps;
-    TString voidName = arbName + "_void";
-    gGeoManager->MakeBox(voidName, medium, void_dx, void_dy, dZ);
+    constexpr double eps = 0.01;  // cm anti-overlap
+    constexpr double step = 10.0;  // 10 cm increase per box
+    double void_dz = snd_hole_dz/3.;
 
-    //
-    // 3) Single named translation for the subtraction
-    //
-    Double_t shift = (corners[1] > 0 ? -void_dx : void_dx);
-    TString transName = arbName + "_t";
-    auto* tr = new TGeoTranslation(transName.Data(), shift, 0.0, 0.0);
-    tr->RegisterYourself();
+    std::vector<TString> voidNames;
+    std::vector<TString> transNames;
 
+    //MTC is made of 3 blocks with increasing sizes
+    for (int iB(0); iB<3;++iB){
+      double lOff = step*(2-iB);
+      double void_dx = snd_hole_dx - lOff/2. - eps;
+      double void_dy = snd_hole_dy - lOff - eps;
+
+      TString voidName = TString::Format("%s_void_%d", arbName.Data(), iB);
+      gGeoManager->MakeBox(voidName, medium, void_dx, void_dy, void_dz);
+
+      //
+      // Place the 3 boxes one after another along z
+      //
+      Double_t zshift = -2.0 * void_dz + iB * 2.0 * void_dz;
+      
+      //
+      // 3) Single named translation for the subtraction
+      //
+      Double_t xshift = (corners[1] > 0 ? -void_dx : void_dx);
+
+      TString transName = TString::Format("%s_t_%d", arbName.Data(), iB);
+      auto* tr = new TGeoTranslation(transName.Data(), xshift, 0.0, zshift);
+      tr->RegisterYourself();
+      
+      voidNames.push_back(voidName);
+      transNames.push_back(transName);
+    }
+ 
     //
     // 4) Composite shape: <shape> minus the translated <void>
     //
     TString compName = arbName + "_comp";
-    TString expr = TString::Format("%s - %s:%s", shapeName.Data(),
-                                   voidName.Data(), transName.Data());
+    TString expr = shapeName;
+    for (int iB = 0; iB < 3; ++iB) {
+      expr += TString::Format(" - %s:%s",
+			      voidNames[iB].Data(),
+			      transNames[iB].Data());
+    }
     auto* compShape = new TGeoCompositeShape(compName.Data(), expr.Data());
 
     //

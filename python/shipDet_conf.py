@@ -125,13 +125,15 @@ def configure_snd_mtc(yaml_file: str, ship_geo) -> None:
         config = yaml.safe_load(file)
 
     ship_geo.mtc_geo = AttrDict(config["MTC"])
+    ship_geo.mtc_total_length = (
+        ship_geo.mtc_geo.ironThick + ship_geo.mtc_geo.sciFiThick + ship_geo.mtc_geo.scintThick
+    ) * ship_geo.mtc_geo.nLayers
     # Initialize detector
     if ship_geo.mtc_geo.zPosition == "auto":
         # Get the center of the *last* magnet
-        mtc_total_length = (
-            ship_geo.mtc_geo.ironThick + ship_geo.mtc_geo.sciFiThick + ship_geo.mtc_geo.scintThick
-        ) * ship_geo.mtc_geo.nLayers
-        ship_geo.mtc_geo.zPosition = ship_geo.muShield.Entrance[-1] + mtc_total_length / 2
+        ship_geo.mtc_geo.zPosition = ship_geo.muShield.Entrance[-1] + ship_geo.mtc_total_length / 2
+    print("MTC zPosition set to ", ship_geo.mtc_geo.zPosition)        
+    print("MTC total length is ", ship_geo.mtc_total_length)
     mtc = ROOT.MTCDetector("MTC", ROOT.kTRUE)
     mtc.SetMTCParameters(
         ship_geo.mtc_geo.width,
@@ -152,14 +154,15 @@ def configure_snd_SiWCalo(yaml_file, ship_geo):
     with open(yaml_file) as file:
         config = yaml.safe_load(file)
     ship_geo.SiWCalo_geo = AttrDict(config['SiWCalo'])
+    SiWCalo_total_length = ship_geo.SiWCalo_geo.targetSpacing * ship_geo.SiWCalo_geo.nLayers
     # Initialize detector
     if ship_geo.SiWCalo_geo.zPosition == "auto":
         # Just a bit after the SiW strip detector
-        SiWCalo_total_length = ship_geo.SiWCalo_geo.targetSpacing * ship_geo.SiWCalo_geo.nLayers
         ship_geo.SiWCalo_geo.zPosition = (
             ship_geo.muShield.Entrance[-1] - ship_geo.muShield.Zgap[-1] - SiWCalo_total_length / 2
         )
-        print("SiWCalo zPosition set to ", ship_geo.SiWCalo_geo.zPosition)        
+    print("SiWCalo zPosition set to ", ship_geo.SiWCalo_geo.zPosition)        
+    print("SiWCalo total length is ", SiWCalo_total_length)
     SiWCalo = ROOT.SiWCalo("SiWCalo", ROOT.kTRUE)
     SiWCalo.SetSiWCaloParameters(
         ship_geo.SiWCalo_geo.targetWidth,
@@ -180,17 +183,18 @@ def configure_snd_siliconTarget(yaml_file: str, ship_geo) -> None:
         config = yaml.safe_load(file)
 
     ship_geo.SiliconTarget_geo = AttrDict(config["SiliconTarget"])
+    SiliconTarget_total_length = ship_geo.SiliconTarget_geo.targetSpacing * ship_geo.SiliconTarget_geo.nLayers
     # Initialize detector
     if ship_geo.SiliconTarget_geo.zPosition == "auto":
         # Get the the center of the next to last magnet (temporary placement)
         # Offset placement of detector by 140 cm, magnet is 2* 212.54 cm,
         # 120 layers at 132 cm will fit, with 140 cm offset final layer of SiWCalo within 10 cm of MTC.
-        SiliconTarget_total_length = ship_geo.SiliconTarget_geo.targetSpacing * ship_geo.SiliconTarget_geo.nLayers
         SiWCalo_total_length = ship_geo.SiWCalo_geo.targetSpacing * ship_geo.SiWCalo_geo.nLayers
         ship_geo.SiliconTarget_geo.zPosition = (
             ship_geo.muShield.Entrance[-1] - ship_geo.muShield.Zgap[-1] - SiWCalo_total_length - SiliconTarget_total_length / 2
         )
-        print("SiliconTarget zPosition set to ", ship_geo.SiliconTarget_geo.zPosition)
+    print("SiliconTarget zPosition set to ", ship_geo.SiliconTarget_geo.zPosition)
+    print("SiliconTarget total length is ", SiliconTarget_total_length)
     SiliconTarget = ROOT.SiliconTarget("SiliconTarget", ROOT.kTRUE)
     SiliconTarget.SetSiliconTargetParameters(
         ship_geo.SiliconTarget_geo.targetWidth,
@@ -374,12 +378,13 @@ def configure(run, ship_geo):
     )
 
     if ship_geo.SND:
-        # If any SND design is 2 (MTC), set SNDSpace for MuonShield
+        # If any SND design is 2 (MTC) or 3, set SNDSpace for MuonShield
         if any(x in getattr(ship_geo, "SND_design", []) for x in (2, 3)):
             MuonShield.SetSNDSpace(
                 hole=True,
                 hole_dx=(ship_geo.mtc_geo.width + 5.0 * u.cm) / 2.0,
                 hole_dy=(ship_geo.mtc_geo.height + 5.0 * u.cm) / 2.0,
+                hole_dz=(ship_geo.mtc_total_length + 5.0 * u.cm) / 2.0
             )
     detectorList.append(MuonShield)
 

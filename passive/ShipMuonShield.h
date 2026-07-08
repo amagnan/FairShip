@@ -26,7 +26,7 @@ class ShipMuonShield : public FairModule {
   ShipMuonShield();
   ~ShipMuonShield() override;
   void ConstructGeometry() override;
-  void SetSNDSpace(Bool_t hole, Double_t hole_dx, Double_t hole_dy);
+  void SetSNDSpace(Bool_t hole, Double_t hole_dx, Double_t hole_dy, Double_t hole_dz);
 
  protected:
   Double_t dZ0{0.}, dZ1{0.}, dZ2{0.}, dZ3{0.}, dZ4{0.}, dZ5{0.}, dZ6{0.},
@@ -37,7 +37,7 @@ class ShipMuonShield : public FairModule {
   Bool_t fSC_mag{false};
   std::vector<Double_t> shield_params;
   Bool_t snd_hole{false};
-  Double_t snd_hole_dx = 0., snd_hole_dy = 0.;
+  Double_t snd_hole_dx = 0., snd_hole_dy = 0., snd_hole_dz = 0.;
 
   void CreateArb8(const TString& arbName, TGeoMedium* medium, Double_t dZ,
                   std::array<Double_t, 16> corners, Int_t color,
