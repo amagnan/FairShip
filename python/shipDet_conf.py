@@ -127,7 +127,7 @@ def configure_snd_mtc(yaml_file: str, ship_geo) -> None:
     ship_geo.mtc_geo = AttrDict(config["MTC"])
     # Initialize detector
     if ship_geo.mtc_geo.zPosition == "auto":
-        # Get the the center of the *last* magnet
+        # Get the center of the *last* magnet
         mtc_total_length = (
             ship_geo.mtc_geo.ironThick + ship_geo.mtc_geo.sciFiThick + ship_geo.mtc_geo.scintThick
         ) * ship_geo.mtc_geo.nLayers
@@ -148,6 +148,32 @@ def configure_snd_mtc(yaml_file: str, ship_geo) -> None:
     )
     detectorList.append(mtc)
 
+def configure_snd_SiWCalo(yaml_file, ship_geo):
+    with open(yaml_file) as file:
+        config = yaml.safe_load(file)
+    ship_geo.SiWCalo_geo = AttrDict(config['SiWCalo'])
+    # Initialize detector
+    if ship_geo.SiWCalo_geo.zPosition == "auto":
+        # Just a bit after the SiW strip detector
+        SiWCalo_total_length = ship_geo.SiWCalo_geo.targetSpacing * ship_geo.SiWCalo_geo.nLayers
+        ship_geo.SiWCalo_geo.zPosition = (
+            ship_geo.muShield.Entrance[-1] - ship_geo.muShield.Zgap[-1] - SiWCalo_total_length / 2
+        )
+        print("SiWCalo zPosition set to ", ship_geo.SiWCalo_geo.zPosition)        
+    SiWCalo = ROOT.SiWCalo("SiWCalo", ROOT.kTRUE)
+    SiWCalo.SetSiWCaloParameters(
+        ship_geo.SiWCalo_geo.targetWidth,
+        ship_geo.SiWCalo_geo.targetHeight,
+        ship_geo.SiWCalo_geo.sensorWidth,
+        ship_geo.SiWCalo_geo.sensorLength,
+        ship_geo.SiWCalo_geo.nLayers,
+        ship_geo.SiWCalo_geo.zPosition,
+        ship_geo.SiWCalo_geo.targetThickness,
+        ship_geo.SiWCalo_geo.NPixels,
+        ship_geo.SiWCalo_geo.targetSpacing,
+        ship_geo.SiWCalo_geo.moduleOffset
+    )
+    detectorList.append(SiWCalo)
 
 def configure_snd_siliconTarget(yaml_file: str, ship_geo) -> None:
     with open(yaml_file) as file:
@@ -180,33 +206,6 @@ def configure_snd_siliconTarget(yaml_file: str, ship_geo) -> None:
     detectorList.append(SiliconTarget)
 
 
-def configure_snd_SiWCalo(yaml_file, ship_geo):
-    with open(yaml_file) as file:
-        config = yaml.safe_load(file)
-    ship_geo.SiWCalo_geo = AttrDict(config['SiWCalo'])
-    # Initialize detector
-    if ship_geo.SiWCalo_geo.zPosition == "auto":
-        # Just a bit after the SiW strip detector
-        z_shift_prev = 0.5*( ship_geo.SiliconTarget_geo.nLayers*ship_geo.SiliconTarget_geo.targetSpacing)
-        z_shift_this = 0.5*( ship_geo.SiWCalo_geo.nLayers*ship_geo.SiWCalo_geo.targetSpacing)
-        ship_geo.SiWCalo_geo.zPosition = ship_geo.SiliconTarget_geo.zPosition + z_shift_prev + z_shift_this 
-        print("SiWCalo zPosition set to ", ship_geo.SiWCalo_geo.zPosition)        
-    SiWCalo = ROOT.SiWCalo("SiWCalo", ROOT.kTRUE)
-    SiWCalo.SetSiWCaloParameters(
-        ship_geo.SiWCalo_geo.targetWidth,
-        ship_geo.SiWCalo_geo.targetHeight,
-        ship_geo.SiWCalo_geo.sensorWidth,
-        ship_geo.SiWCalo_geo.sensorLength,
-        ship_geo.SiWCalo_geo.nLayers,
-        ship_geo.SiWCalo_geo.zPosition,
-        ship_geo.SiWCalo_geo.targetThickness,
-        ship_geo.SiWCalo_geo.NPixels,
-        ship_geo.SiWCalo_geo.targetSpacing,
-        ship_geo.SiWCalo_geo.moduleOffset
-    )
-    detectorList.append(SiWCalo)
-
-    
 def configure_veto(yaml_file: str, z0) -> None:
     with open(yaml_file) as file:
         config = yaml.safe_load(file)
@@ -348,18 +347,18 @@ def configure(run, ship_geo):
                     - 5 * u.cm,  # 16 cm width of UpstreamTagger (8 cm half-width)
                     ship_geo.cave.floorHeightMuonShield,
                 )
-           elif design == 3:
+            elif design == 3:
                 # SND design 3 -- MTC/SiliconTarget/SiWCalo
                 configure_snd_mtc(
                     os.path.join(os.environ["FAIRSHIP"], "geometry", "MTC_config.yaml"),
                     ship_geo
                 )
-                configure_snd_siliconTarget(
-                    os.path.join(os.environ["FAIRSHIP"], "geometry", "SiliconTarget_config.yaml"),
-                    ship_geo
-                )
                 configure_snd_SiWCalo(
                     os.path.join(os.environ["FAIRSHIP"], "geometry", "SiWCalo_config.yaml"),
+                    ship_geo
+                )
+                configure_snd_siliconTarget(
+                    os.path.join(os.environ["FAIRSHIP"], "geometry", "SiliconTarget_config.yaml"),
                     ship_geo
                 )
             else:

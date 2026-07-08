@@ -162,7 +162,7 @@ void MTCDetector::SetMTCParameters(
   fLayers = number_of_layers;
   fZCenter = z_position;
   fFieldY = field_strength;
-  fSciFiActiveX = fWidth - fWidth * tan(fSciFiBendingAngle * TMath::DegToRad());
+  fSciFiActiveX = fWidth * (1 - tan(fSciFiBendingAngle * TMath::DegToRad()));
   fSciFiActiveY = fHeight;
   //Do 3 different blocks with 40x40, 50x50 then 60x60 sizes, each nLayers/3
   fnB = 3;
@@ -259,10 +259,10 @@ void MTCDetector::CreateSciFiModule(const char* name,
   // Now build the fibers inside each Epoxy block:
   // Common fiber parameters (cm)
   Double_t layerThick = fiberMatThick / numFiberLayers;
-  fFiberLength = fSciFiActiveY / cos(fSciFiBendingAngle * TMath::DegToRad()) -
+  fFiberLength = fSciFiActiveY*height/fHeight / cos(fSciFiBendingAngle * TMath::DegToRad()) -
                  2 * fFiberRadius * sin(fSciFiBendingAngle * TMath::DegToRad());
   LOG(info) << "Fiber length set to " << fFiberLength << " cm";
-  Int_t fNumFibers = static_cast<Int_t>(fSciFiActiveX / fFiberPitch);
+  Int_t fNumFibers = static_cast<Int_t>(fSciFiActiveX*width/fWidth / fFiberPitch);
 
   // --- Define the SciFi fiber volume ---
   TGeoTube* fiberTube =
@@ -286,7 +286,7 @@ void MTCDetector::CreateSciFiModule(const char* name,
   for (int layer = 0; layer < numFiberLayers; ++layer) {
     Double_t z0 = -fiberMatThick / 2 + (layer + 0.5) * (layerThick);
     for (int j = 0; j < fNumFibers; ++j) {
-      Double_t x0 = -fSciFiActiveX / 2 + (j + 0.5) * fFiberPitch;
+      Double_t x0 = -fSciFiActiveX*width/fWidth / 2 + (j + 0.5) * fFiberPitch;
       if (layer % 2 == 1) {
         if (j == fNumFibers - 1) {
           continue;  // Skip the last layer for odd layers
@@ -303,7 +303,7 @@ void MTCDetector::CreateSciFiModule(const char* name,
   for (int layer = 0; layer < numFiberLayers; ++layer) {
     Double_t z0 = -fiberMatThick / 2 + (layer + 0.5) * (layerThick);
     for (int j = 0; j < fNumFibers; ++j) {
-      Double_t x0 = -fSciFiActiveX / 2 + (j + 0.5) * fFiberPitch;
+      Double_t x0 = -fSciFiActiveX*width/fWidth / 2 + (j + 0.5) * fFiberPitch;
       if (layer % 2 == 1) {
         if (j == fNumFibers - 1) {
           continue;  // Skip the last layer for odd layers
@@ -389,7 +389,7 @@ void MTCDetector::ConstructGeometry() {
   for (Int_t i = 0; i < fLayers; i++) {
     unsigned iB = static_cast<unsigned>(i/fnLayPerBlock);
     // Compute the center position (z) for the current module
-    Double_t zPos = -totalLength / 2 + i * moduleSpacing;
+    Double_t zPos = -totalLength / 6 + i * moduleSpacing;
     
     // Place the Outer Iron layer (shifted down by half the SciFi+scint
     // thickness)
@@ -468,14 +468,21 @@ Bool_t MTCDetector::ProcessHits(FairVolume* vol) {
   return kTRUE;
 }
 
-void MTCDetector::SiPMOverlap() {
+void MTCDetector::SiPMOverlap(){
   if (gGeoManager->FindVolumeFast("SiPMmapVolU") ||
       gGeoManager->FindVolumeFast("SiPMmapVolV")) {
     return;
   }
-  Double_t fLengthScifiMat = fSciFiActiveY;
+
+
+  //@FIXME - AMM - update to get the width and hieght of the correct block...
+  // based on layer ID, should be layerId/fnLayPerBlock.
+  double aWidth = fWidth;
+  double aHeight = fHeight;
+
+  Double_t fLengthScifiMat = fSciFiActiveY*aHeight/fHeight;
   Double_t fWidthChannel = fFiberPitch * fChannelAggregated;
-  fNSiPMChan = std::ceil(fWidth / fWidthChannel);
+  fNSiPMChan = std::ceil(aWidth / fWidthChannel);
   if (fNSiPMChan > kMaxChannelsPerSiPM) {
     LOG(warn) << "Number of SiPM channels (" << fNSiPMChan
               << ") exceeds maximum per SiPM (" << kMaxChannelsPerSiPM
@@ -492,8 +499,8 @@ void MTCDetector::SiPMOverlap() {
 
     LOG(info) << "New fNSiPMChan = " << fNSiPMChan;
   }
-  Double_t fEdge = (fWidth - fNSiPMs * fNSiPMChan * fWidthChannel) / 2;
-  Double_t firstChannelX = -fWidth / 2;
+  Double_t fEdge = (aWidth - fNSiPMs * fNSiPMChan * fWidthChannel) / 2;
+  Double_t firstChannelX = -aWidth / 2;
 
   LOG(info) << "SiPM Overlap parameters:\n"
             << "  fLengthScifiMat = " << fLengthScifiMat << " cm\n"
@@ -671,7 +678,7 @@ void MTCDetector::GetSiPMPosition(Int_t SiPMChan, TVector3& A, TVector3& B) {
   B.SetXYZ(glob[0], glob[1], glob[2]);
 }
 
-void MTCDetector::SiPMmapping() {
+void MTCDetector::SiPMmapping(){
   // check if containers are already filled
   if (!fibresSiPM_U.empty() || !fibresSiPM_V.empty() || !SiPMPos_U.empty() ||
       !SiPMPos_V.empty()) {
