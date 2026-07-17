@@ -85,17 +85,17 @@ var hierarchy =
       [ "ShipGeoCave", "classShipGeoCave.html", null ]
     ] ],
     [ "FairMCPoint", null, [
-      [ "MTCDetPoint", "classMTCDetPoint.html", null ],
       [ "SHiP::DetectorPoint", "classSHiP_1_1DetectorPoint.html", [
+        [ "MTCDetPoint", "classMTCDetPoint.html", null ],
+        [ "SiliconTargetPoint", "classSiliconTargetPoint.html", null ],
+        [ "TTPoint", "classTTPoint.html", null ],
+        [ "TargetPoint", "classTargetPoint.html", null ],
         [ "TimeDetPoint", "classTimeDetPoint.html", null ],
         [ "UpstreamTaggerPoint", "classUpstreamTaggerPoint.html", null ],
         [ "splitcalPoint", "classsplitcalPoint.html", null ],
         [ "strawtubesPoint", "classstrawtubesPoint.html", null ],
         [ "vetoPoint", "classvetoPoint.html", null ]
-      ] ],
-      [ "SiliconTargetPoint", "classSiliconTargetPoint.html", null ],
-      [ "TTPoint", "classTTPoint.html", null ],
-      [ "TargetPoint", "classTargetPoint.html", null ]
+      ] ]
     ] ],
     [ "FairModule", null, [
       [ "ShipCave", "classShipCave.html", null ],
@@ -172,6 +172,7 @@ var hierarchy =
       [ "splitcalCluster", "classsplitcalCluster.html", null ],
       [ "vetoHitOnTrack", "classvetoHitOnTrack.html", null ]
     ] ],
+    [ "TrackBuffer", "structTrackBuffer.html", null ],
     [ "tracking_benchmark.TrackingBenchmark", "classtracking__benchmark_1_1TrackingBenchmark.html", null ],
     [ "ShipFieldMaker::transformInfo", "structShipFieldMaker_1_1transformInfo.html", null ],
     [ "TVirtualMagField", null, [
@@ -186,6 +187,7 @@ var hierarchy =
       [ "BaseDetector.BaseDetector", "classBaseDetector_1_1BaseDetector.html", [
         [ "MTCDetector.MTCDetector", "classMTCDetector_1_1MTCDetector.html", null ],
         [ "SBTDetector.SBTDetector", "classSBTDetector_1_1SBTDetector.html", null ],
+        [ "SiliconTargetDetector.SiliconTargetDetector", "classSiliconTargetDetector_1_1SiliconTargetDetector.html", null ],
         [ "UpstreamTaggerDetector.UpstreamTaggerDetector", "classUpstreamTaggerDetector_1_1UpstreamTaggerDetector.html", null ],
         [ "splitcalDetector.splitcalDetector", "classsplitcalDetector_1_1splitcalDetector.html", null ],
         [ "strawtubesDetector.strawtubesDetector", "classstrawtubesDetector_1_1strawtubesDetector.html", null ],

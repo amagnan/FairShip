@@ -20,11 +20,10 @@ var searchData=
   ['mtcdetectorlinkdef_2eh_17',['MTCDetectorLinkDef.h',['../MTCDetectorLinkDef_8h.html',1,'']]],
   ['mtcdethit_2ecxx_18',['MTCDetHit.cxx',['../MTCDetHit_8cxx.html',1,'']]],
   ['mtcdethit_2eh_19',['MTCDetHit.h',['../MTCDetHit_8h.html',1,'']]],
-  ['mtcdetpoint_2ecxx_20',['MTCDetPoint.cxx',['../MTCDetPoint_8cxx.html',1,'']]],
-  ['mtcdetpoint_2eh_21',['MTCDetPoint.h',['../MTCDetPoint_8h.html',1,'']]],
-  ['mudis_5fmergefiles_2epy_22',['muDIS_mergeFiles.py',['../muDIS__mergeFiles_8py.html',1,'']]],
-  ['mudisgenerator_2ecxx_23',['MuDISGenerator.cxx',['../MuDISGenerator_8cxx.html',1,'']]],
-  ['mudisgenerator_2eh_24',['MuDISGenerator.h',['../MuDISGenerator_8h.html',1,'']]],
-  ['muonbackgenerator_2ecxx_25',['MuonBackGenerator.cxx',['../MuonBackGenerator_8cxx.html',1,'']]],
-  ['muonbackgenerator_2eh_26',['MuonBackGenerator.h',['../MuonBackGenerator_8h.html',1,'']]]
+  ['mtcdetpoint_2eh_20',['MTCDetPoint.h',['../MTCDetPoint_8h.html',1,'']]],
+  ['mudis_5fmergefiles_2epy_21',['muDIS_mergeFiles.py',['../muDIS__mergeFiles_8py.html',1,'']]],
+  ['mudisgenerator_2ecxx_22',['MuDISGenerator.cxx',['../MuDISGenerator_8cxx.html',1,'']]],
+  ['mudisgenerator_2eh_23',['MuDISGenerator.h',['../MuDISGenerator_8h.html',1,'']]],
+  ['muonbackgenerator_2ecxx_24',['MuonBackGenerator.cxx',['../MuonBackGenerator_8cxx.html',1,'']]],
+  ['muonbackgenerator_2eh_25',['MuonBackGenerator.h',['../MuonBackGenerator_8h.html',1,'']]]
 ];
