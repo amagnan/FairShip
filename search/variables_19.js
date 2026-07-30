@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['y_0',['y',['../classCosmicsGenerator.html#a6be8f1021db23a5cffe07bdef2a9f49e',1,'CosmicsGenerator::y'],['../namespacerun__tracking__scan.html#a60149f5e9c7fe53ba27d5ee50faa64de',1,'run_tracking_scan.y'],['../structTrackBuffer.html#a76e3d69f5306d69c9cbcb3254f020dd5',1,'TrackBuffer::y'],['../namespacemake__nTuple__SBT.html#ab46e9a5e01d6b550aa7a5315ba9d81cf',1,'make_nTuple_SBT.y'],['../namespacemake__nTuple__Tr.html#a3562a98b75521c312dbf74ba57ba9332',1,'make_nTuple_Tr.y'],['../namespacemake__nTuples.html#a568139d81a2f7a472606e676c6139af0',1,'make_nTuples.y'],['../namespacemakeMuonEM.html#a0d25cc9a190d0bdc64fa5cc1d7533039',1,'makeMuonEM.y'],['../structParticleGunParticle.html#a9656861b789d19e0da8a2320cbc1af83',1,'ParticleGunParticle::Y']]],
+  ['y_0',['y',['../structTrackBuffer.html#a76e3d69f5306d69c9cbcb3254f020dd5',1,'TrackBuffer::y'],['../classCosmicsGenerator.html#a6be8f1021db23a5cffe07bdef2a9f49e',1,'CosmicsGenerator::y'],['../namespacemakeMuonEM.html#a0d25cc9a190d0bdc64fa5cc1d7533039',1,'makeMuonEM.y'],['../namespacemake__nTuple__Tr.html#a3562a98b75521c312dbf74ba57ba9332',1,'make_nTuple_Tr.y'],['../namespacemake__nTuple__SBT.html#ab46e9a5e01d6b550aa7a5315ba9d81cf',1,'make_nTuple_SBT.y'],['../namespacerun__tracking__scan.html#a60149f5e9c7fe53ba27d5ee50faa64de',1,'run_tracking_scan.y'],['../structParticleGunParticle.html#a9656861b789d19e0da8a2320cbc1af83',1,'ParticleGunParticle::Y']]],
   ['y0_5f_1',['y0_',['../structShipFieldMaker_1_1transformInfo.html#a1662a7308aec75088911268cf82c3169',1,'ShipFieldMaker::transformInfo']]],
   ['y_5fdata_2',['y_data',['../classshipVertex_1_1Task.html#a8ca5c8775cc4a7b23568c0eeee8ec0a7',1,'shipVertex::Task']]],
   ['ybeam_3',['ybeam',['../namespacerunPythia8.html#a5b3558b48027106d182fd3d46514884a',1,'runPythia8']]],
@@ -15,7 +15,7 @@ var searchData=
   ['ymax_5f_12',['yMax_',['../classShipBFieldMap.html#ad8a1a4c88b21f29339f361d341ba1304',1,'ShipBFieldMap']]],
   ['ymin_13',['ymin',['../namespacerun__tracking__scan.html#a6bbc2e553dfe383f68e41f91e0e86101',1,'run_tracking_scan']]],
   ['ymin_5f_14',['yMin_',['../classShipBFieldMap.html#a4529066c7dca47ed195f98f923f7c30c',1,'ShipBFieldMap']]],
-  ['yoff_15',['yoff',['../classPythia8Generator.html#a2b7319bf5950e27d0db981ca2e5a0ae0',1,'Pythia8Generator::yOff'],['../classFixedTargetGenerator.html#ac575dc0a0ee8177e0adf1062fabd956a',1,'FixedTargetGenerator::yOff']]],
+  ['yoff_15',['yoff',['../classFixedTargetGenerator.html#ac575dc0a0ee8177e0adf1062fabd956a',1,'FixedTargetGenerator::yOff'],['../classPythia8Generator.html#a2b7319bf5950e27d0db981ca2e5a0ae0',1,'Pythia8Generator::yOff']]],
   ['yoffset_5f_16',['yOffset_',['../classShipBFieldMap.html#aad6dc9cbfb40bb6f1ef3dd7da657be91',1,'ShipBFieldMap']]],
   ['yokedepth_17',['YokeDepth',['../classShipMagnet.html#adf872166e610c6e8e9a1852213cba89c',1,'ShipMagnet']]],
   ['yokewidth_18',['YokeWidth',['../classShipMagnet.html#a3d8c2575a8a1c3b31ee82dfc84d2ed9d',1,'ShipMagnet']]],
