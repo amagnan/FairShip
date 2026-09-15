@@ -59,6 +59,15 @@ Histograms MuDISFilter::BookHistograms(TDirectory* dir, const TString& mat, cons
 		       Form("PDG code of DIS daughters - %s;PDG code;Particles", mat.Data()),
 		       12001, -6000.5, 6000.5
 		       );
+  h.dis_pdgGrouped = new TH1I(
+                             Form("daughter_pdg_grouped_%s",label.Data()),
+                             Form("DIS daughter species - %s;Species;Particles", mat.Data()),
+                             11, 0.5, 11.5
+                             );
+  const char* labels[] = {"e^{+}", "e^{-}", "#mu^{+}", "#mu^{-}", "#gamma",
+                          "#nu/#bar{#nu}", "#pi^{#pm}", "h^{#pm}", "#pi^{0}", "h^{0}", "other"};
+  for (int bin = 1; bin <= 11; ++bin)
+    h.dis_pdgGrouped->GetXaxis()->SetBinLabel(bin, labels[bin - 1]);
   h.dis_n = new TH1I(
 		     Form("n_daughters_%s",label.Data()),
 		     Form("Number of DIS daughters - %s;multiplicity;Event", mat.Data()),
@@ -79,12 +88,6 @@ Histograms MuDISFilter::BookHistograms(TDirectory* dir, const TString& mat, cons
 			   Form("p fraction of outgoing mu - %s;p(mu)/p(all);Event", mat.Data()),
 			   101,0,1.01
 			   );
-  h.dis_weight = new TH1D(
-			  Form("vertex_weight_%s",label.Data()),
-			  Form("DIS vertex weight - %s;wDIS;Event", mat.Data()),
-			  100, 0., 1.
-			  );
-  h.dis_weight->SetCanExtend(TH1::kXaxis);
   h.mu_p = new TH1D(
 		    Form("muon_p_%s",label.Data()),
 		    Form("muon momentum - %s;p_{#mu,in} [GeV]; Input mu events", mat.Data()),
@@ -106,6 +109,12 @@ Histograms MuDISFilter::BookHistograms(TDirectory* dir, const TString& mat, cons
 		       Form("Number of DIS events - %s;DIS multiplicity;Input mu events", mat.Data()),
 		       1001,0,1001
 		       );
+  h.mu_wdis = new TH1D(
+		       Form("muon_vtx_weight_%s",label.Data()),
+		       Form("DIS vertex weight - %s;wDIS;Input mu events", mat.Data()),
+		       100, 0., 1.
+		       );
+  h.mu_wdis->SetCanExtend(TH1::kXaxis);
   return h;
 }
 
@@ -247,6 +256,26 @@ bool MuDISFilter::IsCharged(const DISparticle& particle) const {
   return pdg && pdg->Charge() != 0;
 }
 
+int MuDISFilter::DaughterCategory(const DISparticle& particle) const {
+  switch (particle.pid) {
+    case -11: return 1;
+    case 11: return 2;
+    case -13: return 3;
+    case 13: return 4;
+    case 22: return 5;
+    case 12: case -12: case 14: case -14: case 16: case -16: return 6;
+    case 211: case -211: return 7;
+    case 111: return 9;
+  }
+  const auto* pdg = fPDG->GetParticle(particle.pid);
+  if (pdg) {
+    const TString particleClass = pdg->ParticleClass();
+    if (particleClass == "Meson" || particleClass == "Baryon")
+      return pdg->Charge() != 0. ? 8 : 10;
+  }
+  return 11;
+}
+
 bool MuDISFilter::PassFilter(const std::vector<DISparticle>& daughters) const {
   if (fFilter) return fFilter(daughters);
   unsigned charged = 0;
@@ -262,11 +291,11 @@ void MuDISFilter::FillDIS(Histograms& h, const MuonDISInBranches& br,
   h.dis_vxz->Fill(br.DISvz->at(idis), br.DISvx->at(idis));
   h.dis_vyz->Fill(br.DISvz->at(idis), br.DISvy->at(idis));
   h.dis_vxy->Fill(br.DISvx->at(idis), br.DISvy->at(idis));
-  h.dis_weight->Fill(br.wDIS->at(idis));
   unsigned charged = 0;
   double totalP = 0., chargedP = 0., muonP = 0.;
   for (const auto& p : daughters) {
     h.dis_pdg->Fill(p.pid);
+    h.dis_pdgGrouped->Fill(DaughterCategory(p));
     const double momentum = std::sqrt(p.px*p.px + p.py*p.py + p.pz*p.pz);
     totalP += momentum;
     if (IsCharged(p)) { ++charged; chargedP += momentum; }
@@ -358,6 +387,7 @@ void MuDISFilter::ProcessEvents() {
         h.mu_pt->Fill(muon.GetPt());
         h.mu_ppt->Fill(muon.GetP(), muon.GetPt());
         h.mu_ndis->Fill(count);
+        h.mu_wdis->Fill(in.wDIS);
       };
       fillMuon(hist_all[imat], in.nDISevts);
       if (out.nDISevts > 0) fillMuon(hist_filt[imat], out.nDISevts);

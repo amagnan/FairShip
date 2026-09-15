@@ -21,16 +21,17 @@ struct Histograms {
   TH2D* dis_vxy = nullptr;
 
   TH1I* dis_pdg = nullptr;
+  TH1I* dis_pdgGrouped = nullptr;
   TH1I* dis_n = nullptr;
   TH1I* dis_nCharged = nullptr;
   TH1D* dis_pChargedFrac = nullptr;
   TH1D* dis_pMuFrac = nullptr;
-  TH1D* dis_weight = nullptr;
 
   TH2D* mu_ppt = nullptr;
   TH1D* mu_p = nullptr;
   TH1D* mu_pt = nullptr;
   TH1I* mu_ndis = nullptr;
+  TH1D* mu_wdis = nullptr;
 
 };
 
@@ -69,6 +70,7 @@ class MuDISFilter {
 
  private:
   bool IsCharged(const DISparticle& particle) const;
+  int DaughterCategory(const DISparticle& particle) const;
   void FillDIS(Histograms& h, const ShipMuDIS::MuonDISInBranches& br, int idis,
                const std::vector<DISparticle>& daughters);
   unsigned fMinChargedDaughters = 2;

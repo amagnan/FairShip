@@ -34,6 +34,12 @@ magnitudes; the muon fraction includes all muon daughters. Charged multiplicity
 histograms always count all charged species, independent of `--exclude-muons`.
 Malformed entries are logged and skipped before histogram filling.
 
+`daughter_pdg_grouped_` and `daughter_pdg_grouped_filtered` group daughters
+into 11 labelled bins: e+, e-, mu+, mu-, gamma, all neutrinos/antineutrinos,
+pi+/-, other charged hadrons, pi0, other neutral hadrons, and other particles.
+Hadron categories use ROOT's meson/baryon classification and charge; nuclei
+and unrecognized PDG codes are included in the last bin.
+
 For other selections, supply a C++ predicate (it replaces the default cut):
 
 ```cpp
