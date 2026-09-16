@@ -84,7 +84,7 @@ class MuDISFilter {
   double Charge(const DISparticle& particle) const;
   int DaughterCategory(const DISparticle& particle) const;
   void FillDIS(Histograms& h, const ShipMuDIS::MuonDISInBranches& br, int idis,
-               const std::vector<DISparticle>& daughters);
+               const std::vector<DISparticle>& daughters, Histograms* filtered);
   unsigned fMinChargedDaughters = 2;
   bool fIncludeMuons = true;
   bool fUseDetectorAcceptance = true;

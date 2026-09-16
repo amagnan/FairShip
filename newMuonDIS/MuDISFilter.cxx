@@ -305,14 +305,31 @@ bool MuDISFilter::PassFilter(const std::vector<DISparticle>& daughters, const TV
   if (fUseDetectorAcceptance && !fPropagator)
     throw std::runtime_error("Configure detector acceptance with geometry and field map first");
   if (fMinChargedDaughters == 0) return true;
+  if (daughters.size() < fMinChargedDaughters) return false;
+  std::vector<double> charges;
+  unsigned remaining = 0;
+  if (fUseDetectorAcceptance) {
+    charges.reserve(daughters.size());
+    for (const auto& p : daughters) {
+      // Count only candidates that can make a forward physical crossing.
+      const double charge = (!fIncludeMuons && std::abs(p.pid) == 13)
+          || (fDetectorZ - vertex.Z()) * p.pz < 0. ? 0. : Charge(p);
+      charges.push_back(charge);
+      if (charge != 0.) ++remaining;
+    }
+    if (remaining < fMinChargedDaughters) return false;
+  }
   unsigned charged = 0;
-  for (const auto& p : daughters) {
-    if ((!fIncludeMuons && std::abs(p.pid) == 13) || !IsCharged(p)) continue;
+  for (std::size_t i = 0; i < daughters.size(); ++i) {
+    const auto& p = daughters[i];
+    if (!fIncludeMuons && std::abs(p.pid) == 13) continue;
+    const double charge = fUseDetectorAcceptance ? charges[i] : Charge(p);
+    if (charge == 0.) continue;
     if (fUseDetectorAcceptance) {
-      // Count forward physical crossings only, not backward extrapolations.
-      if ((fDetectorZ - vertex.Z()) * p.pz < 0.) continue;
+      if (charged + remaining < fMinChargedDaughters) return false;
+      --remaining;
       TVector3 hit, momentum;
-      if (!fPropagator->Extrapolate(Charge(p), vertex, TVector3(p.px, p.py, p.pz),
+      if (!fPropagator->Extrapolate(charge, vertex, TVector3(p.px, p.py, p.pz),
                                     fDetectorZ, hit, momentum)
           || std::abs(hit.X()) > 200. || std::abs(hit.Y()) > 300.) continue;
     }
@@ -323,25 +340,33 @@ bool MuDISFilter::PassFilter(const std::vector<DISparticle>& daughters, const TV
 }
 
 void MuDISFilter::FillDIS(Histograms& h, const MuonDISInBranches& br,
-                         int idis, const std::vector<DISparticle>& daughters) {
-  h.dis_vxz->Fill(br.DISvz->at(idis), br.DISvx->at(idis));
-  h.dis_vyz->Fill(br.DISvz->at(idis), br.DISvy->at(idis));
-  h.dis_vxy->Fill(br.DISvx->at(idis), br.DISvy->at(idis));
+                         int idis, const std::vector<DISparticle>& daughters,
+                         Histograms* filtered) {
   unsigned charged = 0;
   double totalP = 0., chargedP = 0., muonP = 0.;
   for (const auto& p : daughters) {
-    h.dis_pdg->Fill(p.pid);
-    h.dis_pdgGrouped->Fill(DaughterCategory(p));
+    const int category = DaughterCategory(p);
+    for (auto* target : {&h, filtered}) {
+      if (!target) continue;
+      target->dis_pdg->Fill(p.pid);
+      target->dis_pdgGrouped->Fill(category);
+    }
     const double momentum = std::sqrt(p.px*p.px + p.py*p.py + p.pz*p.pz);
     totalP += momentum;
     if (IsCharged(p)) { ++charged; chargedP += momentum; }
     if (std::abs(p.pid) == 13) muonP += momentum;
   }
-  h.dis_n->Fill(daughters.size());
-  h.dis_nCharged->Fill(charged);
-  if (totalP > 0.) {
-    h.dis_pChargedFrac->Fill(chargedP / totalP);
-    h.dis_pMuFrac->Fill(muonP / totalP);
+  for (auto* target : {&h, filtered}) {
+    if (!target) continue;
+    target->dis_vxz->Fill(br.DISvz->at(idis), br.DISvx->at(idis));
+    target->dis_vyz->Fill(br.DISvz->at(idis), br.DISvy->at(idis));
+    target->dis_vxy->Fill(br.DISvx->at(idis), br.DISvy->at(idis));
+    target->dis_n->Fill(daughters.size());
+    target->dis_nCharged->Fill(charged);
+    if (totalP > 0.) {
+      target->dis_pChargedFrac->Fill(chargedP / totalP);
+      target->dis_pMuFrac->Fill(muonP / totalP);
+    }
   }
 }
 
@@ -352,6 +377,11 @@ void MuDISFilter::ProcessEvents() {
       ? std::min(Long64_t(fstartEvt) + fnEvts, ftree->GetEntries())
       : ftree->GetEntries();
   Long64_t selected = 0, skipped = 0;
+  Long64_t selectedDIS[nMats] = {};
+  double weightedDIS[nMats] = {};
+  Long64_t processedDIS[nMats] = {};
+  double weightedProcessedDIS[nMats] = {};
+  double weightedMuons[nMats] = {}, weightedSelectedMuons[nMats] = {};
   for (Long64_t event = fstartEvt; event < end; ++event) {
     if ((event - fstartEvt) % 100 == 0)
       LOG(info) << "MuDISFilter: processing entry " << event;
@@ -390,11 +420,8 @@ void MuDISFilter::ProcessEvents() {
       continue;
     }
     initEvent();
-    foutEv.mcTrks = *finEv.mcTrks;
-    foutEv.sbtPt = *finEv.sbtPt;
-    foutEv.ubtPt = *finEv.ubtPt;
-    foutEv.sstPt = *finEv.sstPt;
     const auto& muon = finEv.mcTrks->at(0);
+    const double muonP = muon.GetP(), muonPt = muon.GetPt();
     bool keep = false;
     for (unsigned imat = 0; imat < nMats; ++imat) {
       const auto& in = finEv.br[imat];
@@ -406,10 +433,10 @@ void MuDISFilter::ProcessEvents() {
         std::vector<DISparticle> daughters(in.DISparticles->begin() + offset,
                                            in.DISparticles->begin() + endOffset);
         offset = endOffset;
-        FillDIS(hist_all[imat], in, idis, daughters);
-        if (!PassFilter(daughters, TVector3(in.DISvx->at(idis), in.DISvy->at(idis),
-                                           in.DISvz->at(idis)))) continue;
-        FillDIS(hist_filt[imat], in, idis, daughters);
+        const bool accepted = PassFilter(daughters, TVector3(in.DISvx->at(idis), in.DISvy->at(idis),
+                                                            in.DISvz->at(idis)));
+        FillDIS(hist_all[imat], in, idis, daughters, accepted ? &hist_filt[imat] : nullptr);
+        if (!accepted) continue;
         ++out.nDISevts;
         out.DISxsec.push_back(in.DISxsec->at(idis));
         out.DIStarget.push_back(in.DIStarget->at(idis));
@@ -421,21 +448,49 @@ void MuDISFilter::ProcessEvents() {
         out.DISparticles.insert(out.DISparticles.end(), daughters.begin(), daughters.end());
         keep = true;
       }
-      auto fillMuon = [&muon, &in](Histograms& h, int count) {
-        h.mu_p->Fill(muon.GetP());
-        h.mu_pt->Fill(muon.GetPt());
-        h.mu_ppt->Fill(muon.GetP(), muon.GetPt());
+      auto fillMuon = [muonP, muonPt, &in](Histograms& h, int count) {
+        h.mu_p->Fill(muonP);
+        h.mu_pt->Fill(muonPt);
+        h.mu_ppt->Fill(muonP, muonPt);
         h.mu_ndis->Fill(count);
         h.mu_wdis->Fill(in.wDIS);
       };
       fillMuon(hist_all[imat], in.nDISevts);
       if (out.nDISevts > 0) fillMuon(hist_filt[imat], out.nDISevts);
+      selectedDIS[imat] += out.nDISevts;
+      if (out.nDISevts > 0) weightedDIS[imat] += out.nDISevts * in.wDIS;
+      processedDIS[imat] += in.nDISevts;
+      if (in.nDISevts > 0) weightedProcessedDIS[imat] += in.nDISevts * in.wDIS;
+      weightedMuons[imat] += in.wDIS;
+      if (out.nDISevts > 0) weightedSelectedMuons[imat] += in.wDIS;
     }
     if (keep) {
+      foutEv.mcTrks = *finEv.mcTrks;
+      foutEv.sbtPt = *finEv.sbtPt;
+      foutEv.ubtPt = *finEv.ubtPt;
+      foutEv.sstPt = *finEv.sstPt;
       if (fouttree->Fill() < 0) throw std::runtime_error("Failed writing MuonDIS entry");
       ++selected;
     }
   }
   LOG(info) << "MuDISFilter: saved " << selected << " muon entries; skipped "
             << skipped << " unreadable or malformed entries.";
+  for (unsigned imat = 0; imat < nMats; ++imat) {
+    LOG(info) << "MuDISFilter: selected DIS events in " << MatTypeStr[imat].Data()
+              << ": raw = " << selectedDIS[imat] << ", weighted = " << weightedDIS[imat];
+    auto* counts = new TH1D("filter_counts", "Filter counts;Sample;Count", 8, 0., 8.);
+    counts->SetDirectory(fouttree->GetDirectory()->GetDirectory(MatTypeStr[imat].Data()));
+    const char* labels[] = {"muons_processed_raw", "muons_processed_weighted",
+                           "muons_selected_raw", "muons_selected_weighted",
+                           "dis_processed_raw", "dis_processed_weighted",
+                           "dis_selected_raw", "dis_selected_weighted"};
+    const double values[] = {hist_all[imat].mu_p->GetEntries(), weightedMuons[imat],
+                             hist_filt[imat].mu_p->GetEntries(), weightedSelectedMuons[imat],
+                             double(processedDIS[imat]), weightedProcessedDIS[imat],
+                             double(selectedDIS[imat]), weightedDIS[imat]};
+    for (int bin = 1; bin <= 8; ++bin) {
+      counts->GetXaxis()->SetBinLabel(bin, labels[bin - 1]);
+      counts->SetBinContent(bin, values[bin - 1]);
+    }
+  }
 }

@@ -61,6 +61,53 @@ pi+/-, other charged hadrons, pi0, other neutral hadrons, and other particles.
 Hadron categories use ROOT's meson/baryon classification and charge; nuclei
 and unrecognized PDG codes are included in the last bin.
 
+Plotting and count tables
+------------------------
+
+Create one PDF with a page for each validation histogram:
+
+```sh
+pixi run python newMuonDIS/plotFilterEvents.py -f selected.root \
+    -c newMuonDIS/plotFilterEvents.yaml -o selected.pdf --latex counts.tex
+```
+
+The supplied YAML defaults to full stored histogram ranges, linear axes, and no
+rebinning. `x_range`, `y_range`, and `z_range` take `[minimum, maximum]` or `null`.
+For 1D histograms, `y_range` controls bin contents; for 2D, `y_range` controls the
+coordinate and `z_range` controls the color scale. `null` means the full stored
+coordinate range or automatic content limits. `log_x`, `log_y`, and `log_z` are
+booleans. Logarithmic coordinate axes spanning zero require an explicit positive
+range. Two-dimensional histograms use `COLZ` with space for the palette and its
+z-axis title; an absent z-axis title defaults to `Entries`.
+
+Set `rebin` to a positive integer, or `[x_factor, y_factor]` for a 2D histogram.
+Factors must divide the bin counts so no bins move to overflow. Labelled species
+axes cannot be rebinned. Under `histograms`, override defaults using exact ROOT
+paths such as `MS/muon_p_` or `MS/vertex_x_vs_z_filtered`; `enabled: false` skips
+a histogram. Rebinning and display changes do not modify the input ROOT file.
+
+To generate an editable YAML listing every histogram with its full coordinate
+ranges read from the file:
+
+```sh
+pixi run python newMuonDIS/plotFilterEvents.py -f selected.root --write-config plots.yaml
+pixi run python newMuonDIS/plotFilterEvents.py -f selected.root -c plots.yaml -o selected.pdf
+```
+
+New filter outputs contain `filter_counts` in each material directory, storing
+processed/selected raw and weighted counts for both muons and DIS interactions.
+Processed counts cover valid entries, excluding unreadable/malformed entries.
+Selected muons are counted separately per material: a muon contributes when at
+least one interaction passes there. Muon weighted counts sum `wDIS` once per
+muon; DIS weighted counts sum `nDIS * wDIS`. The summary is excluded from plots.
+
+`--latex counts.tex` writes a `tabular` fragment with these counts, independently
+of plot ranges or rebinning. Older files still provide exact raw counts via
+histogram entries; unavailable weighted counts are shown as `---`. The unweighted
+multiplicity and weight histograms cannot reconstruct the joint weighted DIS
+sum, so the macro does not estimate it. PDF and LaTeX output paths are overwritten
+on reruns; `--write-config` requires a new destination.
+
 For other selections, supply a C++ predicate (it replaces the default cut):
 
 ```cpp
