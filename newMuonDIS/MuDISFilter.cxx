@@ -1,4 +1,5 @@
 #include "MuDISFilter.h"
+#include "MagneticTrackPropagator.h"
 
 #include <TFile.h>
 #include <TTree.h>
@@ -200,6 +201,9 @@ void MuDISFilter::process_file(const std::string& input,
 void MuDISFilter::process_file(const std::vector<std::string>& input,
 			       const std::string& output) {
 
+  if (!fFilter && fUseDetectorAcceptance && !fPropagator)
+    throw std::runtime_error("Configure detector acceptance with geometry and field map first");
+
   Bool_t treeOK = InitFiles(input, fstartEvt);
 
   if (!treeOK) {
@@ -249,11 +253,15 @@ void MuDISFilter::initEvent() {
 }
 
 bool MuDISFilter::IsCharged(const DISparticle& particle) const {
+  return Charge(particle) != 0.;
+}
+
+double MuDISFilter::Charge(const DISparticle& particle) const {
   const auto* pdg = fPDG->GetParticle(particle.pid);
   // Nuclear PDG codes encode Z in digits 5--7 (10LZZZAAAI).
   if (!pdg && std::abs(particle.pid) >= 1000000000)
-    return (std::abs(particle.pid) / 10000) % 1000 != 0;
-  return pdg && pdg->Charge() != 0;
+    return ((std::abs(particle.pid) / 10000) % 1000) * (particle.pid > 0 ? 1. : -1.);
+  return pdg ? pdg->Charge() / 3. : 0.;
 }
 
 int MuDISFilter::DaughterCategory(const DISparticle& particle) const {
@@ -276,12 +284,40 @@ int MuDISFilter::DaughterCategory(const DISparticle& particle) const {
   return 11;
 }
 
+void MuDISFilter::SetDetectorAcceptance(ShipBFieldMap* field, TGeoManager* geometry, double z) {
+  if (!field) throw std::invalid_argument("Detector acceptance requires a field map");
+  auto propagator = std::make_unique<MagneticTrackPropagator>(field, geometry);
+  const double planeZ = std::isnan(z) ? propagator->GetPlaneZ() : z;
+  if (!std::isfinite(planeZ)) throw std::invalid_argument("Detector z must be finite");
+  fPropagator = std::move(propagator);
+  fDetectorZ = planeZ;
+  fUseDetectorAcceptance = true;
+}
+
 bool MuDISFilter::PassFilter(const std::vector<DISparticle>& daughters) const {
+  if (!fFilter && fUseDetectorAcceptance)
+    throw std::runtime_error("Detector acceptance requires the DIS vertex; use PassFilter(daughters, vertex)");
+  return PassFilter(daughters, TVector3());
+}
+
+bool MuDISFilter::PassFilter(const std::vector<DISparticle>& daughters, const TVector3& vertex) const {
   if (fFilter) return fFilter(daughters);
+  if (fUseDetectorAcceptance && !fPropagator)
+    throw std::runtime_error("Configure detector acceptance with geometry and field map first");
+  if (fMinChargedDaughters == 0) return true;
   unsigned charged = 0;
   for (const auto& p : daughters) {
     if ((!fIncludeMuons && std::abs(p.pid) == 13) || !IsCharged(p)) continue;
+    if (fUseDetectorAcceptance) {
+      // Count forward physical crossings only, not backward extrapolations.
+      if ((fDetectorZ - vertex.Z()) * p.pz < 0.) continue;
+      TVector3 hit, momentum;
+      if (!fPropagator->Extrapolate(Charge(p), vertex, TVector3(p.px, p.py, p.pz),
+                                    fDetectorZ, hit, momentum)
+          || std::abs(hit.X()) > 200. || std::abs(hit.Y()) > 300.) continue;
+    }
     ++charged;
+    if (charged >= fMinChargedDaughters) return true;
   }
   return charged >= fMinChargedDaughters;
 }
@@ -317,6 +353,8 @@ void MuDISFilter::ProcessEvents() {
       : ftree->GetEntries();
   Long64_t selected = 0, skipped = 0;
   for (Long64_t event = fstartEvt; event < end; ++event) {
+    if ((event - fstartEvt) % 100 == 0)
+      LOG(info) << "MuDISFilter: processing entry " << event;
     if (ftree->GetEntry(event) <= 0 || !finEv.mcTrks || finEv.mcTrks->empty()
         || !finEv.sbtPt || !finEv.ubtPt || !finEv.sstPt) {
       ++skipped;
@@ -369,7 +407,8 @@ void MuDISFilter::ProcessEvents() {
                                            in.DISparticles->begin() + endOffset);
         offset = endOffset;
         FillDIS(hist_all[imat], in, idis, daughters);
-        if (!PassFilter(daughters)) continue;
+        if (!PassFilter(daughters, TVector3(in.DISvx->at(idis), in.DISvy->at(idis),
+                                           in.DISvz->at(idis)))) continue;
         FillDIS(hist_filt[imat], in, idis, daughters);
         ++out.nDISevts;
         out.DISxsec.push_back(in.DISxsec->at(idis));
