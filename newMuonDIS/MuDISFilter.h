@@ -7,6 +7,7 @@
 #include "TROOT.h"
 #include "TChain.h"  // for TTree
 #include "TVector3.h"
+#include <array>
 #include <vector>
 #include <functional>
 #include <utility>
@@ -25,6 +26,8 @@ struct Histograms {
   TH2D* dis_vxz = nullptr;
   TH2D* dis_vyz = nullptr;
   TH2D* dis_vxy = nullptr;
+  TH1D* dis_vr = nullptr;
+  TH1D* dis_vz = nullptr;
 
   TH1I* dis_pdg = nullptr;
   TH1I* dis_pdgGrouped = nullptr;
@@ -54,11 +57,14 @@ class MuDISFilter {
   // Generic filter on daughter particles
   using Filter = std::function<bool(const std::vector<DISparticle>&)>;
   void SetFilter(Filter filter) { fFilter = std::move(filter); }
+  void SetFilterOption(unsigned option);
+  unsigned GetFilterOption() const { return fFilterOption; }
   //for default filter
   void SetMinChargedDaughters(unsigned minimum) { fMinChargedDaughters = minimum; }
   void SetIncludeMuons(bool include) { fIncludeMuons = include; }
   void SetDetectorAcceptance(ShipBFieldMap* field, TGeoManager* geometry,
-                            double z = std::numeric_limits<double>::quiet_NaN());
+                            double z = std::numeric_limits<double>::quiet_NaN(),
+                            ShipBFieldMap* muonShieldField = nullptr);
   void SetUseDetectorAcceptance(bool enabled) { fUseDetectorAcceptance = enabled; }
   double GetDetectorZ() const { return fDetectorZ; }
 
@@ -80,12 +86,18 @@ class MuDISFilter {
 
 
  private:
+  void ConfigureFilterGeometry(unsigned option, const MagneticTrackPropagator& propagator);
+  bool PassDetectorFilter(const std::vector<DISparticle>& daughters, const TVector3& vertex) const;
+  bool HitsTrackingAndTiming(double charge, const DISparticle& particle, const TVector3& vertex) const;
   bool IsCharged(const DISparticle& particle) const;
   double Charge(const DISparticle& particle) const;
   int DaughterCategory(const DISparticle& particle) const;
   void FillDIS(Histograms& h, const ShipMuDIS::MuonDISInBranches& br, int idis,
                const std::vector<DISparticle>& daughters, Histograms* filtered);
   unsigned fMinChargedDaughters = 2;
+  unsigned fFilterOption = 0;
+  std::array<double, 5> fStationZ = {};  //! Tr1, Tr2, Tr3, Tr4, timing plane
+  std::pair<double, double> fDetectorVolumeZ = {0., 0.};
   bool fIncludeMuons = true;
   bool fUseDetectorAcceptance = true;
   double fDetectorZ = std::numeric_limits<double>::quiet_NaN();

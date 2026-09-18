@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <utility>
 #include <vector>
+#include <limits>
 
 class ShipBFieldMap;
 class TGeoManager;
@@ -15,11 +16,21 @@ class TGeoManager;
 class MagneticTrackPropagator {
  public:
   explicit MagneticTrackPropagator(ShipBFieldMap* field = nullptr,
-                                   TGeoManager* geometry = nullptr);
+                                   TGeoManager* geometry = nullptr,
+                                   ShipBFieldMap* muonShieldField = nullptr);
   void SetAccuracy(double positionTolerance = 1.e-3,
                    double relativeMomentumTolerance = 1.e-6,
                    double maxStep = 5.);
   double GetPlaneZ(const char* volumeName = "Tr1") const;
+  std::pair<double, double> GetVolumeZRange(const char* volumeName) const;
+  std::pair<double, double> GetMuonShieldZRange() const { return fMuonShieldZRange; }
+  bool HasMuonShieldField() const { return fMuonShieldField != nullptr; }
+  // Restrict the initial shield scan; a later upstream request widens it safely.
+  void SetMuonShieldMinZ(double minimumZ);
+  double GetMuonShieldMinZ() const { return fMuonShieldMinZ; }
+  // Test a forward trajectory against an axis-aligned detector volume.
+  bool IntersectsBox(double charge, const TVector3& position, const TVector3& momentum,
+                     const TVector3& minimum, const TVector3& maximum) const;
 
   // Both directions in z are supported, provided pz never changes sign.
   // False means invalid input, a turning track, or failure to converge.
@@ -36,15 +47,30 @@ class MagneticTrackPropagator {
     TVector3 position;
     TVector3 momentum;
   };
-  void FindFieldRegions();
+  struct Box {
+    TVector3 minimum, maximum;
+  };
+  struct FieldMap {
+    ShipBFieldMap* field;  // Borrowed; the caller owns the map.
+    std::vector<Box> regions;
+    double gridStep;
+  };
+  static bool InsideBox(const TVector3& position, const Box& box);
+  static bool RayBoxInterval(const TVector3& position, const TVector3& direction,
+                             const Box& box, double& entry, double& exit);
+  static bool SegmentIntersectsBox(const State& start, const State& end, const Box& box);
+  void AddFieldMap(ShipBFieldMap* field, double minimumZ) const;
+  void EnsureMuonShield(double minimumZ) const;
   bool Derivative(const State& state, double charge, double pzSign, State& derivative) const;
   bool RKStep(const State& state, double charge, double pzSign, double dz, State& result) const;
   bool Propagate(double charge, const TVector3& position, const TVector3& momentum,
-                 double z, State& result, std::vector<State>* trajectory) const;
-  ShipBFieldMap* fField;  //! Borrowed field map
+                 double z, State& result, std::vector<State>* trajectory, const Box* box = nullptr) const;
   TGeoManager* fGeometry;  //! Borrowed geometry
-  std::vector<std::pair<double, double>> fFieldRegions;
-  double fGridStep = 5.;
+  mutable std::vector<FieldMap> fFields;  //! Maps and conservative nonzero 3D regions
+  ShipBFieldMap* fMuonShieldField = nullptr;  //! Borrowed; scanned on first transport
+  mutable bool fMuonShieldReady = false;
+  mutable double fMuonShieldMinZ = -std::numeric_limits<double>::infinity();
+  std::pair<double, double> fMuonShieldZRange = {0., 0.};
   double fPositionTolerance = 1.e-3;
   double fMomentumTolerance = 1.e-6;
   double fMaxStep = 5.;

@@ -47,6 +47,32 @@ def load_spectrometer_field(geometry_file, field_map=None, field_z=None):
     return field_maker, field, field_path
 
 
+def load_muon_shield_field(field_maker, geometry_file, field_map=None, field_z=None):
+    """Load the shield map with the same placement and symmetry as geomGeant4."""
+    from ShipGeoConfig import load_from_root_file
+
+    if field_map is None or field_z is None:
+        with ROOT.TFile.Open(geometry_file) as source:
+            ship_geo = load_from_root_file(source, "ShipGeo")
+        if field_map is None:
+            field_map = Path(os.environ["VMCWORKDIR"]) / "files" / f"{ship_geo.shieldName}.root"
+        if field_z is None:
+            field_z = float(ship_geo.muShield.Entrance[0])
+    field_path = Path(field_map).expanduser().resolve()
+    if not field_path.is_file():
+        raise ValueError(f"Muon shield field map does not exist: {field_path}")
+    if not math.isfinite(field_z):
+        raise ValueError("Muon shield field z offset must be finite")
+    field_maker.defineFieldMap(
+        "muonShieldField", os.path.relpath(field_path, os.environ["VMCWORKDIR"]),
+        ROOT.TVector3(0., 0., field_z), ROOT.TVector3(), True,
+    )
+    field = field_maker.getField("muonShieldField")
+    if not field or not isinstance(field, ROOT.ShipBFieldMap):
+        raise RuntimeError("muonShieldField is not a ShipBFieldMap")
+    return field, field_path
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -58,24 +84,35 @@ def main():
                         help="Number of input events to process (-1: all remaining events; default: -1)")
     parser.add_argument("-s", "--start_event", type=int, default=0,
                         help="First input event to process (zero-based; default: 0)")
-    parser.add_argument("--min-charged", type=int, default=2)
+    parser.add_argument("--filter-option", type=int, choices=(0, 1, 2), default=0,
+                        help="0: charged hits at Tr1; 1: two charged tracks at tracking and timing planes; "
+                             "2: any daughter entering the Tr1-to-calorimeter volume")
+    parser.add_argument("--min-charged", type=int, default=2, help="Minimum charged daughters for filter option 0")
     parser.add_argument("--exclude-muons", action="store_true")
     parser.add_argument("-g", "--geoFile", help="ROOT geometry containing the first SST station (Tr1)")
     parser.add_argument("--field-map", "--field_map", dest="field_map", help="Override geometry ShipGeo.Bfield.fieldMap")
     parser.add_argument("--detector-z", type=float, help="Acceptance plane z in cm (default: Tr1 centre)")
     parser.add_argument("--field-z", type=float, help="Map z offset in cm (default: geometry ShipGeo.Bfield.z)")
+    parser.add_argument("--muon-shield-field-map", help="Override files/<ShipGeo.shieldName>.root for the shield")
+    parser.add_argument("--muon-shield-field-z", type=float,
+                        help="Shield map z offset in cm (default: ShipGeo.muShield.Entrance[0])")
     parser.add_argument("--no-detector-acceptance", action="store_true", help="Use charged multiplicity alone")
     args = parser.parse_args()
     if args.min_charged < 0 or args.start_event < 0 or args.n_events < -1:
         parser.error("Counts must be nonnegative, except -n -1 for all entries")
     if not args.no_detector_acceptance and not args.geoFile:
         parser.error("Detector acceptance requires -g/--geoFile")
-    for value in (args.detector_z, args.field_z):
+    if args.filter_option != 0 and args.no_detector_acceptance:
+        parser.error("Filter options 1 and 2 require detector acceptance")
+    if args.filter_option != 0 and args.detector_z is not None:
+        parser.error("--detector-z applies only to filter option 0; options 1 and 2 use geometry extents")
+    for value in (args.detector_z, args.field_z, args.muon_shield_field_z):
         if value is not None and not math.isfinite(value):
             parser.error("Detector and field z positions must be finite")
-    auxiliary_paths = {Path(p).expanduser().resolve() for p in (args.geoFile, args.field_map) if p}
+    auxiliary_paths = {Path(p).expanduser().resolve()
+                       for p in (args.geoFile, args.field_map, args.muon_shield_field_map) if p}
     # Keep these owners alive until filtering finishes, as in ShipReco.py.
-    _field_maker = field = geometry = None
+    _field_maker = field = shield_field = geometry = None
     if not args.no_detector_acceptance:
         geometry_path = str(Path(args.geoFile).expanduser().resolve())
         if not Path(geometry_path).is_file():
@@ -88,6 +125,15 @@ def main():
         except (AttributeError, KeyError, ValueError, RuntimeError, OSError) as error:
             parser.error(f"Cannot configure SST field (use --field-map/--field-z to override geometry settings): {error}")
         auxiliary_paths.add(field_path)
+        if geometry.GetVolume("MuonShieldArea") or args.muon_shield_field_map or args.muon_shield_field_z is not None:
+            try:
+                shield_field, shield_path = load_muon_shield_field(
+                    _field_maker, geometry_path, args.muon_shield_field_map, args.muon_shield_field_z,
+                )
+            except (AttributeError, IndexError, KeyError, ValueError, RuntimeError, OSError) as error:
+                parser.error(f"Cannot configure muon shield field (use --muon-shield-field-map/"
+                             f"--muon-shield-field-z to override geometry settings): {error}")
+            auxiliary_paths.add(shield_path)
     file_names = []
     seen = set()
     output_path = Path(args.outputfile).resolve()
@@ -119,16 +165,18 @@ def main():
         raise RuntimeError("Cannot load libShipMuDIS.so")
     selection = ROOT.MuDISFilter()
     selection.init(args.n_events, args.start_event)
+    selection.SetFilterOption(args.filter_option)
     selection.SetMinChargedDaughters(args.min_charged)
     selection.SetIncludeMuons(not args.exclude_muons)
     if args.no_detector_acceptance:
         selection.SetUseDetectorAcceptance(False)
     else:
-        if args.detector_z is None:
-            selection.SetDetectorAcceptance(field, geometry)
+        detector_z = args.detector_z if args.detector_z is not None else float("nan")
+        selection.SetDetectorAcceptance(field, geometry, detector_z, shield_field or ROOT.nullptr)
+        if args.filter_option == 0:
+            print(f"Detector acceptance: |x| <= 200 cm, |y| <= 300 cm at z = {selection.GetDetectorZ():g} cm")
         else:
-            selection.SetDetectorAcceptance(field, geometry, args.detector_z)
-        print(f"Detector acceptance: |x| <= 200 cm, |y| <= 300 cm at z = {selection.GetDetectorZ():g} cm")
+            print(f"Detector acceptance: filter option {args.filter_option}, |x| <= 200 cm, |y| <= 300 cm")
     inputs = ROOT.std.vector("string")()
     for name in file_names:
         inputs.push_back(name)

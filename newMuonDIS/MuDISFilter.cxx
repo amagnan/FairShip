@@ -3,6 +3,8 @@
 
 #include <TFile.h>
 #include <TTree.h>
+#include <TTreeReader.h>
+#include <TTreeReaderValue.h>
 
 #include <algorithm>
 #include <cmath>
@@ -18,6 +20,37 @@
 #include "TVectorD.h"
 
 using namespace ShipMuDIS;
+
+namespace {
+// Keep the nominal bin width and reserve one visible bin at each end.
+template <typename Histogram>
+Histogram* WithFlowBins(const char* name, const char* title, int bins, double low, double high) {
+  const double width = (high - low) / bins;
+  return new Histogram(name, title, bins + 2, low - width, high + width);
+}
+
+template <typename Histogram>
+Histogram* WithFlowBins(const char* name, const char* title,
+                        int nx, double xmin, double xmax, int ny, double ymin, double ymax) {
+  const double dx = (xmax - xmin) / nx, dy = (ymax - ymin) / ny;
+  return new Histogram(name, title, nx + 2, xmin - dx, xmax + dx, ny + 2, ymin - dy, ymax + dy);
+}
+
+double VisibleFlowValue(const TAxis* axis, double value) {
+  if (value < axis->GetBinLowEdge(2)) return axis->GetBinCenter(1);
+  if (value >= axis->GetBinLowEdge(axis->GetNbins())) return axis->GetBinCenter(axis->GetNbins());
+  return value;
+}
+
+void FillWithFlow(TH1* histogram, double value) {
+  histogram->Fill(VisibleFlowValue(histogram->GetXaxis(), value));
+}
+
+void FillWithFlow(TH2* histogram, double x, double y) {
+  histogram->Fill(VisibleFlowValue(histogram->GetXaxis(), x), VisibleFlowValue(histogram->GetYaxis(), y));
+}
+}
+
 
 // -----   Default constructor   -------------------------------------------
 MuDISFilter::MuDISFilter() {
@@ -37,30 +70,38 @@ Histograms MuDISFilter::BookHistograms(TDirectory* dir, const TString& mat, cons
 
   Histograms h;
 
-  h.dis_vxz = new TH2D(
+  h.dis_vxz = WithFlowBins<TH2D>(
 		       Form("vertex_x_vs_z_%s",label.Data()),
 		       Form("DIS vertex x vs z - %s;z [cm];x [cm]", mat.Data()),
-		       3000, 3000., 9000.,
+		       3300, 2700., 9000.,
 		       600, -300., 300.
 		       );
-  h.dis_vyz = new TH2D(
+  h.dis_vyz = WithFlowBins<TH2D>(
 		       Form("vertex_y_vs_z_%s",label.Data()),
 		       Form("DIS vertex y vs z - %s;z [cm];y [cm]", mat.Data()),
-		       3000, 3000., 9000.,
+		       3300, 2700., 9000.,
 		       600, -300., 300.
 		       );
-  h.dis_vxy = new TH2D(
+  h.dis_vxy = WithFlowBins<TH2D>(
 		       Form("vertex_y_vs_x_%s",label.Data()),
 		       Form("DIS vertex y vs x - %s;x [cm];y [cm]", mat.Data()),
 		       600, -300., 300.,
 		       600, -300., 300.
 		       );
-  h.dis_pdg = new TH1I(
+  h.dis_vr = WithFlowBins<TH1D>(
+      Form("vertex_r_%s", label.Data()),
+      Form("DIS vertex radius - %s;r [cm];Events", mat.Data()),
+      600, 0., 600.);
+  h.dis_vz = WithFlowBins<TH1D>(
+      Form("vertex_z_%s", label.Data()),
+      Form("DIS vertex z - %s;z [cm];Events", mat.Data()),
+      3300, 2700., 9000.);
+  h.dis_pdg = WithFlowBins<TH1I>(
 		       Form("daughter_pdg_%s",label.Data()),
 		       Form("PDG code of DIS daughters - %s;PDG code;Particles", mat.Data()),
 		       12001, -6000.5, 6000.5
 		       );
-  h.dis_pdgGrouped = new TH1I(
+  h.dis_pdgGrouped = WithFlowBins<TH1I>(
                              Form("daughter_pdg_grouped_%s",label.Data()),
                              Form("DIS daughter species - %s;Species;Particles", mat.Data()),
                              11, 0.5, 11.5
@@ -68,54 +109,53 @@ Histograms MuDISFilter::BookHistograms(TDirectory* dir, const TString& mat, cons
   const char* labels[] = {"e^{+}", "e^{-}", "#mu^{+}", "#mu^{-}", "#gamma",
                           "#nu/#bar{#nu}", "#pi^{#pm}", "h^{#pm}", "#pi^{0}", "h^{0}", "other"};
   for (int bin = 1; bin <= 11; ++bin)
-    h.dis_pdgGrouped->GetXaxis()->SetBinLabel(bin, labels[bin - 1]);
-  h.dis_n = new TH1I(
+    h.dis_pdgGrouped->GetXaxis()->SetBinLabel(bin + 1, labels[bin - 1]);
+  h.dis_n = WithFlowBins<TH1I>(
 		     Form("n_daughters_%s",label.Data()),
 		     Form("Number of DIS daughters - %s;multiplicity;Event", mat.Data()),
 		     50,0,50
 		     );
-  h.dis_nCharged = new TH1I(
+  h.dis_nCharged = WithFlowBins<TH1I>(
 			    Form("n_daughters_charged_%s",label.Data()),
 			    Form("Number of charged DIS daughters - %s;charged multiplicity;Event", mat.Data()),
 			    50,0,50
 			    );
-  h.dis_pChargedFrac = new TH1D(
+  h.dis_pChargedFrac = WithFlowBins<TH1D>(
 				Form("pfrac_charged_%s",label.Data()),
 				Form("Charged fraction - %s;p(charged)/p(all);Event", mat.Data()),
 				101,0,1.01
 				);
-  h.dis_pMuFrac = new TH1D(
+  h.dis_pMuFrac = WithFlowBins<TH1D>(
 			   Form("pfrac_mu_%s",label.Data()),
 			   Form("p fraction of outgoing mu - %s;p(mu)/p(all);Event", mat.Data()),
 			   101,0,1.01
 			   );
-  h.mu_p = new TH1D(
+  h.mu_p = WithFlowBins<TH1D>(
 		    Form("muon_p_%s",label.Data()),
 		    Form("muon momentum - %s;p_{#mu,in} [GeV]; Input mu events", mat.Data()),
 		    400, 0., 400.
 		    );
-  h.mu_pt = new TH1D(
+  h.mu_pt = WithFlowBins<TH1D>(
 		     Form("muon_pt_%s",label.Data()),
 		     Form("muon p_{T} - %s;p_{T,#mu,in} [GeV];Input mu events", mat.Data()),
 		     100, 0., 10.
 		     );
-  h.mu_ppt = new TH2D(
+  h.mu_ppt = WithFlowBins<TH2D>(
 		      Form("muon_pt_vs_p_%s",label.Data()),
 		      Form("muon p_{T} vs p - %s;p_{#mu,in} [GeV]; p_{T,#mu,in} [GeV];Input mu events", mat.Data()),
 		      400,0,400,
 		      100, 0., 10.
 		      );
-  h.mu_ndis = new TH1I(
+  h.mu_ndis = WithFlowBins<TH1I>(
 		       Form("muon_n_dis_%s",label.Data()),
 		       Form("Number of DIS events - %s;DIS multiplicity;Input mu events", mat.Data()),
 		       1001,0,1001
 		       );
-  h.mu_wdis = new TH1D(
+  h.mu_wdis = WithFlowBins<TH1D>(
 		       Form("muon_vtx_weight_%s",label.Data()),
 		       Form("DIS vertex weight - %s;wDIS;Input mu events", mat.Data()),
 		       100, 0., 1.
 		       );
-  h.mu_wdis->SetCanExtend(TH1::kXaxis);
   return h;
 }
 
@@ -201,6 +241,8 @@ void MuDISFilter::process_file(const std::string& input,
 void MuDISFilter::process_file(const std::vector<std::string>& input,
 			       const std::string& output) {
 
+  if (!fFilter && fFilterOption != 0 && !fUseDetectorAcceptance)
+    throw std::runtime_error("Filter options 1 and 2 require detector acceptance");
   if (!fFilter && fUseDetectorAcceptance && !fPropagator)
     throw std::runtime_error("Configure detector acceptance with geometry and field map first");
 
@@ -208,6 +250,53 @@ void MuDISFilter::process_file(const std::vector<std::string>& input,
 
   if (!treeOK) {
     throw std::runtime_error("MuDISFilter: failed to initialize input files");
+  }
+
+  if (!fFilter && fUseDetectorAcceptance && fPropagator->HasMuonShieldField()) {
+    // A separate, vertex-only reader preserves the filtering chain's branch
+    // addresses and cache learning. Restrict the scan to the requested entries.
+    TChain vertices("MuonDIS");
+    for (const auto& name : input) vertices.Add(name.c_str());
+    TTreeReader reader(&vertices);
+    std::vector<std::unique_ptr<TTreeReaderValue<std::vector<double>>>> vz;
+    for (unsigned imat = 0; imat < nMats; ++imat)
+      vz.emplace_back(new TTreeReaderValue<std::vector<double>>(reader, "mudis_DISvz_" + MatTypeStr[imat]));
+    const Long64_t end = fnEvts >= 0
+        ? std::min(Long64_t(fstartEvt) + fnEvts, ftree->GetEntries()) : ftree->GetEntries();
+    double minimum = std::numeric_limits<double>::infinity(), msMinimum = minimum;
+    bool valid = true;
+    if (fstartEvt < end) {
+      reader.SetEntriesRange(fstartEvt, end);
+      Long64_t scanned = 0;
+      while (reader.Next()) {
+        ++scanned;
+        for (unsigned imat = 0; imat < nMats; ++imat) {
+          const auto* values = vz[imat]->Get();
+          if (!values || vz[imat]->GetSetupStatus() < 0
+              || vz[imat]->GetReadStatus() != TTreeReaderValue<std::vector<double>>::kReadSuccess) {
+            valid = false; continue;
+          }
+          for (double z : *values) {
+            if (!std::isfinite(z)) { valid = false; continue; }
+            minimum = std::min(minimum, z);
+            if (MatTypeStr[imat] == "MS") msMinimum = std::min(msMinimum, z);
+          }
+        }
+      }
+      valid = valid && scanned == end - fstartEvt;
+    }
+    if (valid && std::isfinite(minimum)) {
+      const double detectorMinimum = fFilterOption == 2 ? fDetectorVolumeZ.first
+          : fFilterOption == 1 ? *std::min_element(fStationZ.begin(), fStationZ.end()) : fDetectorZ;
+      minimum = std::min(minimum, detectorMinimum);
+      LOG(info) << "Muon shield field bounds: input MS minimum z = " << msMinimum
+                << " cm; conservative scan minimum z = " << minimum << " cm";
+      fPropagator->SetMuonShieldMinZ(minimum);
+    } else {
+      // No usable vertices or failed reads: retain the complete field map.
+      fPropagator->SetMuonShieldMinZ(-std::numeric_limits<double>::infinity());
+      if (!valid) LOG(warn) << "Vertex range scan failed; using full muon shield field bounds";
+    }
   }
 
   std::unique_ptr<TFile> outfile(TFile::Open(output.c_str(), "CREATE"));
@@ -284,26 +373,107 @@ int MuDISFilter::DaughterCategory(const DISparticle& particle) const {
   return 11;
 }
 
-void MuDISFilter::SetDetectorAcceptance(ShipBFieldMap* field, TGeoManager* geometry, double z) {
+void MuDISFilter::ConfigureFilterGeometry(unsigned option, const MagneticTrackPropagator& propagator) {
+  if (option == 1) {
+    const std::array<double, 5> planes = {propagator.GetPlaneZ("Tr1"), propagator.GetPlaneZ("Tr2"),
+                                         propagator.GetPlaneZ("Tr3"), propagator.GetPlaneZ("Tr4"),
+                                         propagator.GetPlaneZ("Timing Detector")};
+    fStationZ = planes;
+  } else if (option == 2) {
+    const double front = propagator.GetVolumeZRange("Tr1").first;
+    const double end = propagator.GetVolumeZRange("SplitCalDetector").second;
+    if (front >= end) throw std::runtime_error("Calorimeter end must be downstream of the Tr1 front");
+    fDetectorVolumeZ = {front, end};
+  }
+}
+
+void MuDISFilter::SetFilterOption(unsigned option) {
+  if (option > 2) throw std::invalid_argument("Filter option must be 0, 1 or 2");
+  if (fPropagator) ConfigureFilterGeometry(option, *fPropagator);
+  fFilterOption = option;
+}
+
+bool MuDISFilter::HitsTrackingAndTiming(double charge, const DISparticle& particle, const TVector3& vertex) const {
+  TVector3 position = vertex, momentum(particle.px, particle.py, particle.pz);
+  std::array<unsigned, 5> order = {0, 1, 2, 3, 4};
+  std::sort(order.begin(), order.end(), [this, &particle](unsigned a, unsigned b) {
+    return particle.pz >= 0. ? fStationZ[a] < fStationZ[b] : fStationZ[a] > fStationZ[b];
+  });
+  bool firstPair = false, secondPair = false, timing = false;
+  for (unsigned station : order) {
+    if ((fStationZ[station] - vertex.Z()) * particle.pz < 0.) continue;
+    TVector3 hit, nextMomentum;
+    if (!fPropagator->Extrapolate(charge, position, momentum, fStationZ[station], hit, nextMomentum)) return false;
+    position = hit;
+    momentum = nextMomentum;
+    if (std::abs(hit.X()) > 200. || std::abs(hit.Y()) > 300.) continue;
+    if (station < 2) firstPair = true;
+    else if (station < 4) secondPair = true;
+    else timing = true;
+    if (firstPair && secondPair && timing) return true;
+  }
+  return false;
+}
+
+bool MuDISFilter::PassDetectorFilter(const std::vector<DISparticle>& daughters, const TVector3& vertex) const {
+  if (fFilterOption == 2) {
+    const TVector3 minimum(-200., -300., fDetectorVolumeZ.first);
+    const TVector3 maximum(200., 300., fDetectorVolumeZ.second);
+    for (const auto& particle : daughters) {
+      if (!fIncludeMuons && std::abs(particle.pid) == 13) continue;
+      if (fPropagator->IntersectsBox(Charge(particle), vertex,
+                                   TVector3(particle.px, particle.py, particle.pz), minimum, maximum)) return true;
+    }
+    return false;
+  }
+  // Count candidates before expensive transport; option 1 always requires two.
+  unsigned remaining = 0, accepted = 0;
+  std::vector<double> charges;
+  charges.reserve(daughters.size());
+  for (const auto& particle : daughters) {
+    const double charge = !fIncludeMuons && std::abs(particle.pid) == 13 ? 0. : Charge(particle);
+    charges.push_back(charge);
+    if (charge != 0.) ++remaining;
+  }
+  for (std::size_t i = 0; i < daughters.size(); ++i) {
+    if (accepted + remaining < 2) return false;
+    if (charges[i] == 0.) continue;
+    --remaining;
+    if (HitsTrackingAndTiming(charges[i], daughters[i], vertex) && ++accepted == 2) return true;
+  }
+  return false;
+}
+
+void MuDISFilter::SetDetectorAcceptance(ShipBFieldMap* field, TGeoManager* geometry, double z,
+                                      ShipBFieldMap* muonShieldField) {
   if (!field) throw std::invalid_argument("Detector acceptance requires a field map");
-  auto propagator = std::make_unique<MagneticTrackPropagator>(field, geometry);
+  auto propagator = std::make_unique<MagneticTrackPropagator>(field, geometry, muonShieldField);
+  if (muonShieldField) {
+    const auto range = propagator->GetMuonShieldZRange();
+    LOG(info) << "MuDISFilter: muon shield geometry z range [" << range.first << ", "
+              << range.second << "] cm; propagating with shield map including nonzero fringe fields";
+  }
   const double planeZ = std::isnan(z) ? propagator->GetPlaneZ() : z;
   if (!std::isfinite(planeZ)) throw std::invalid_argument("Detector z must be finite");
+  ConfigureFilterGeometry(fFilterOption, *propagator);
   fPropagator = std::move(propagator);
   fDetectorZ = planeZ;
   fUseDetectorAcceptance = true;
 }
 
 bool MuDISFilter::PassFilter(const std::vector<DISparticle>& daughters) const {
-  if (!fFilter && fUseDetectorAcceptance)
+  if (!fFilter && (fUseDetectorAcceptance || fFilterOption != 0))
     throw std::runtime_error("Detector acceptance requires the DIS vertex; use PassFilter(daughters, vertex)");
   return PassFilter(daughters, TVector3());
 }
 
 bool MuDISFilter::PassFilter(const std::vector<DISparticle>& daughters, const TVector3& vertex) const {
   if (fFilter) return fFilter(daughters);
+  if (fFilterOption != 0 && !fUseDetectorAcceptance)
+    throw std::runtime_error("Filter options 1 and 2 require detector acceptance");
   if (fUseDetectorAcceptance && !fPropagator)
     throw std::runtime_error("Configure detector acceptance with geometry and field map first");
+  if (fFilterOption != 0) return PassDetectorFilter(daughters, vertex);
   if (fMinChargedDaughters == 0) return true;
   if (daughters.size() < fMinChargedDaughters) return false;
   std::vector<double> charges;
@@ -348,8 +518,8 @@ void MuDISFilter::FillDIS(Histograms& h, const MuonDISInBranches& br,
     const int category = DaughterCategory(p);
     for (auto* target : {&h, filtered}) {
       if (!target) continue;
-      target->dis_pdg->Fill(p.pid);
-      target->dis_pdgGrouped->Fill(category);
+      FillWithFlow(target->dis_pdg, p.pid);
+      FillWithFlow(target->dis_pdgGrouped, category);
     }
     const double momentum = std::sqrt(p.px*p.px + p.py*p.py + p.pz*p.pz);
     totalP += momentum;
@@ -358,14 +528,16 @@ void MuDISFilter::FillDIS(Histograms& h, const MuonDISInBranches& br,
   }
   for (auto* target : {&h, filtered}) {
     if (!target) continue;
-    target->dis_vxz->Fill(br.DISvz->at(idis), br.DISvx->at(idis));
-    target->dis_vyz->Fill(br.DISvz->at(idis), br.DISvy->at(idis));
-    target->dis_vxy->Fill(br.DISvx->at(idis), br.DISvy->at(idis));
-    target->dis_n->Fill(daughters.size());
-    target->dis_nCharged->Fill(charged);
+    FillWithFlow(target->dis_vxz, br.DISvz->at(idis), br.DISvx->at(idis));
+    FillWithFlow(target->dis_vyz, br.DISvz->at(idis), br.DISvy->at(idis));
+    FillWithFlow(target->dis_vxy, br.DISvx->at(idis), br.DISvy->at(idis));
+    FillWithFlow(target->dis_vr, std::hypot(br.DISvx->at(idis), br.DISvy->at(idis)));
+    FillWithFlow(target->dis_vz, br.DISvz->at(idis));
+    FillWithFlow(target->dis_n, daughters.size());
+    FillWithFlow(target->dis_nCharged, charged);
     if (totalP > 0.) {
-      target->dis_pChargedFrac->Fill(chargedP / totalP);
-      target->dis_pMuFrac->Fill(muonP / totalP);
+      FillWithFlow(target->dis_pChargedFrac, chargedP / totalP);
+      FillWithFlow(target->dis_pMuFrac, muonP / totalP);
     }
   }
 }
@@ -449,11 +621,11 @@ void MuDISFilter::ProcessEvents() {
         keep = true;
       }
       auto fillMuon = [muonP, muonPt, &in](Histograms& h, int count) {
-        h.mu_p->Fill(muonP);
-        h.mu_pt->Fill(muonPt);
-        h.mu_ppt->Fill(muonP, muonPt);
-        h.mu_ndis->Fill(count);
-        h.mu_wdis->Fill(in.wDIS);
+        FillWithFlow(h.mu_p, muonP);
+        FillWithFlow(h.mu_pt, muonPt);
+        FillWithFlow(h.mu_ppt, muonP, muonPt);
+        FillWithFlow(h.mu_ndis, count);
+        FillWithFlow(h.mu_wdis, in.wDIS);
       };
       fillMuon(hist_all[imat], in.nDISevts);
       if (out.nDISevts > 0) fillMuon(hist_filt[imat], out.nDISevts);

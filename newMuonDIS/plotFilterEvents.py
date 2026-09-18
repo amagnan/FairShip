@@ -235,19 +235,28 @@ def main():
         if unknown:
             raise ValueError(f"Unknown histogram paths: {', '.join(sorted(unknown))}")
         plots = []
+        empty_count = 0
         for path in paths:
             settings = settings_for(config, path)
             if settings["enabled"]:
                 histogram = read_histogram(source, path)
+                if histogram.GetEntries() == 0:
+                    print(f"Skipping empty histogram: {path}")
+                    empty_count += 1
+                    continue
                 try:
                     validate_plot(histogram, settings)
                 except ValueError as error:
                     raise ValueError(f"{path}: {error}") from error
                 plots.append((path, settings))
-        if not plots:
+        if not plots and not empty_count:
             raise ValueError("No histograms enabled")
         if args.latex:
             write_table(source, paths, args.latex)
+            print(f"Saved count table to {args.latex}")
+        if not plots:
+            print("All enabled histograms are empty; no PDF created.")
+            return
         canvas = ROOT.TCanvas("filter_plots", "Filter validation", 1000, 800)
         canvas.Print(str(output) + "[")
         try:
@@ -260,8 +269,6 @@ def main():
             canvas.Print(str(output) + "]")
             canvas.Close()
         print(f"Saved {len(plots)} pages to {output}")
-        if args.latex:
-            print(f"Saved count table to {args.latex}")
     except (OSError, ValueError, yaml.YAMLError) as error:
         parser.error(str(error))
     finally:

@@ -5,6 +5,7 @@
 #include "TGeoMatrix.h"
 #include "TGeoNode.h"
 #include "TGeoVolume.h"
+#include "TGeoBBox.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -31,11 +32,62 @@ bool FindVolume(TGeoNode* node, const TGeoHMatrix& parent, const std::string& na
     if (FindVolume(node->GetDaughter(i), transform, name, z)) return true;
   return false;
 }
+
+bool FindVolumeRange(TGeoNode* node, const TGeoHMatrix& parent, const std::string& name,
+                     std::pair<double, double>& range) {
+  TGeoHMatrix transform(parent);
+  transform.Multiply(node->GetMatrix());
+  if (name == node->GetVolume()->GetName()) {
+    auto* box = dynamic_cast<TGeoBBox*>(node->GetVolume()->GetShape());
+    if (!box) throw std::runtime_error("Volume has no bounding box: " + name);
+    box->ComputeBBox();
+    const auto* origin = box->GetOrigin();
+    range = {std::numeric_limits<double>::infinity(), -std::numeric_limits<double>::infinity()};
+    for (double x : {-box->GetDX(), box->GetDX()})
+      for (double y : {-box->GetDY(), box->GetDY()})
+        for (double z : {-box->GetDZ(), box->GetDZ()}) {
+          const double local[3] = {origin[0] + x, origin[1] + y, origin[2] + z};
+          double global[3];
+          transform.LocalToMaster(local, global);
+          range.first = std::min(range.first, global[2]);
+          range.second = std::max(range.second, global[2]);
+        }
+    return std::isfinite(range.first) && std::isfinite(range.second) && range.first < range.second;
+  }
+  for (int i = 0; i < node->GetNdaughters(); ++i)
+    if (FindVolumeRange(node->GetDaughter(i), transform, name, range)) return true;
+  return false;
+}
 }
 
-MagneticTrackPropagator::MagneticTrackPropagator(ShipBFieldMap* field, TGeoManager* geometry)
-    : fField(field), fGeometry(geometry) {
-  FindFieldRegions();
+MagneticTrackPropagator::MagneticTrackPropagator(ShipBFieldMap* field, TGeoManager* geometry,
+                                               ShipBFieldMap* muonShieldField)
+    : fGeometry(geometry) {
+  AddFieldMap(field, -std::numeric_limits<double>::infinity());
+  if (muonShieldField) {
+    if (!geometry || !geometry->GetTopNode()
+        || !FindVolumeRange(geometry->GetTopNode(), TGeoHMatrix(), "MuonShieldArea", fMuonShieldZRange))
+      throw std::runtime_error("MuonShieldArea z range not found in geometry");
+    if (muonShieldField == field)
+      throw std::invalid_argument("SST and muon shield maps must be distinct");
+    fMuonShieldField = muonShieldField;
+    // Check alignment without scanning the field values. The shield cache is
+    // built after the input vertex range is known.
+    TGeoTranslation translation(muonShieldField->GetXOffset(), muonShieldField->GetYOffset(), muonShieldField->GetZOffset());
+    TGeoRotation rotation("shieldBounds", muonShieldField->GetPhi(), muonShieldField->GetTheta(), muonShieldField->GetPsi());
+    TGeoCombiTrans transform(translation, rotation);
+    double low = std::numeric_limits<double>::infinity(), high = -low;
+    for (double x : {muonShieldField->HasSymmetry() ? -double(muonShieldField->GetXMax()) : double(muonShieldField->GetXMin()), double(muonShieldField->GetXMax())})
+      for (double y : {muonShieldField->HasSymmetry() ? -double(muonShieldField->GetYMax()) : double(muonShieldField->GetYMin()), double(muonShieldField->GetYMax())})
+        for (double z : {double(muonShieldField->GetZMin()), double(muonShieldField->GetZMax())}) {
+          const double local[3] = {x, y, z};
+          double global[3];
+          transform.LocalToMaster(local, global);
+          low = std::min(low, global[2]); high = std::max(high, global[2]);
+        }
+    if (low >= fMuonShieldZRange.second || high <= fMuonShieldZRange.first)
+      throw std::invalid_argument("Muon shield field does not overlap MuonShieldArea; check its z offset");
+  }
 }
 
 void MagneticTrackPropagator::SetAccuracy(double positionTolerance,
@@ -58,53 +110,210 @@ double MagneticTrackPropagator::GetPlaneZ(const char* volumeName) const {
   return z;
 }
 
-void MagneticTrackPropagator::FindFieldRegions() {
-  if (!fField) return;
-  const auto* data = fField->getFieldMap();
-  const int nx = fField->GetNx(), ny = fField->GetNy(), nz = fField->GetNz();
+std::pair<double, double> MagneticTrackPropagator::GetVolumeZRange(const char* volumeName) const {
+  std::pair<double, double> range;
+  if (!volumeName || !fGeometry || !fGeometry->GetTopNode()
+      || !FindVolumeRange(fGeometry->GetTopNode(), TGeoHMatrix(), volumeName, range))
+    throw std::runtime_error(std::string("Volume z range not found in geometry: ") + (volumeName ? volumeName : "null"));
+  return range;
+}
+
+bool MagneticTrackPropagator::InsideBox(const TVector3& position, const Box& box) {
+  for (int axis = 0; axis < 3; ++axis)
+    if (position[axis] < box.minimum[axis] || position[axis] > box.maximum[axis]) return false;
+  return true;
+}
+
+bool MagneticTrackPropagator::SegmentIntersectsBox(const State& start, const State& end, const Box& box) {
+  const double dz = end.position.Z() - start.position.Z();
+  if (dz == 0.) return InsideBox(start.position, box);
+  const double t1 = (box.minimum.Z() - start.position.Z()) / dz;
+  const double t2 = (box.maximum.Z() - start.position.Z()) / dz;
+  const double lo = std::max(0., std::min(t1, t2)), hi = std::min(1., std::max(t1, t2));
+  if (lo > hi) return false;
+  // The same cubic Hermite curve used by PositionAt. Solve for crossings of
+  // all four side faces, including curved tracks whose endpoints both miss.
+  double coefficients[2][4];
+  std::vector<double> candidates{lo, hi};
+  for (int axis = 0; axis < 2; ++axis) {
+    const double a = start.position[axis], b = end.position[axis];
+    const double da = dz * start.momentum[axis] / start.momentum.Z();
+    const double db = dz * end.momentum[axis] / end.momentum.Z();
+    auto& c = coefficients[axis];
+    c[0] = a; c[1] = da; c[2] = 3.*(b - a) - 2.*da - db; c[3] = 2.*(a - b) + da + db;
+    const auto value = [&c](double t) { return ((c[3]*t + c[2])*t + c[1])*t + c[0]; };
+    std::vector<double> knots{lo, hi};
+    const auto addKnot = [&knots, lo, hi](double t) {
+      if (t > lo && t < hi) knots.push_back(t);
+    };
+    // Split at derivative roots, so each interval is monotonic for bisection.
+    if (c[3] == 0.) {
+      if (c[2] != 0.) addKnot(-c[1] / (2.*c[2]));
+    } else {
+      const double discriminant = 4.*c[2]*c[2] - 12.*c[3]*c[1];
+      if (discriminant >= 0.) {
+        addKnot((-2.*c[2] - std::sqrt(discriminant)) / (6.*c[3]));
+        addKnot((-2.*c[2] + std::sqrt(discriminant)) / (6.*c[3]));
+      }
+    }
+    std::sort(knots.begin(), knots.end());
+    candidates.insert(candidates.end(), knots.begin(), knots.end());
+    for (double face : {box.minimum[axis], box.maximum[axis]}) {
+      for (std::size_t i = 1; i < knots.size(); ++i) {
+        double left = knots[i - 1], right = knots[i];
+        double fleft = value(left) - face, fright = value(right) - face;
+        if ((fleft < 0. && fright > 0.) || (fleft > 0. && fright < 0.)) {
+          for (int iteration = 0; iteration < 50; ++iteration) {
+            const double middle = (left + right) / 2., fmiddle = value(middle) - face;
+            if ((fleft < 0.) == (fmiddle < 0.)) { left = middle; fleft = fmiddle; }
+            else right = middle;
+          }
+          candidates.push_back((left + right) / 2.);
+        }
+      }
+    }
+  }
+  const auto inside = [&coefficients, &box](double t) {
+    for (int axis = 0; axis < 2; ++axis) {
+      const auto& c = coefficients[axis];
+      const double value = ((c[3]*t + c[2])*t + c[1])*t + c[0];
+      if (value < box.minimum[axis] - 1.e-9 || value > box.maximum[axis] + 1.e-9) return false;
+    }
+    return true;
+  };
+  std::sort(candidates.begin(), candidates.end());
+  for (std::size_t i = 0; i < candidates.size(); ++i) {
+    if (inside(candidates[i])) return true;
+    if (i && inside((candidates[i - 1] + candidates[i]) / 2.)) return true;
+  }
+  return false;
+}
+
+bool MagneticTrackPropagator::IntersectsBox(double charge, const TVector3& position,
+                                           const TVector3& momentum, const TVector3& minimum,
+                                           const TVector3& maximum) const {
+  if (!Finite(position) || !Finite(momentum) || !Finite(minimum) || !Finite(maximum)
+      || !std::isfinite(charge) || !std::isfinite(momentum.Mag()) || momentum.Mag() <= 0.) return false;
+  for (int axis = 0; axis < 3; ++axis)
+    if (minimum[axis] >= maximum[axis]) throw std::invalid_argument("Invalid detector box extent");
+  const Box box{minimum, maximum};
+  if (InsideBox(position, box)) return true;
+  if (charge != 0.) EnsureMuonShield(std::min(position.Z(), minimum.Z()));
+  const bool zeroField = std::all_of(fFields.begin(), fFields.end(), [&](const auto& map) {
+    return std::none_of(map.regions.begin(), map.regions.end(), [&](const auto& region) {
+      double entry, exit;
+      return RayBoxInterval(position, momentum, region, entry, exit);
+    });
+  });
+  if (charge == 0. || zeroField) {
+    double entry, exit;
+    return RayBoxInterval(position, momentum, box, entry, exit);
+  }
+  const double z = momentum.Z() >= 0. ? maximum.Z() : minimum.Z();
+  if ((z - position.Z()) * momentum.Z() < 0.) return false;
+  State result;
+  return Propagate(charge, position, momentum, z, result, nullptr, &box);
+}
+
+bool MagneticTrackPropagator::RayBoxInterval(const TVector3& position, const TVector3& direction,
+                                             const Box& box, double& entry, double& exit) {
+  entry = 0.; exit = std::numeric_limits<double>::infinity();
+  for (int axis = 0; axis < 3; ++axis) {
+    if (direction[axis] == 0.) {
+      if (position[axis] < box.minimum[axis] || position[axis] > box.maximum[axis]) return false;
+    } else {
+      const double a = (box.minimum[axis] - position[axis]) / direction[axis];
+      const double b = (box.maximum[axis] - position[axis]) / direction[axis];
+      entry = std::max(entry, std::min(a, b));
+      exit = std::min(exit, std::max(a, b));
+    }
+  }
+  return entry <= exit;
+}
+
+void MagneticTrackPropagator::SetMuonShieldMinZ(double minimumZ) {
+  if (std::isnan(minimumZ) || minimumZ == std::numeric_limits<double>::infinity())
+    throw std::invalid_argument("Invalid muon shield minimum z");
+  if (fMuonShieldReady) fFields.pop_back();
+  fMuonShieldReady = false;
+  fMuonShieldMinZ = minimumZ;
+  fTrajectory.clear();
+}
+
+void MagneticTrackPropagator::EnsureMuonShield(double minimumZ) const {
+  if (!fMuonShieldField) return;
+  // Reused propagators and backward tracks can request an earlier range.
+  if (minimumZ < fMuonShieldMinZ) {
+    if (fMuonShieldReady) fFields.pop_back();
+    fMuonShieldReady = false;
+    fMuonShieldMinZ = minimumZ;
+  }
+  if (!fMuonShieldReady) {
+    AddFieldMap(fMuonShieldField, fMuonShieldMinZ);
+    fMuonShieldReady = true;
+  }
+}
+
+void MagneticTrackPropagator::AddFieldMap(ShipBFieldMap* field, double minimumZ) const {
+  if (!field) return;
+  const auto* data = field->getFieldMap();
+  const int nx = field->GetNx(), ny = field->GetNy(), nz = field->GetNz();
   if (nx < 2 || ny < 2 || nz < 2 || !data
       || data->size() != std::size_t(nx) * ny * nz
-      || !(fField->GetdX() > 0.) || !(fField->GetdY() > 0.) || !(fField->GetdZ() > 0.))
+      || !(field->GetdX() > 0.) || !(field->GetdY() > 0.) || !(field->GetdZ() > 0.))
     throw std::invalid_argument("Invalid magnetic field grid");
-  fGridStep = 0.5 * std::min({fField->GetdX(), fField->GetdY(), fField->GetdZ()});
-  // An active grid node affects the adjacent interpolation cells. Project
-  // their whole x/y extent onto global z, including rotations and symmetry.
-  std::vector<bool> active(nz, false);
-  for (std::size_t i = 0; i < data->size(); ++i) {
-    const auto& b = data->at(i);
-    if (!std::isfinite(b[0]) || !std::isfinite(b[1]) || !std::isfinite(b[2]))
-      throw std::invalid_argument("Non-finite magnetic field value");
-    if (b[0] != 0. || b[1] != 0. || b[2] != 0.) active[i % nz] = true;
-  }
-  TGeoTranslation translation(fField->GetXOffset(), fField->GetYOffset(), fField->GetZOffset());
-  TGeoRotation rotation("propagationRotation", fField->GetPhi(), fField->GetTheta(), fField->GetPsi());
+  FieldMap map{field, {}, 0.5 * std::min({field->GetdX(), field->GetdY(), field->GetdZ()})};
+  TGeoTranslation translation(field->GetXOffset(), field->GetYOffset(), field->GetZOffset());
+  TGeoRotation rotation("propagationRotation", field->GetPhi(), field->GetTheta(), field->GetPsi());
   TGeoCombiTrans transform(translation, rotation);
-  const double xmin = fField->HasSymmetry() ? -fField->GetXMax() : fField->GetXMin();
-  const double ymin = fField->HasSymmetry() ? -fField->GetYMax() : fField->GetYMin();
+  const double xmin = field->HasSymmetry() ? -field->GetXMax() : field->GetXMin();
+  const double ymin = field->HasSymmetry() ? -field->GetYMax() : field->GetYMin();
+  // Each nonzero node contributes to both neighbouring interpolation cells.
+  // Transform all corners, retaining a conservative 3D envelope for rotations
+  // and quadrant symmetry. Skip reading layers wholly below the input range.
   for (int iz = 0; iz < nz; ++iz) {
-    if (!active[iz]) continue;
-    const double zlo = fField->GetZMin() + std::max(0, iz - 1) * fField->GetdZ();
-    const double zhi = fField->GetZMin() + std::min(nz - 1, iz + 1) * fField->GetdZ();
-    double lo = std::numeric_limits<double>::infinity(), hi = -lo;
-    for (double x : {xmin, double(fField->GetXMax())})
-      for (double y : {ymin, double(fField->GetYMax())})
+    const double zlo = field->GetZMin() + std::max(0, iz - 1) * field->GetdZ();
+    const double zhi = field->GetZMin() + std::min(nz - 1, iz + 1) * field->GetdZ();
+    const double inf = std::numeric_limits<double>::infinity();
+    Box region{TVector3(inf, inf, inf), TVector3(-inf, -inf, -inf)};
+    for (double x : {xmin, double(field->GetXMax())})
+      for (double y : {ymin, double(field->GetYMax())})
         for (double z : {zlo, zhi}) {
           const double local[3] = {x, y, z};
           double global[3];
           transform.LocalToMaster(local, global);
-          lo = std::min(lo, global[2]);
-          hi = std::max(hi, global[2]);
+          for (int axis = 0; axis < 3; ++axis) {
+            region.minimum[axis] = std::min(region.minimum[axis], global[axis]);
+            region.maximum[axis] = std::max(region.maximum[axis], global[axis]);
+          }
         }
-    fFieldRegions.emplace_back(lo, hi);
+    if (region.maximum.Z() < minimumZ) continue;
+    bool active = false;
+    for (int ix = 0; ix < nx; ++ix)
+      for (int iy = 0; iy < ny; ++iy) {
+        const auto& b = data->at((std::size_t(ix) * ny + iy) * nz + iz);
+        if (!std::isfinite(b[0]) || !std::isfinite(b[1]) || !std::isfinite(b[2]))
+          throw std::invalid_argument("Non-finite magnetic field value");
+        active = active || b[0] != 0. || b[1] != 0. || b[2] != 0.;
+      }
+    if (!active) continue;
+    region.minimum.SetZ(std::max(region.minimum.Z(), minimumZ));
+    map.regions.push_back(region);
   }
-  std::sort(fFieldRegions.begin(), fFieldRegions.end());
-  std::vector<std::pair<double, double>> merged;
-  for (const auto& region : fFieldRegions) {
-    if (!merged.empty() && region.first <= merged.back().second)
-      merged.back().second = std::max(merged.back().second, region.second);
-    else merged.push_back(region);
+  std::sort(map.regions.begin(), map.regions.end(), [](const Box& a, const Box& b) {
+    return a.minimum.Z() < b.minimum.Z();
+  });
+  std::vector<Box> merged;
+  for (const auto& region : map.regions) {
+    if (!merged.empty() && region.minimum.Z() <= merged.back().maximum.Z()) {
+      for (int axis = 0; axis < 3; ++axis) {
+        merged.back().minimum[axis] = std::min(merged.back().minimum[axis], region.minimum[axis]);
+        merged.back().maximum[axis] = std::max(merged.back().maximum[axis], region.maximum[axis]);
+      }
+    } else merged.push_back(region);
   }
-  fFieldRegions.swap(merged);
+  map.regions.swap(merged);
+  fFields.push_back(std::move(map));
 }
 
 bool MagneticTrackPropagator::Derivative(const State& state, double charge,
@@ -113,7 +322,14 @@ bool MagneticTrackPropagator::Derivative(const State& state, double charge,
       || state.momentum.Z() * pzSign <= 1.e-10 * state.momentum.Mag()) return false;
   const double point[3] = {state.position.X(), state.position.Y(), state.position.Z()};
   double b[3] = {0., 0., 0.};
-  if (fField) fField->Field(point, b);
+  for (const auto& map : fFields) {
+    if (std::none_of(map.regions.begin(), map.regions.end(), [&state](const auto& region) {
+          return InsideBox(state.position, region);
+        })) continue;
+    double component[3] = {0., 0., 0.};
+    map.field->Field(point, component);
+    for (int i = 0; i < 3; ++i) b[i] += component[i];
+  }
   derivative.position = state.momentum * (1. / state.momentum.Z());
   // dp/dz = 0.000299792458 q (p cross B)/pz for cm, GeV/c and kGauss.
   derivative.momentum = state.momentum.Cross(TVector3(b[0], b[1], b[2]))
@@ -140,30 +356,39 @@ bool MagneticTrackPropagator::RKStep(const State& state, double charge, double p
 
 bool MagneticTrackPropagator::Propagate(double charge, const TVector3& position,
                                        const TVector3& momentum, double z, State& result,
-                                       std::vector<State>* trajectory) const {
+                                       std::vector<State>* trajectory, const Box* box) const {
   if (!Finite(position) || !Finite(momentum) || !std::isfinite(z) || !std::isfinite(charge)
       || !std::isfinite(momentum.Mag()) || momentum.Mag() <= 0.) return false;
+  if (charge != 0.) EnsureMuonShield(std::min(position.Z(), z));
   result = {position, momentum};
   if (trajectory) trajectory->push_back(result);
-  if (z == position.Z()) return true;
+  if (box && InsideBox(position, *box)) return true;
+  if (z == position.Z()) return box == nullptr;
   const double p = momentum.Mag(), pzSign = momentum.Z() >= 0. ? 1. : -1.;
   if (std::abs(momentum.Z()) <= 1.e-10 * p) return false;
   const double direction = z > position.Z() ? 1. : -1.;
   double nextStep = fMaxStep;
   for (unsigned step = 0; step < 100000; ++step) {
     const double currentZ = result.position.Z();
-    if (currentZ == z) return true;
+    if (currentZ == z) return box == nullptr;
+    const State previous = result;
     double boundary = z;
     bool inField = false;
+    double gridStep = fMaxStep;
     if (charge != 0.) {
-      for (const auto& region : fFieldRegions) {
-        const double entry = direction > 0. ? region.first : region.second;
-        const double leave = direction > 0. ? region.second : region.first;
-        if (direction * (currentZ - entry) >= 0. && direction * (leave - currentZ) > 0.) {
-          inField = true;
-          if (direction * (leave - boundary) < 0.) boundary = leave;
-        } else if (direction * (entry - currentZ) > 0. && direction * (entry - boundary) < 0.) {
-          boundary = entry;
+      for (const auto& map : fFields) {
+        for (const auto& region : map.regions) {
+          double entry, exit;
+          const TVector3 travel = (direction / result.momentum.Z()) * result.momentum;
+          if (!RayBoxInterval(result.position, travel, region, entry, exit) || exit <= 0.) continue;
+          if (entry <= 1.e-7) {
+            inField = true;
+            gridStep = std::min(gridStep, map.gridStep);
+            const double leave = direction > 0. ? region.maximum.Z() : region.minimum.Z();
+            if (direction * (leave - boundary) < 0.) boundary = leave;
+          } else if (entry < direction * (boundary - currentZ)) {
+            boundary = currentZ + direction * entry;
+          }
         }
       }
     }
@@ -173,7 +398,7 @@ bool MagneticTrackPropagator::Propagate(double charge, const TVector3& position,
       if (!Finite(result.position)) return false;
     } else {
       double dz = direction * std::min({std::abs(boundary - currentZ), nextStep,
-                      std::min(fMaxStep, fGridStep) * std::abs(result.momentum.Z()) / p});
+                      gridStep * std::abs(result.momentum.Z()) / p});
       State full, half, fine;
       bool accepted = false;
       for (int retry = 0; retry < 40; ++retry) {
@@ -196,6 +421,7 @@ bool MagneticTrackPropagator::Propagate(double charge, const TVector3& position,
       }
       if (!accepted) return false;
     }
+    if (box && SegmentIntersectsBox(previous, result, *box)) return true;
     if (trajectory) trajectory->push_back(result);
   }
   return false;

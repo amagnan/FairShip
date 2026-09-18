@@ -12,8 +12,8 @@ Multiple input files are accepted after `-f`. The output must not already exist.
 `-s` sets the first muon entry; `-n` limits the number of input entries (zero
 processes none; -1 processes all remaining entries).
 
-The filter cut applies independently to each DIS interaction in each material. By
-default it requires at least two charged daughters whose extrapolated positions
+The filter cut applies independently to each DIS interaction in each material.
+`--filter-option 0` (the default) requires at least two charged daughters whose extrapolated positions
 are within a centred 4 m by 6 m plane: `|x| <= 200 cm`, `|y| <= 300 cm`.
 All daughters start at their DIS vertex. Only crossings in the particle's
 direction of motion count. Outgoing muons are included by default. Use
@@ -21,17 +21,69 @@ direction of motion count. Outgoing muons are included by default. Use
 charges, with a nuclear-PDG-code fallback; unknown non-nuclear codes do not
 count as charged.
 
+Choose another acceptance condition with `--filter-option`:
+
+* **0:** the existing single-plane charged-multiplicity filter. `--min-charged`,
+  `--detector-z`, and `--no-detector-acceptance` retain their original meaning.
+* **1:** at least two charged daughters must each hit `(Tr1 or Tr2)` **and**
+  `(Tr3 or Tr4)` **and** the timing detector. Each plane accepts
+  `|x| <= 200 cm`, `|y| <= 300 cm`. The plane centres are read from the placed
+  `Tr1`, `Tr2`, `Tr3`, `Tr4`, and `Timing Detector` geometry volumes. Hits from
+  different daughters cannot be combined to satisfy one track's condition.
+* **2:** at least one daughter, including neutral daughters, must enter the
+  rectangular detector volume `|x| <= 200 cm`, `|y| <= 300 cm`, from the front
+  face of `Tr1` to the back face of `SplitCalDetector`. Bounds include parent
+  placements and the volumes' bounding-box extents. Neutral particles travel
+  in straight lines; charged particles use both field maps. Side entries count,
+  including tracks that miss both z-end planes. Daughters starting inside count.
+
+Options 1 and 2 require geometry and detector acceptance. Their multiplicities
+are fixed (two and one respectively); `--min-charged` applies only to option 0.
+`--exclude-muons` applies to all three options. Only intersections along the
+particle's forward trajectory count, including motion towards decreasing z.
+These are geometric acceptance tests, not detector-efficiency or interaction
+models. The existing custom `SetFilter` predicate still overrides every mode.
+
+```sh
+python newMuonDIS/filterEvents.py -f prepared.root -o selected.root \
+    -g geometry.root --filter-option 1
+```
+
+In C++, call `selection.SetFilterOption(1)` before or after
+`SetDetectorAcceptance(...)`. Missing geometry volumes produce an error.
+
 The plane defaults to the global z coordinate of the `Tr1` station centre in
 the imported ROOT geometry, including parent placements. `--detector-z` overrides
 it in cm. Like `macro/ShipReco.py`, the filter loads `ShipGeo` from the geometry
-file and calls `geomGeant4.addVMCFields(..., withVirtualMC=False)`. Only the SST
-`MainSpecMap` is configured; the field maker remains alive throughout filtering.
+file and calls `geomGeant4.addVMCFields(..., withVirtualMC=False)` for the SST
+`MainSpecMap`; the field maker remains alive throughout filtering.
 The filename and translation default to `ShipGeo.Bfield.fieldMap` (relative to
 `VMCWORKDIR`) and `ShipGeo.Bfield.z`. `--field-map` overrides the filename;
 explicit paths are resolved relative to the current directory.
 `--field-z` supplies an explicit map offset (cm), for example `0` for a map
 already expressed in global coordinates. Map coordinates are in cm and map
 file field values in Tesla, as required by `ShipBFieldMap`.
+
+When the imported geometry contains `MuonShieldArea`, the filter also loads
+`files/<ShipGeo.shieldName>.root` as `muonShieldField`, with z offset
+`ShipGeo.muShield.Entrance[0]` and quadrant symmetry, matching the simulation
+field setup. `--muon-shield-field-map` and `--muon-shield-field-z` override the
+shield map path and offset (cm). Missing maps or geometry metadata are reported
+as errors rather than silently omitting shield deflection. Both map files are
+excluded from recursive input discovery. Geometries without `MuonShieldArea`
+continue to support SST-only propagation.
+
+The shield's global z range comes from the `MuonShieldArea` bounding box,
+including all parent placements, and is logged at initialization. A nonzero
+shield map must overlap this range. Nonzero fringe fields outside the iron are
+retained. Before filtering, a vertex-only scan over the requested `-s/-n`
+entries finds the minimum MS vertex z. Earlier vertices in other materials or
+detector planes lower this limit conservatively. The shield bounds scan skips
+map layers wholly upstream of this limit; no fixed shield-depth cut is used.
+Unreadable vertex data falls back to the full map. The original field map and
+its interpolation remain unchanged.
+Propagation uses straight lines outside both maps' conservative 3D bounds,
+jumping to the next ray/bounds intersection, and sums fields where they overlap.
 
 `--min-charged` sets the minimum number of accepted charged daughters.
 `--no-detector-acceptance` explicitly restores multiplicity-only filtering;
@@ -49,11 +101,18 @@ cut and with suffix `filtered` after the cut. Muon histograms before the cut
 include zero-DIS entries; filtered muon histograms include only muons with a
 passing interaction in that material. `muon_wDIS_` and `muon_wDIS_filtered`
 record the per-material `wDIS` once per input muon in their respective samples,
-with unit entry weight. Their initial range is [0, 1], extending automatically
-to accommodate weights outside that range. Momentum fractions use sums of momentum
+with unit entry weight. Their nominal range is [0, 1], with fixed bin width and visible flow bins. Momentum fractions use sums of momentum
 magnitudes; the muon fraction includes all muon daughters. Charged multiplicity
 histograms always count all charged species, independent of `--exclude-muons`.
 Malformed entries are logged and skipped before histogram filling.
+
+Every distribution axis has two additional visible bins of the original width:
+the first collects values below the nominal lower limit, and the last collects
+values at or above the nominal upper limit. This applies independently to both
+axes in 2D histograms, including corner overflow. Values are filled at the flow
+bin centres, so histogram means include these folded coordinates. Entry counts
+are unchanged. The labelled `filter_counts` summary retains its eight bins.
+
 
 `daughter_pdg_grouped_` and `daughter_pdg_grouped_filtered` group daughters
 into 11 labelled bins: e+, e-, mu+, mu-, gamma, all neutrinos/antineutrinos,
@@ -129,9 +188,10 @@ Reusable magnetic propagation
 -----------------------------
 
 `MagneticTrackPropagator` is independent of DIS event data. It takes a
-`ShipBFieldMap*` and an optional `TGeoManager*`. Positions are in cm, momentum
-vectors in GeV/c (magnitude and direction together), and charge in units of e.
-Both objects are borrowed: keep them alive and unchanged during propagation.
+`ShipBFieldMap*`, an optional `TGeoManager*`, and an optional third
+`ShipBFieldMap*` for the muon shield. Positions are in cm, momentum vectors in
+GeV/c (magnitude and direction together), and charge in units of e.
+All objects are borrowed: keep them alive and unchanged during propagation.
 A null field explicitly means zero field for generic transport; the filter
 requires a supplied map when detector acceptance is enabled.
 
@@ -153,11 +213,36 @@ selection.SetDetectorAcceptance(&field, gGeoManager);  // optional third argumen
 selection.process_file("prepared.root", "selected.root");
 ```
 
-The map is scanned once for nonzero z layers. Neighbouring interpolation cells,
-map placement, rotations and quadrant symmetry determine conservative global
-field regions. Transport across field-free gaps is exactly linear. Inside the
+To include a shield map already loaded and positioned by the caller:
+
+```cpp
+MagneticTrackPropagator transport(&field, gGeoManager, shieldField);
+auto shieldZ = transport.GetMuonShieldZRange();
+MuDISFilter selection;
+selection.SetDetectorAcceptance(&field, gGeoManager,
+                               std::numeric_limits<double>::quiet_NaN(), shieldField);
+```
+
+The shield map requires a placed `MuonShieldArea` volume in the geometry.
+The NaN detector z keeps the default `Tr1` plane; a finite z overrides it.
+Existing SST-only calls remain supported.
+
+`GetVolumeZRange(name)` returns the global front/back bounds of a placed volume.
+`IntersectsBox(charge, position, momentum, minimum, maximum)` tests whether a
+forward trajectory enters an axis-aligned box. It stops at the first hit, so
+a later turning point does not undo a hit. Charged segments use cubic Hermite
+interpolation and side-face crossings, with the same numerical accuracy limits
+as the propagator; neutral or entirely field-free tracks use exact ray/box
+intersection. Charged trajectories that turn in z before any hit remain outside
+the supported monotonic-z transport model.
+
+Nonzero map layers, neighbouring interpolation cells, map placement, rotations
+and quadrant symmetry determine conservative global 3D bounding boxes. These
+boxes can include empty pockets; they never remove weak fields. Transverse
+misses and field-free gaps use exact linear transport, including possible entry
+through a side face. Inside the
 field regions, adaptive RK4 with step doubling follows the Lorentz force; steps
-are bounded by half the smallest grid spacing and a 5 cm maximum path step.
+are bounded by half the smallest active map grid spacing and a 5 cm maximum path step.
 No threshold removes weak fringe fields. Grids with nonzero noise throughout
 their volume consequently require integration throughout that volume.
 
@@ -176,3 +261,9 @@ zero pz, a reversal in pz, or failed numerical convergence return false and do
 not count towards filter acceptance. The cached path represents one monotonic
 z crossing, not multiple crossings of a curling track. This implementation
 does not change `MuDISProcessor` or `MuonPath`.
+
+`SetMuonShieldMinZ(z)` restricts the shield bounds scan to the required global
+z range (cm); `GetMuonShieldMinZ()` reports the limit. Shield bounds are built
+lazily on the first charged propagation. A later request extending below the
+limit automatically expands and rebuilds them, preserving backward propagation
+and reuse with earlier vertices. The default is the complete map.
