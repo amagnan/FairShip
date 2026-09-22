@@ -1,5 +1,8 @@
 #include "MuGeoProcessor.h"
 
+#include <fstream>
+#include <utility>
+
 using namespace ShipMuDIS;
 
 MuGeoProcessor::MuGeoProcessor() {
@@ -180,6 +183,7 @@ void MuGeoProcessor::FillZmaxVolumes() {
 
 void MuGeoProcessor::CheckAllVolumes() {
   std::map<std::string, double> lMap;
+  std::map<std::pair<std::string, std::string>, double> volumeMaterials;
   if (!gGeoManager) {
     LOG(error) << "gGeoManager does not exist!";
     return;
@@ -209,9 +213,12 @@ void MuGeoProcessor::CheckAllVolumes() {
           unsigned lcount = 0;
 
           while (currentnode) {
-            std::string material =
-                currentnode->GetVolume()->GetMedium()->GetMaterial()->GetName();
+            const auto* geoMaterial =
+                currentnode->GetVolume()->GetMedium()->GetMaterial();
+            std::string material = geoMaterial->GetName();
             std::string volName = currentnode->GetVolume()->GetName();
+            volumeMaterials.emplace(std::make_pair(volName, material),
+                                    geoMaterial->GetDensity());
             // if (volName.find("Tr2") != volName.npos) break;
             volName.append("_");
             volName.append(material);
@@ -238,6 +245,29 @@ void MuGeoProcessor::CheckAllVolumes() {
   LOG(info) << " -- All volumes found in geometry: n=" << lMap.size();
   for (auto lele = lMap.begin(); lele != lMap.end(); ++lele) {
     LOG(info) << lele->first << " " << lele->second;
+  }
+
+  std::map<std::string, std::ostringstream> categoryOutput;
+  MuonPath path;
+  for (const auto& entry : volumeMaterials) {
+    const auto& volName = entry.first.first;
+    const auto& material = entry.first.second;
+    categoryOutput[path.GetLabel(volName, material)]
+        << "  volume=" << volName << ", material=" << material
+        << ", density=" << entry.second << " g/cm^3\n";
+  }
+  std::ostringstream summary;
+  summary << " -- Unique volumes and materials by MatType:\n";
+  for (const auto& category : MatTypeStr) {
+    summary << "MatType " << category.Data() << ":\n"
+            << categoryOutput[category.Data()].str();
+  }
+  LOG(info) << summary.str();
+  std::ofstream output("CheckAllVolumes.txt");
+  output << summary.str();
+  output.close();
+  if (!output) {
+    LOG(warning) << "Could not write volume summary to CheckAllVolumes.txt";
   }
 }
 
