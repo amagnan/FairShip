@@ -14,5 +14,6 @@
 #pragma link C++ class MuDISProcessor - ;
 #pragma link C++ class MuGeoProcessor - ;
 #pragma link C++ class MuonPath+;
+#pragma link C++ class DISparticle+;
 #pragma link C++ class std::vector<DISparticle>+;
 #endif

@@ -3,6 +3,7 @@
 
 import argparse
 import math
+import tempfile
 from pathlib import Path
 
 import ROOT
@@ -17,7 +18,7 @@ DEFAULTS = {
 }
 
 
-def histogram_paths(directory, prefix=""):
+def histogram_paths(directory, prefix="", include_counts=False):
     """Discover latest histogram cycles without keeping all histograms in memory."""
     paths = []
     for name in sorted({key.GetName() for key in directory.GetListOfKeys()}):
@@ -25,9 +26,9 @@ def histogram_paths(directory, prefix=""):
         cls = ROOT.TClass.GetClass(key.GetClassName())
         path = f"{prefix}{name}"
         if cls and cls.InheritsFrom("TDirectory"):
-            paths.extend(histogram_paths(directory.GetDirectory(name), path + "/"))
+            paths.extend(histogram_paths(directory.GetDirectory(name), path + "/", include_counts))
         elif cls and cls.InheritsFrom("TH1") and not cls.InheritsFrom("TH3"):
-            if name != "filter_counts":
+            if include_counts or name != "filter_counts":
                 paths.append(path)
     return paths
 
@@ -39,6 +40,83 @@ def read_histogram(source, path):
     histogram.SetDirectory(0)
     ROOT.SetOwnership(histogram, True)
     return histogram
+
+
+def input_files(input_path, name_contains, excluded=(), limit=None):
+    if limit is not None:
+        if limit < 1:
+            raise ValueError("--test must be a positive number of files")
+        if not input_path.is_dir():
+            raise ValueError("--test requires directory input")
+    if not input_path.is_dir():
+        return [input_path]
+    excluded = {path.resolve() for path in excluded if path is not None}
+    files = sorted({path.resolve() for path in input_path.rglob("*")
+                    if path.is_file() and path.suffix.lower() == ".root"
+                    and name_contains in path.name and path.resolve() not in excluded})
+    if not files:
+        raise ValueError(f"No ROOT files containing {name_contains!r} found in {input_path}")
+    return files if limit is None else files[:limit]
+
+
+def histogram_signature(histogram):
+    axes = [histogram.GetXaxis(), histogram.GetYaxis()][:histogram.GetDimension()]
+    return (histogram.ClassName(), tuple(
+        (tuple(axis.GetBinLowEdge(i) for i in range(1, axis.GetNbins() + 2)),
+         tuple(axis.GetBinLabel(i) for i in range(1, axis.GetNbins() + 1)))
+        for axis in axes))
+
+
+def merge_files(files, destination, include_tree=False):
+    """Check compatible distributions, then stream the merge through ROOT."""
+    if destination.exists():
+        raise ValueError(f"Merged output already exists: {destination}")
+    if include_tree:
+        particle_class = ROOT.TClass.GetClass("DISparticle", False)
+        if not particle_class or not particle_class.IsLoaded():
+            if ROOT.gSystem.Load("libShipMuDIS.so") < 0:
+                raise ValueError("Cannot load libShipMuDIS.so; run in the FairShip environment")
+        particle_class = ROOT.TClass.GetClass("DISparticle")
+        if not particle_class or not particle_class.IsLoaded():
+            raise ValueError("DISparticle dictionary is missing; rebuild libShipMuDIS.so")
+    reference = None
+    for path in files:
+        source = ROOT.TFile.Open(str(path), "READ")
+        if not source or source.IsZombie():
+            raise ValueError(f"Cannot open {path}")
+        try:
+            signatures = {}
+            for name in histogram_paths(source, include_counts=True):
+                histogram = read_histogram(source, name)
+                signatures[name] = histogram_signature(histogram)
+            if not signatures:
+                raise ValueError(f"No histograms found in {path}")
+            if reference is None:
+                reference = signatures
+            elif signatures != reference:
+                different = sorted(name for name in signatures.keys() | reference.keys()
+                                   if signatures.get(name) != reference.get(name))
+                raise ValueError(f"Incompatible histogram names/binning/labels in {path}: {', '.join(different)}")
+            if include_tree:
+                tree = source.Get("MuonDIS")
+                if not tree or not tree.InheritsFrom("TTree"):
+                    raise ValueError(f"MuonDIS tree not found in {path}")
+        finally:
+            source.Close()
+    merger = ROOT.TFileMerger(False, False)
+    merger.SetNotrees(not include_tree)
+    merger.SetMaxOpenedFiles(20)
+    if not merger.OutputFile(str(destination), "CREATE"):
+        raise ValueError(f"Cannot create merged output: {destination}")
+    try:
+        for path in files:
+            print(f"Merging input: {path}")
+            if not merger.AddFile(str(path)):
+                raise ValueError(f"Cannot add merge input: {path}")
+        if not merger.Merge():
+            raise ValueError("ROOT file merge failed")
+    finally:
+        merger.CloseOutputFile()
 
 
 def settings_for(config, path):
@@ -199,24 +277,51 @@ def write_table(source, paths, destination):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("-f", "--inputfile", required=True, type=Path)
+    parser.add_argument("-f", "--inputfile", required=True, type=Path, help="ROOT file or directory (searched recursively)")
+    parser.add_argument("--name-contains", default="_filtered.root",
+                        help="Substring required in directory input ROOT filenames (default: _filtered.root)")
+    parser.add_argument("--test", type=int, metavar="N",
+                        help="Process only the first N matching directory files in sorted order")
+    parser.add_argument("--merge-tree", type=Path, metavar="OUTPUT_ROOT",
+                        help="Save merged histograms and MuonDIS trees to a new ROOT file")
     parser.add_argument("-c", "--config", type=Path, default=Path(__file__).with_name("plotFilterEvents.yaml"))
     parser.add_argument("-o", "--output", type=Path, help="Multipage PDF (default: input filename with .pdf)")
     parser.add_argument("--latex", type=Path, help="Also write a LaTeX count table")
     parser.add_argument("--write-config", type=Path, help="Write YAML with actual histogram ranges and exit")
     args = parser.parse_args()
-    output = args.output or args.inputfile.with_suffix(".pdf")
-    destinations = [args.write_config] if args.write_config else [output, args.latex]
-    resolved = [path.resolve() for path in destinations if path is not None]
-    if (len(set(resolved)) != len(resolved)
-            or any(path in (args.inputfile.resolve(), args.config.resolve()) for path in resolved)):
-        parser.error("Output paths must differ from each other and from the input/config files")
-    if not args.write_config and output.suffix.lower() != ".pdf":
-        parser.error("The plot output must have a .pdf extension")
-    source = ROOT.TFile.Open(str(args.inputfile), "READ")
-    if not source or source.IsZombie():
-        parser.error(f"Cannot open {args.inputfile}")
+    output = args.output or (args.inputfile / "merged.pdf" if args.inputfile.is_dir()
+                             else args.inputfile.with_suffix(".pdf"))
+    source = None
+    temporary = None
     try:
+        if args.write_config and args.merge_tree:
+            raise ValueError("--write-config cannot be combined with --merge-tree")
+        files = input_files(args.inputfile, args.name_contains, [args.merge_tree], limit=args.test)
+        destinations = [args.write_config] if args.write_config else [output, args.latex, args.merge_tree]
+        resolved = [path.resolve() for path in destinations if path is not None]
+        protected = {path.resolve() for path in files} | {args.inputfile.resolve(), args.config.resolve()}
+        if len(set(resolved)) != len(resolved) or any(path in protected for path in resolved):
+            raise ValueError("Output paths must differ from each other and from the input/config files")
+        if not args.write_config and output.suffix.lower() != ".pdf":
+            raise ValueError("The plot output must have a .pdf extension")
+        if args.merge_tree and args.merge_tree.suffix.lower() != ".root":
+            raise ValueError("The merged output must have a .root extension")
+        print(f"Found {len(files)} input file(s).")
+        if args.test is not None:
+            print(f"Test mode: using at most the first {args.test} matching files in sorted order.")
+        merged_path = files[0]
+        if args.inputfile.is_dir() or args.merge_tree:
+            if args.merge_tree:
+                merged_path = args.merge_tree
+            else:
+                temporary = tempfile.TemporaryDirectory(prefix="filter-histograms-")
+                merged_path = Path(temporary.name) / "merged.root"
+            merge_files(files, merged_path, include_tree=bool(args.merge_tree))
+            if args.merge_tree:
+                print(f"Saved merged histograms and trees to {merged_path}")
+        source = ROOT.TFile.Open(str(merged_path), "READ")
+        if not source or source.IsZombie():
+            raise ValueError(f"Cannot open {merged_path}")
         paths = histogram_paths(source)
         if not paths:
             raise ValueError("No 1D or 2D histograms found")
@@ -272,7 +377,10 @@ def main():
     except (OSError, ValueError, yaml.YAMLError) as error:
         parser.error(str(error))
     finally:
-        source.Close()
+        if source:
+            source.Close()
+        if temporary:
+            temporary.cleanup()
 
 
 if __name__ == "__main__":

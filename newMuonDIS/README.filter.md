@@ -130,6 +130,27 @@ pixi run python newMuonDIS/plotFilterEvents.py -f selected.root \
     -c newMuonDIS/plotFilterEvents.yaml -o selected.pdf --latex counts.tex
 ```
 
+Directory input merges matching ROOT files before plotting (immediate files,
+not subdirectories). The default filename substring is `_filtered.root`;
+`--name-contains` changes it. Matching files must have identical histogram
+names, classes, binning and axis labels, including `filter_counts`. Histograms
+and raw/weighted count summaries are summed; incompatible files are rejected.
+
+```bash
+python newMuonDIS/plotFilterEvents.py -f results/ -o combined.pdf --latex combined.tex
+python newMuonDIS/plotFilterEvents.py -f results/ --name-contains selected \
+    -o combined.pdf --merge-tree combined.root
+```
+
+Without `--merge-tree`, only histograms are merged into a temporary ROOT file
+that is removed after plotting. With `--merge-tree OUTPUT_ROOT`, the new file
+contains merged histograms and concatenated trees; every input must contain a
+`MuonDIS` tree. Existing merged outputs are not overwritten, and the specified
+merged output is excluded from directory discovery. Single-file input remains
+supported. The default PDF for directory input is `merged.pdf` inside that
+directory. `--write-config` also accepts a directory and writes ranges from its
+merged histograms; it cannot be combined with `--merge-tree`.
+
 The supplied YAML defaults to full stored histogram ranges, linear axes, and no
 rebinning. `x_range`, `y_range`, and `z_range` take `[minimum, maximum]` or `null`.
 For 1D histograms, `y_range` controls bin contents; for 2D, `y_range` controls the
