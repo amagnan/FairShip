@@ -63,6 +63,11 @@ the largest gap. Set the threshold with `--poca-jump-threshold <cm>` in
 `prepareEvents.py`, or `MuDISProcessor::SetPocaJumpThreshold(cm)` in C++.
 The default is 1 cm, and a gap equal to the threshold is not counted.
 
+Each output muon has `muon_path_length`, the sum of all navigated path
+segments, and `muon_path_length_<MatType>` branches for `MS`, `UBT`,
+`SBTsens`, `SBTfr`, `SSTsens`, `SSTfr`, `HE`, `AIR`, and `REST`.  These
+lengths are in cm and exclude transverse POCA jumps.
+
 ## DIS events settings
 
 - Pythia6 initialised with

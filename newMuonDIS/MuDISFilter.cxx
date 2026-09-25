@@ -906,6 +906,10 @@ void MuDISFilter::ProcessEvents() {
       foutEv.ubtPt = *finEv.ubtPt;
       foutEv.sstPt = *finEv.sstPt;
       foutEv.tdPt = finEv.tdPt.Get();
+      if (finEv.hasPathLengths) {
+        foutEv.pathLength = finEv.pathLength;
+        foutEv.pathLengthByMat = finEv.pathLengthByMat;
+      }
       if (fouttree->Fill() < 0)
         throw std::runtime_error("Failed writing MuonDIS entry");
       ++selected;

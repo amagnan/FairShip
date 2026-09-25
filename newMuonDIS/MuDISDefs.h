@@ -90,6 +90,8 @@ struct MuonBranches {
   std::vector<UpstreamTaggerPoint> ubtPt;
   std::vector<strawtubesPoint> sstPt;
   std::vector<TimeDetPoint> tdPt;
+  double pathLength = 0.;
+  std::array<double, nMats> pathLengthByMat = {};
   MuonDISBranches br[nMats];
   void InitTree(TTree*& aT) {
     aT->Branch("muon_MCTracks", &mcTrks);
@@ -97,7 +99,9 @@ struct MuonBranches {
     aT->Branch("muon_SSTPoints", &sstPt);
     aT->Branch("muon_UBTPoints", &ubtPt);
     aT->Branch("muon_TDPoints", &tdPt);
+    aT->Branch("muon_path_length", &pathLength);
     for (unsigned i(0); i < nMats; ++i) {
+      aT->Branch("muon_path_length_" + MatTypeStr[i], &pathLengthByMat[i]);
       br[i].InitTree(aT, MatTypeStr[i]);
     }
   };
@@ -112,6 +116,8 @@ struct MuonBranches {
     sstPt.reserve(nMax);
     tdPt.clear();
     tdPt.reserve(nMax);
+    pathLength = 0.;
+    pathLengthByMat.fill(0.);
   };
 };
 
@@ -238,6 +244,9 @@ struct MuonInBranches {
   std::vector<UpstreamTaggerPoint>* ubtPt = nullptr;
   std::vector<strawtubesPoint>* sstPt = nullptr;
   OptionalTDPoints tdPt;
+  double pathLength = 0.;
+  std::array<double, nMats> pathLengthByMat = {};
+  bool hasPathLengths = false;
   MuonDISInBranches br[nMats];
 
   bool Setup(TTree* aT) {
@@ -247,6 +256,14 @@ struct MuonInBranches {
     ok &= (aT->SetBranchAddress("muon_SSTPoints", &sstPt) >= 0);
     ok &= (aT->SetBranchAddress("muon_UBTPoints", &ubtPt) >= 0);
     tdPt.Setup("muon_TDPoints");
+    hasPathLengths = aT->GetBranch("muon_path_length") != nullptr;
+    if (hasPathLengths) {
+      ok &= (aT->SetBranchAddress("muon_path_length", &pathLength) >= 0);
+      for (unsigned i = 0; i < nMats; ++i) {
+        ok &= (aT->SetBranchAddress("muon_path_length_" + MatTypeStr[i],
+                                    &pathLengthByMat[i]) >= 0);
+      }
+    }
     for (unsigned i(0); i < nMats; ++i) {
       ok &= br[i].SetupTree(aT, MatTypeStr[i]);
     }

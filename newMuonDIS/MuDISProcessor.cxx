@@ -481,6 +481,15 @@ void MuDISProcessor::ProcessMuons() {
       continue;
     }
 
+    // Persist the complete navigated path, including REST.  The component
+    // lengths are the same ones used below for DIS vertex sampling.
+    for (unsigned i = 0; i < nMats; ++i) {
+      const auto path = lPathMap.find(MatTypeStr[i].Data());
+      if (path == lPathMap.end()) continue;
+      foutEv.pathLengthByMat[i] = path->second.GetLength();
+      foutEv.pathLength += foutEv.pathLengthByMat[i];
+    }
+
     // loop over the map, and do nDIS event in each element, with weight
     // length*density. That way, do only once the calculation of the path, and
     // plenty of DIS in each material. fill a branch with weight = path
