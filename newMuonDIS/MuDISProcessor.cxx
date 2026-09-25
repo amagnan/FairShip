@@ -253,6 +253,9 @@ void MuDISProcessor::generateDISevents(const std::string& tType,
     return;
   }
   double P = aPath.GetMomentum(0);
+  LOG(debug) << " ** initial mu momentum: " << (*finEv.MCTrack).front().GetP()
+	     << " Pythia init P: " << P;
+  
   if (P < fMinPythiaP) {
     LOG(info) << " --- calling Pythia initialise with momentum " << P
               << " in material " << aLabel

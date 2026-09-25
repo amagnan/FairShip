@@ -9,11 +9,13 @@ python newMuonDIS/filterEvents.py -f prepared.root -o selected.root \
 ```
 
 Multiple input files are accepted after `-f`. The output must not already exist.
+Use `--ignore-input-containing STRING` (repeatable) to skip matching paths while
+searching input directories.
 `-s` sets the first muon entry; `-n` limits the number of input entries (zero
 processes none; -1 processes all remaining entries).
 
 The filter cut applies independently to each DIS interaction in each material.
-`--filter-option 0` (the default) requires at least two charged daughters whose extrapolated positions
+`--filter-option 0` (the default) requires at least two charged daughters with momentum above 1 GeV whose extrapolated positions
 are within a centred 4 m by 6 m plane: `|x| <= 200 cm`, `|y| <= 300 cm`.
 All daughters start at their DIS vertex. Only crossings in the particle's
 direction of motion count. Outgoing muons are included by default. Use
@@ -25,7 +27,7 @@ Choose another acceptance condition with `--filter-option`:
 
 * **0:** the existing single-plane charged-multiplicity filter. `--min-charged`,
   `--detector-z`, and `--no-detector-acceptance` retain their original meaning.
-* **1:** at least two charged daughters must each hit `(Tr1 or Tr2)` **and**
+* **1:** at least two charged daughters with momentum above 1 GeV must each hit `(Tr1 or Tr2)` **and**
   `(Tr3 or Tr4)` **and** the timing detector. Each plane accepts
   `|x| <= 200 cm`, `|y| <= 300 cm`. The plane centres are read from the placed
   `Tr1`, `Tr2`, `Tr3`, `Tr4`, and `Timing Detector` geometry volumes. Hits from
@@ -43,6 +45,22 @@ are fixed (two and one respectively); `--min-charged` applies only to option 0.
 particle's forward trajectory count, including motion towards decreasing z.
 These are geometric acceptance tests, not detector-efficiency or interaction
 models. The existing custom `SetFilter` predicate still overrides every mode.
+
+`--pythia-decays` additionally decays each DIS daughter with Pythia8 before
+applying the selected filter option. A daughter is replaced recursively only when it moves
+towards Tr1 and its sampled vacuum-decay vertex is upstream of Tr1; otherwise
+it remains a filter candidate. Decay products start at their Pythia production
+vertices. This requires detector acceptance and uses `--pythia-decay-seed`
+(default `0`, a time-based seed chosen by Pythia8 and wrapped into
+`[1, 900000000]` before initialization). The effective seed is logged at info
+level and can be passed back with `--pythia-decay-seed` to reproduce the run.
+Each original daughter's proper lifetime is sampled once; Pythia propagates
+it to its vacuum decay vertex and samples the lifetimes of its decay products.
+It models decays in vacuum only, not
+interactions with detector material.
+The decayer explicitly enables PDG IDs `211`, `321`, `130`, `310`, `3112`,
+`3122`, `3222`, `3312`, `3322`, and `3334` (including antiparticles). A decay
+still contributes daughters only if its sampled vertex is before Tr1.
 
 ```sh
 python newMuonDIS/filterEvents.py -f prepared.root -o selected.root \

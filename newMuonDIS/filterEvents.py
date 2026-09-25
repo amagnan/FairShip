@@ -2,6 +2,7 @@
 """Filter prepareEvents.py output, retaining selected DIS interactions."""
 
 import argparse
+import logging
 import math
 import os
 import time
@@ -79,6 +80,8 @@ def main():
         "-f", "--inputfile", nargs="+", required=True,
         help="Input file(s) or directories to search recursively for .root files",
     )
+    parser.add_argument("--ignore-input-containing", action="append", default=["filtered"], metavar="STRING",
+                        help="Ignore discovered input files whose path contains STRING (repeatable)")
     parser.add_argument("-o", "--outputfile", required=True, help="New ROOT file (must not exist)")
     parser.add_argument("-n", "--n_events", type=int, default=-1,
                         help="Number of input events to process (-1: all remaining events; default: -1)")
@@ -97,11 +100,28 @@ def main():
     parser.add_argument("--muon-shield-field-z", type=float,
                         help="Shield map z offset in cm (default: ShipGeo.muShield.Entrance[0])")
     parser.add_argument("--no-detector-acceptance", action="store_true", help="Use charged multiplicity alone")
+    parser.add_argument("--pythia-decays", action="store_true",
+                        help="Decay daughters upstream of Tr1 with Pythia8 before filtering")
+    parser.add_argument("--pythia-decay-seed", type=int, default=0,
+                        help="Pythia8 daughter-decay random seed (0: time-based, default)")
+    parser.add_argument(
+        "--debug",
+        help="Control FairLogger verbosity: 0=info (default), 1=+debug, 2=+debug1, 3=+debug2",
+        default=0,
+        type=int,
+        choices=range(0, 4),
+    )
     args = parser.parse_args()
     if args.min_charged < 0 or args.start_event < 0 or args.n_events < -1:
         parser.error("Counts must be nonnegative, except -n -1 for all entries")
-    if not args.no_detector_acceptance and not args.geoFile:
+    if any(not pattern for pattern in args.ignore_input_containing):
+        parser.error("--ignore-input-containing must not be empty")
+    if not 0 <= args.pythia_decay_seed <= 900000000:
+        parser.error("--pythia-decay-seed must be in [0, 900000000]")
+    if (not args.no_detector_acceptance or args.pythia_decays) and not args.geoFile:
         parser.error("Detector acceptance requires -g/--geoFile")
+    if args.pythia_decays and args.no_detector_acceptance:
+        parser.error("--pythia-decays requires detector acceptance to determine the Tr1 position")
     if args.filter_option != 0 and args.no_detector_acceptance:
         parser.error("Filter options 1 and 2 require detector acceptance")
     if args.filter_option != 0 and args.detector_z is not None:
@@ -147,6 +167,8 @@ def main():
             parser.error(f"Input does not exist or is not a file/directory: {name}")
         for candidate in candidates:
             resolved = candidate.resolve()
+            if any(pattern in str(candidate) for pattern in args.ignore_input_containing):
+                continue
             if resolved in auxiliary_paths:
                 continue
             if resolved == output_path:
@@ -156,13 +178,26 @@ def main():
                 file_names.append(str(candidate))
     if not file_names:
         parser.error("No ROOT input files found")
-    print(f"Found {len(file_names)} input file(s).", flush=True)
+    print(f"Found {len(file_names)} input file(s): ", file_names, flush=True)
 
     # Measure library initialization and filtering, excluding input discovery.
     wall_start = time.perf_counter()
     cpu_start = time.process_time()
     if ROOT.gSystem.Load("libShipMuDIS.so") < 0:
         raise RuntimeError("Cannot load libShipMuDIS.so")
+    if args.debug == 0:
+        ROOT.gErrorIgnoreLevel = ROOT.kWarning
+    ROOT.gInterpreter.ProcessLine('#include "FairLogger.h"')
+    if args.debug == 0:
+        ROOT.gInterpreter.ProcessLine('fair::Logger::SetConsoleSeverity("info");')
+        logging.basicConfig(level=logging.INFO)
+    elif args.debug == 1:
+        ROOT.gInterpreter.ProcessLine('fair::Logger::SetConsoleSeverity("debug");')
+        logging.basicConfig(level=logging.DEBUG)
+    elif args.debug == 2:
+        ROOT.gInterpreter.ProcessLine('fair::Logger::SetConsoleSeverity("debug1");')
+    else:
+        ROOT.gInterpreter.ProcessLine('fair::Logger::SetConsoleSeverity("debug2");')
     selection = ROOT.MuDISFilter()
     selection.init(args.n_events, args.start_event)
     selection.SetFilterOption(args.filter_option)
@@ -177,6 +212,9 @@ def main():
             print(f"Detector acceptance: |x| <= 200 cm, |y| <= 300 cm at z = {selection.GetDetectorZ():g} cm")
         else:
             print(f"Detector acceptance: filter option {args.filter_option}, |x| <= 200 cm, |y| <= 300 cm")
+    if args.pythia_decays:
+        selection.SetPythiaDecaySeed(args.pythia_decay_seed)
+        selection.SetUsePythiaDecays(True)
     inputs = ROOT.std.vector("string")()
     for name in file_names:
         inputs.push_back(name)
