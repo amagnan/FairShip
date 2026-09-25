@@ -125,8 +125,8 @@ Histograms MuDISFilter::BookHistograms(TDirectory* dir, const TString& mat,
       Form("Number of charged filter candidates - %s;charged multiplicity;Event",
            mat.Data()),
       50, 0, 50);
-  h.dis_eNeutralTiming = WithFlowBins<TH1D>(
-      Form("neutral_candidate_energy_timing_%s", label.Data()),
+  h.dis_eNeutralTD = WithFlowBins<TH1D>(
+      Form("neutral_candidate_energy_TD_%s", label.Data()),
       Form("Neutral candidate energy reaching timing detector - %s;energy [GeV];Event",
            mat.Data()),
       400, 0., 400.);
@@ -532,7 +532,7 @@ std::vector<MuDISFilter::FilterCandidate> MuDISFilter::DecayDaughters(
   return candidates;
 }
 
-bool MuDISFilter::HitsTrackingAndTiming(double charge,
+bool MuDISFilter::HitsTrackingAndTD(double charge,
                                         const DISparticle& particle,
                                         const TVector3& vertex) const {
   TVector3 position = vertex, momentum(particle.px, particle.py, particle.pz);
@@ -542,7 +542,7 @@ bool MuDISFilter::HitsTrackingAndTiming(double charge,
               return particle.pz >= 0. ? fStationZ[a] < fStationZ[b]
                                        : fStationZ[a] > fStationZ[b];
             });
-  bool firstPair = false, secondPair = false, timing = false;
+  bool firstPair = false, secondPair = false, TD = false;
   for (unsigned station : order) {
     if ((fStationZ[station] - vertex.Z()) * particle.pz < 0.) continue;
     TVector3 hit, nextMomentum;
@@ -557,8 +557,8 @@ bool MuDISFilter::HitsTrackingAndTiming(double charge,
     else if (station < 4)
       secondPair = true;
     else
-      timing = true;
-    if (firstPair && secondPair && timing) return true;
+      TD = true;
+    if (firstPair && secondPair && TD) return true;
   }
   return false;
 }
@@ -596,7 +596,7 @@ bool MuDISFilter::PassDetectorFilter(
     if (accepted + remaining < 2) return false;
     if (charges[i] == 0.) continue;
     --remaining;
-    if (HitsTrackingAndTiming(charges[i], candidates[i].particle,
+    if (HitsTrackingAndTD(charges[i], candidates[i].particle,
                               candidates[i].vertex) &&
         ++accepted == 2)
       return true;
@@ -734,12 +734,12 @@ void MuDISFilter::FillDIS(Histograms& h, const MuonDISInBranches& br, int idis,
     if (std::abs(p.pid) == 13) muonP += momentum;
   }
   unsigned chargedCandidates = 0;
-  double neutralTimingEnergy = 0.;
+  double neutralTDEnergy = 0.;
   for (const auto& candidate : candidates) {
     if (IsCharged(candidate.particle)) {
       ++chargedCandidates;
     } else if (HitsTimingDetector(candidate)) {
-      neutralTimingEnergy += candidate.particle.E;
+      neutralTDEnergy += candidate.particle.E;
     }
   }
   for (auto* target : {&h, filtered}) {
@@ -753,7 +753,7 @@ void MuDISFilter::FillDIS(Histograms& h, const MuonDISInBranches& br, int idis,
     FillWithFlow(target->dis_n, daughters.size());
     FillWithFlow(target->dis_nCharged, charged);
     FillWithFlow(target->dis_nChargedCandidates, chargedCandidates);
-    FillWithFlow(target->dis_eNeutralTiming, neutralTimingEnergy);
+    FillWithFlow(target->dis_eNeutralTD, neutralTDEnergy);
     if (totalP > 0.) {
       FillWithFlow(target->dis_pChargedFrac, chargedP / totalP);
       FillWithFlow(target->dis_pMuFrac, muonP / totalP);

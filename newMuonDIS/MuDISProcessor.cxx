@@ -344,7 +344,7 @@ void MuDISProcessor::generateDISevents(const std::string& tType,
   // calculate weight
   // times length divided by length, length cancels out...
   if (fnDIS > 0)
-    aDISBr.wDIS = amuonW * lastxs / fnDIS * aPath.GetWeightedDensity();
+    aDISBr.wDIS = amuonW / fnDIS * aPath.GetWeightedDensity();
 
   LOG(debug) << " -- path " << aLabel << " muonW " << amuonW
              << " -- size of DISparticles collections: " << std::endl

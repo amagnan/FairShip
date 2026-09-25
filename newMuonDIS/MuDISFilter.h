@@ -38,7 +38,7 @@ struct Histograms {
   TH1I* dis_n = nullptr;
   TH1I* dis_nCharged = nullptr;
   TH1I* dis_nChargedCandidates = nullptr;
-  TH1D* dis_eNeutralTiming = nullptr;
+  TH1D* dis_eNeutralTD = nullptr;
   TH1D* dis_pChargedFrac = nullptr;
   TH1D* dis_pMuFrac = nullptr;
 
@@ -112,7 +112,7 @@ class MuDISFilter {
   bool PassCandidates(const std::vector<FilterCandidate>& candidates) const;
   bool PassDetectorFilter(const std::vector<FilterCandidate>& candidates) const;
   bool HitsTimingDetector(const FilterCandidate& candidate) const;
-  bool HitsTrackingAndTiming(double charge, const DISparticle& particle,
+  bool HitsTrackingAndTD(double charge, const DISparticle& particle,
                              const TVector3& vertex) const;
   bool IsCharged(const DISparticle& particle) const;
   double Charge(const DISparticle& particle) const;
@@ -122,7 +122,7 @@ class MuDISFilter {
                const std::vector<FilterCandidate>& candidates, Histograms* filtered);
   unsigned fMinChargedDaughters = 2;
   unsigned fFilterOption = 0;
-  std::array<double, 5> fStationZ = {};  //! Tr1, Tr2, Tr3, Tr4, timing plane
+  std::array<double, 5> fStationZ = {};  //! Tr1, Tr2, Tr3, Tr4, TD plane
   std::pair<double, double> fDetectorVolumeZ = {0., 0.};
   bool fIncludeMuons = true;
   bool fUseDetectorAcceptance = true;
