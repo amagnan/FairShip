@@ -9,7 +9,7 @@ This folder contains the necessary processors to create DIS events from input mu
   - To do 2: process several muons from the same "event" = pot interaction.
 - Output: tree "MuonDIS" with the initial muon information, hits in veto detectors and SST, soft particles emitted by the muon along its initial path, and daughters from DIS events in several volumes with random vertex positions within each volume, and associated probability weight.
   - Soft tracks are for all processes except destructive "Muon nuclear interaction". The first one is the initial input muon.
-  - UBT, SBT and SST hits are all hits with a GetTrackID() equal to the input muon track ID.
+  - UBT, SBT, SST and TD hits are all hits with a GetTrackID() equal to the input muon track ID. TD hits are persisted in `muon_TDPoints`, including in filtered output. Older inputs without TD branches are supported.
   - The separate volumes are:
     - muon shield "MS"
     - UBT detector "UBT" (now just a dummy plane)
@@ -45,7 +45,23 @@ python3 <path_to_FairShip>/newMuonDIS/run_simScript_newDIS.py -f <muonDis_output
 
 ## Path to volumes
 
-To do: to be improved by config instead of hardcoded.
+The path uses the MC start and the first recorded muon hit in UBT, SBT,
+each of Tr1--Tr4, and TD, omitting missing measurements. The available hits
+are ordered in z. A non-forward (`pz <= 0`) selected measurement rejects the
+muon. POCAs between adjacent measurements set the z planes at which the
+momentum direction changes; each segment remains anchored to its own measured
+position, momentum and time. Geometry navigation and DIS vertex positions use
+these same straight segments. Times before a reference measurement are
+extrapolated backwards. DIS vertices are sampled uniformly in segment length,
+using a cached cumulative length and binary search. The existing shield
+restriction to the last 20 cm in accumulated z is retained.
+
+Transverse gaps at the switching planes are excluded from the path length.
+At the end of processing, `LOG(info)` reports rejected muons, the number of
+switches and muons with a transverse gap above the configured threshold, and
+the largest gap. Set the threshold with `--poca-jump-threshold <cm>` in
+`prepareEvents.py`, or `MuDISProcessor::SetPocaJumpThreshold(cm)` in C++.
+The default is 1 cm, and a gap equal to the threshold is not counted.
 
 ## DIS events settings
 

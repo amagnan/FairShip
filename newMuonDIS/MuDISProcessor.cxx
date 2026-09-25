@@ -240,6 +240,12 @@ void MuDISProcessor::fillSSTHits(const Int_t aIdx) {
   }
 }
 
+void MuDISProcessor::fillTDHits(const Int_t aIdx) {
+  for (const auto& hit : finEv.tdPt.Get()) {
+    if (hit.GetTrackID() == aIdx) foutEv.tdPt.push_back(hit);
+  }
+}
+
 void MuDISProcessor::generateDISevents(const std::string& tType,
                                        const double& amuonW,
                                        const std::string& aLabel,
@@ -268,6 +274,11 @@ void MuDISProcessor::generateDISevents(const std::string& tType,
   // print summary of initialisation params
   fPythia->Pylist(1);
 
+  // Preserve the shield's last-20-cm restriction in compact z, then sample
+  // actual segment length so changes of direction do not bias the vertices.
+  const double minLength = aLabel.find("MS") != aLabel.npos
+      ? aPath.GetLengthAtZ(aPath.GetstartZ() + std::max(0., aPath.GetZLength() - 20.))
+      : 0.;
   double lastxs = 0;
   for (int ia(0); ia < fnDIS; ++ia) {
     LOG(debug) << " ---- Processing DIS event " << ia;
@@ -287,23 +298,9 @@ void MuDISProcessor::generateDISevents(const std::string& tType,
     aDISBr.DISxsec.push_back(lastxs);  // in mb
     aDISBr.DIStarget.push_back(isProton);
 
-    // choose a random vertex position to set to all daughters
-    // Take into account "broken" paths with different slices in z.
-
-    double vtx_z = 0;
-    // restrict to last lambda for MS...
-    if (aLabel.find("MS") != aLabel.npos)
-      vtx_z = gRandom->Uniform(
-          std::max(aPath.GetstartZ(),
-                   aPath.GetstartZ() + aPath.GetZLength() - 20),
-          aPath.GetstartZ() + aPath.GetZLength());
-    else
-      vtx_z = gRandom->Uniform(aPath.GetstartZ(),
-                               aPath.GetstartZ() + aPath.GetZLength());
-
-    // put back to real Z position for paths with different slices in z.
+    // Choose a point on the measured segments, excluding spatial jumps.
     unsigned slice = 0;
-    double realz = aPath.GetZ(vtx_z, slice);
+    double realz = aPath.GetZAtLength(gRandom->Uniform(minLength, aPath.GetLength()), slice);
     aDISBr.DISvz.push_back(realz);
     aDISBr.DISvx.push_back(aPath.GetX(realz, slice));
     aDISBr.DISvy.push_back(aPath.GetY(realz, slice));
@@ -364,6 +361,7 @@ void MuDISProcessor::generateDISevents(const std::string& tType,
 
 void MuDISProcessor::ProcessMuons() {
   LOG(info) << " * Start of event loop" << std::endl;
+  fGeoProcessor.ResetDiagnostics();
 
   if (static_cast<Long64_t>(fstartEvt) >= ftree->GetEntries()) {
     LOG(error) << " ** Trying to start from event " << fstartEvt
@@ -390,9 +388,7 @@ void MuDISProcessor::ProcessMuons() {
     LOG(debug) << " --- Processing event " << iEvent << std::endl;
     if (iEvent % 100 == 0)
       LOG(info) << " --- Processing event " << iEvent << std::endl;
-    Long64_t bytes = ftree->GetEntry(iEvent);
-
-    if (bytes <= 0) {
+    if (!finEv.tdPt.PrepareEntry(ftree, iEvent) || ftree->GetEntry(iEvent) <= 0) {
       LOG(error) << " --- Error reading tree entry: " << iEvent;
       skipEvt++;
       continue;
@@ -446,18 +442,20 @@ void MuDISProcessor::ProcessMuons() {
     fillUBTHits(muIdx);
     fillSBTHits(muIdx);
     fillSSTHits(muIdx);
+    fillTDHits(muIdx);
 
-    // Count events which have no hit in either UBT, SBT or SST, muon just
+    // Count events which have no hit in UBT, SBT, SST or TD, muon just
     // flying out of vessel acceptance never bouncing back... For those, very
     // numerous in the cudaMu files, skip to optimise processing.
     //@FIXME AM to do: a study of whether the events created in the last lambda
     // of MS could still contribute or would hit UBT...
     if (foutEv.ubtPt.size() == 0 && foutEv.sbtPt.size() == 0 &&
-        foutEv.sstPt.size() == 0) {
+        foutEv.sstPt.size() == 0 && foutEv.tdPt.size() == 0) {
       LOG(debug) << " Skipping muon event " << iEvent
                  << " UBT Hits: " << foutEv.ubtPt.size()
                  << ", SBT Hits: " << foutEv.sbtPt.size()
-                 << ", SST Hits: " << foutEv.sstPt.size() << std::endl;
+                 << ", SST Hits: " << foutEv.sstPt.size()
+                 << ", TD Hits: " << foutEv.tdPt.size() << std::endl;
       skipMu_acc++;
       // counting, but want to still fill DIS in MS (and UBT detector)...
       continue;
@@ -471,7 +469,10 @@ void MuDISProcessor::ProcessMuons() {
 
     // retrieve a map of material label, with same density, and lengths, and
     // [zin,zout] ranges
-    fGeoProcessor.initialise(foutEv);
+    if (!fGeoProcessor.initialise(foutEv)) {
+      skipEvt++;
+      continue;
+    }
     std::map<std::string, MuonPath>& lPathMap = fGeoProcessor.FillMuonPath();
 
     if (lPathMap.size() == 0) {
@@ -502,4 +503,5 @@ void MuDISProcessor::ProcessMuons() {
             << "Skipped: " << skipEvt << " events and " << skipMu_pmin
             << " muons with too low p, " << skipMu_acc
             << " muons outside of acceptance.";
+  fGeoProcessor.PrintDiagnostics();
 }

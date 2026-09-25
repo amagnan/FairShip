@@ -1,6 +1,7 @@
 #ifndef SHIPMuDIS_MUGEOPROCESSOR_H_
 #define SHIPMuDIS_MUGEOPROCESSOR_H_
 
+#include <array>
 #include <map>
 #include <set>
 #include <string>
@@ -24,7 +25,15 @@ class MuGeoProcessor {
   /** destructor **/
   ~MuGeoProcessor();
 
-  void initialise(ShipMuDIS::MuonBranches& aEvt);
+  bool initialise(ShipMuDIS::MuonBranches& aEvt);
+  void SetPocaJumpThreshold(double threshold);
+  double GetPocaJumpThreshold() const { return fPocaJumpThreshold; }
+  void ResetDiagnostics();
+  void PrintDiagnostics() const;
+  unsigned long long GetLargeJumpCount() const { return fLargeJumps; }
+  unsigned long long GetMuonsWithLargeJumps() const { return fMuonsWithLargeJumps; }
+  unsigned long long GetBackwardMuonCount() const { return fBackwardMuons; }
+  double GetMaxTransverseJump() const { return fMaxTransverseJump; }
 
   inline void SetZmax(const double& zmax) {
     LOG(info) << " Maximum z position for MuonPath building: " << zmax
@@ -59,32 +68,28 @@ class MuGeoProcessor {
  private:
   double fZmax;
   double fZmin;
-  // position
-  TVector3 fStartpos;
-  TVector3 fUBTpos;
-  TVector3 fSBTpos;
-  TVector3 fSSTpos;
-  // momentum direction
-  TVector3 fStartp;
-  TVector3 fUBTp;
-  TVector3 fSBTp;
-  TVector3 fSSTp;
+  struct Measurement {
+    TVector3 position;
+    TVector3 momentum;
+    double time;
+  };
+  struct Segment {
+    Measurement measurement;
+    double startZ;
+    double endZ;
+  };
+  // Start, UBT, SBT, Tr1--Tr4 and TD; no per-muon allocations.
+  std::array<Segment, 8> fSegments;  //! Runtime path segments
+  unsigned fNSegments = 0;
 
-  TVector3 fVtx12;
-  TVector3 fVtx13;
-  TVector3 fVtx14;
-  TVector3 fVtx23;
-  TVector3 fVtx24;
-  TVector3 fVtx34;
-
-  double fStartT;
-  double fUBTT;
-  double fSBTT;
-  double fSSTT;
-
-  bool fhasUBThit;
-  bool fhasSBThit;
-  bool fhasSSThit;
+  double fPocaJumpThreshold = 1.;  // transverse distance in cm
+  unsigned long long fMuons = 0;
+  unsigned long long fBackwardMuons = 0;
+  unsigned long long fInvalidMuons = 0;
+  unsigned long long fTransitions = 0;
+  unsigned long long fLargeJumps = 0;
+  unsigned long long fMuonsWithLargeJumps = 0;
+  double fMaxTransverseJump = 0.;
 
   std::map<std::string, MuonPath> fPathMap;
   std::map<std::string, std::set<std::string>> fVolMap;

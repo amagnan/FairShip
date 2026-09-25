@@ -19,6 +19,7 @@ End of pythia block to avoid aliBuild error
 
 import argparse
 import logging
+import math
 import sys
 import time
 from pathlib import Path
@@ -42,6 +43,10 @@ parser.add_argument("-z", "--z_max", type=float, default=20000)
 parser.add_argument("-d", "--nDIS", help="Number of DIS per muon to generate", required=False, default=1000, type=int)
 parser.add_argument("-g", "--geoFile", dest="geoFile", help="ROOT geofile", required=True)
 parser.add_argument(
+    "--poca-jump-threshold", type=float, default=1.0,
+    help="Count transverse jumps between measurement lines larger than this value in cm (default: 1)",
+)
+parser.add_argument(
     "--debug",
     help="Control FairLogger verbosity: 0=info (default), 1=+debug, 2=+debug1, 3=+debug2",
     default=0,
@@ -50,6 +55,8 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
+if not math.isfinite(args.poca_jump_threshold) or args.poca_jump_threshold < 0:
+    parser.error("--poca-jump-threshold must be finite and nonnegative")
 
 if args.debug == 0:
     r.gErrorIgnoreLevel = r.kWarning
@@ -88,6 +95,7 @@ logging.info("Geometry successfully loaded.")
 r.gGeoManager.Print()  # Read geometry
 
 muDis = r.MuDISProcessor()
+muDis.SetPocaJumpThreshold(args.poca_jump_threshold)
 ok = muDis.init(args.n_events, args.start_event, 2.0, args.nDIS, theseed, args.z_max)
 if not ok:
     print("Invalid initialisation. Doing nothing.")

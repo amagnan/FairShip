@@ -1,6 +1,8 @@
 #include "MuGeoProcessor.h"
 
+#include <cmath>
 #include <fstream>
+#include <stdexcept>
 #include <utility>
 
 using namespace ShipMuDIS;
@@ -8,72 +10,112 @@ using namespace ShipMuDIS;
 MuGeoProcessor::MuGeoProcessor() {
   fZmax = 14000;
   fZmin = 2500;
-  fhasUBThit = false;
-  fhasSBThit = false;
-  fhasSSThit = false;
-  TVector3 nulVec(0, 0, 0);
-  fStartpos = nulVec;
-  fStartp = nulVec;
-  fStartT = 0;
-  fUBTpos = nulVec;
-  fUBTp = nulVec;
-  fUBTT = 0;
-  fSBTpos = nulVec;
-  fSBTp = nulVec;
-  fSBTT = 0;
-  fSSTpos = nulVec;
-  fSSTp = nulVec;
-  fSSTT = 0;
-  fZmaxMap.clear();
-  fVolMap.clear();
 }
 
 /** destructor **/
-MuGeoProcessor::~MuGeoProcessor() {
-  fPathMap.clear();
-  fZmaxMap.clear();
-  fVolMap.clear();
+MuGeoProcessor::~MuGeoProcessor() = default;
+
+void MuGeoProcessor::SetPocaJumpThreshold(double threshold) {
+  if (!std::isfinite(threshold) || threshold < 0.)
+    throw std::invalid_argument("POCA jump threshold must be finite and nonnegative");
+  fPocaJumpThreshold = threshold;
 }
 
-void MuGeoProcessor::initialise(MuonBranches& aEvt) {
-  if (aEvt.mcTrks.size() > 0) {
-    aEvt.mcTrks[0].GetStartVertex(fStartpos);
-    fStartT = aEvt.mcTrks[0].GetStartT();
-    aEvt.mcTrks[0].GetMomentum(fStartp);
+void MuGeoProcessor::ResetDiagnostics() {
+  fMuons = fBackwardMuons = fInvalidMuons = fTransitions = 0;
+  fLargeJumps = fMuonsWithLargeJumps = 0;
+  fMaxTransverseJump = 0.;
+}
+
+void MuGeoProcessor::PrintDiagnostics() const {
+  LOG(info) << "Muon path diagnostics: " << fMuons << " muons considered, "
+            << fBackwardMuons << " rejected for non-forward momentum, "
+            << fInvalidMuons << " rejected for invalid measurements";
+  LOG(info) << "POCA transverse jumps: " << fLargeJumps << " of "
+            << fTransitions << " transitions exceed " << fPocaJumpThreshold
+            << " cm, in " << fMuonsWithLargeJumps << " muons; maximum jump = "
+            << fMaxTransverseJump << " cm";
+}
+
+bool MuGeoProcessor::initialise(MuonBranches& aEvt) {
+  fNSegments = 0;
+  fPathMap.clear();
+  ++fMuons;
+  if (aEvt.mcTrks.empty()) {
+    ++fInvalidMuons;
+    return false;
   }
-  if (aEvt.ubtPt.size() > 0) {
-    fhasUBThit = true;
-    aEvt.ubtPt[0].Position(fUBTpos);
-    aEvt.ubtPt[0].Momentum(fUBTp);
-    fUBTT = aEvt.ubtPt[0].GetTime();
+
+  std::array<Measurement, 8> measurements;
+  unsigned count = 1;
+  aEvt.mcTrks[0].GetStartVertex(measurements[0].position);
+  aEvt.mcTrks[0].GetMomentum(measurements[0].momentum);
+  measurements[0].time = aEvt.mcTrks[0].GetStartT();
+  const auto addHit = [&](const auto& hit) {
+    auto& measurement = measurements[count++];
+    hit.Position(measurement.position);
+    hit.Momentum(measurement.momentum);
+    measurement.time = hit.GetTime();
+  };
+  if (!aEvt.ubtPt.empty()) addHit(aEvt.ubtPt.front());
+  if (!aEvt.sbtPt.empty()) addHit(aEvt.sbtPt.front());
+  std::array<bool, 4> found = {};
+  unsigned stations = 0;
+  for (const auto& hit : aEvt.sstPt) {
+    const int station = hit.GetDetectorID() / 1000000;
+    if (station < 1 || station > 4 || found[station - 1]) continue;
+    found[station - 1] = true;
+    addHit(hit);
+    if (++stations == 4) break;
   }
-  if (aEvt.sbtPt.size() > 0) {
-    fhasSBThit = true;
-    aEvt.sbtPt[0].Position(fSBTpos);
-    aEvt.sbtPt[0].Momentum(fSBTp);
-    fSBTT = aEvt.sbtPt[0].GetTime();
+  if (!aEvt.tdPt.empty()) addHit(aEvt.tdPt.front());
+
+  for (unsigned i = 0; i < count; ++i) {
+    const auto& m = measurements[i];
+    if (!std::isfinite(m.position.X()) || !std::isfinite(m.position.Y()) ||
+        !std::isfinite(m.position.Z()) || !std::isfinite(m.momentum.X()) ||
+        !std::isfinite(m.momentum.Y()) || !std::isfinite(m.momentum.Z()) ||
+        !std::isfinite(m.momentum.Mag()) || !std::isfinite(m.time) ||
+        m.momentum.Mag() == 0.) {
+      ++fInvalidMuons;
+      return false;
+    }
+    if (m.momentum.Z() <= 0.) {
+      ++fBackwardMuons;
+      return false;
+    }
+    if (m.position.Z() < measurements[0].position.Z()) {
+      ++fInvalidMuons;
+      return false;
+    }
   }
-  if (aEvt.sstPt.size() > 0) {
-    fhasSSThit = true;
-    aEvt.sstPt[0].Position(fSSTpos);
-    aEvt.sstPt[0].Momentum(fSSTp);
-    fSSTT = aEvt.sstPt[0].GetTime();
+  // Stable insertion sort for at most seven hits, without allocating storage.
+  for (unsigned i = 2; i < count; ++i) {
+    const auto measurement = measurements[i];
+    unsigned j = i;
+    while (j > 1 && measurements[j - 1].position.Z() > measurement.position.Z()) {
+      measurements[j] = measurements[j - 1];
+      --j;
+    }
+    measurements[j] = measurement;
   }
-  // @FIXME-AM what to do if startpos is greater than UBTpos, protect ?
-  // extract intersections
-  fVtx12 = GetVertex(fStartpos, fStartp, fUBTpos, fUBTp);
-  fVtx13 = GetVertex(fStartpos, fStartp, fSBTpos, fSBTp);
-  fVtx14 = GetVertex(fStartpos, fStartp, fSSTpos, fSSTp);
-  fVtx23 = GetVertex(fUBTpos, fUBTp, fSBTpos, fSBTp);
-  fVtx24 = GetVertex(fUBTpos, fUBTp, fSSTpos, fSSTp);
-  fVtx34 = GetVertex(fSBTpos, fSBTp, fSSTpos, fSSTp);
+
+  double startZ = measurements[0].position.Z();
+  for (unsigned i = 0; i < count && startZ < fZmax; ++i) {
+    const auto& m = measurements[i];
+    const double endZ = i + 1 < count
+        ? std::min(fZmax, GetVertex(m.position, m.momentum,
+                                    measurements[i + 1].position,
+                                    measurements[i + 1].momentum).Z())
+        : fZmax;
+    fSegments[fNSegments++] = {m, startZ, endZ};
+    startZ = endZ;
+  }
+  return true;
 }
 
 TVector3 MuGeoProcessor::GetVertex(const TVector3& r1, const TVector3& p1,
                                    const TVector3& r2, const TVector3& p2) {
-  TVector3 nulVec(0, 0, 0);
-  if (r1.Z() == 0 || r2.Z() == 0) return nulVec;
-
   TVector3 u1 = p1.Unit();
   TVector3 u2 = p2.Unit();
 
@@ -90,7 +132,7 @@ TVector3 MuGeoProcessor::GetVertex(const TVector3& r1, const TVector3& p1,
 
   // Protect against nearly parallel tracks
   if (std::abs(denom) < 1e-12) {
-    LOG(warning) << "GetVertex(): nearly parallel tracks (denominator = "
+    LOG(debug) << "GetVertex(): nearly parallel tracks (denominator = "
                  << denom << "). Returning first measurement.";
     return r1;
   }
@@ -273,213 +315,84 @@ void MuGeoProcessor::CheckAllVolumes() {
 
 std::map<std::string, MuonPath>& MuGeoProcessor::FillMuonPath() {
   fPathMap.clear();
-  if (!gGeoManager) {
-    LOG(error) << "gGeoManager does not exist!";
+  if (!gGeoManager || fNSegments == 0) return fPathMap;
+  if (fSegments[0].startZ < fZmin) {
+    LOG(error) << "Muon starts before minimum z = " << fZmin << " cm";
     return fPathMap;
   }
 
-  // Initialise start point and direction
-  double muonp = fStartp.Mag();
-  if (muonp == 0) {
-    LOG(error) << "Muon has momentum " << muonp << ", not filling path";
-    return fPathMap;
-  }
-
-  if (fStartpos.Z() < fZmin) {
-    LOG(error)
-        << " This muon has a starting Z position of " << fStartpos.Z()
-        << " before the minimum to be considered: " << fZmin
-        << "==> not filling path, please adapt minimum position or muon input.";
-    return fPathMap;
-  }
-
-  TGeoNode* startnode = gGeoManager->InitTrack(
-      fStartpos.X(), fStartpos.Y(), fStartpos.Z(), fStartp.X() / muonp,
-      fStartp.Y() / muonp, fStartp.Z() / muonp);
-  if (!startnode) {
-    LOG(error) << "Muon start point out of geometry: x " << fStartpos.X()
-               << ", y " << fStartpos.Y() << ", z " << fStartpos.Z()
-               << ", direction: " << fStartp.X() / muonp << ","
-               << fStartp.Y() / muonp << "," << fStartp.Z() / muonp;
-    return fPathMap;
-  }
-
-  TGeoNode* currentnode = gGeoManager->GetCurrentNode();
-  double znext = 0;
-  unsigned lcount = 0;
-  double zpos = fStartpos.Z();
-  // Fill a vector with position of all points of closest approach for the
-  // trajectories, points at which we want to reinitialise the direction with
-  // the measurement provided by veto and SST hits.
-  std::vector<TVector3> vtxVec;
-  std::vector<TVector3> startVec;
-  std::vector<TVector3> dirVec;
-  std::vector<double> timeVec;
-  vtxVec.push_back(fStartpos);
-  timeVec.push_back(fStartT);
-  startVec.push_back(fStartpos);
-  dirVec.push_back(fStartp);
-  if (fhasUBThit) {
-    vtxVec.push_back(fVtx12);
-    timeVec.push_back(fUBTT);
-    startVec.push_back(fUBTpos);
-    dirVec.push_back(fUBTp);
-  } else if (fhasSBThit) {
-    vtxVec.push_back(fVtx13);
-    timeVec.push_back(fSBTT);
-    startVec.push_back(fSBTpos);
-    dirVec.push_back(fSBTp);
-  } else if (fhasSSThit) {
-    vtxVec.push_back(fVtx14);
-    timeVec.push_back(fSSTT);
-    startVec.push_back(fSSTpos);
-    dirVec.push_back(fSSTp);
-  }
-  if (fhasUBThit && fhasSBThit) {
-    vtxVec.push_back(fVtx23);
-    timeVec.push_back(fSBTT);
-    startVec.push_back(fSBTpos);
-    dirVec.push_back(fSBTp);
-  } else if (fhasUBThit && fhasSSThit) {
-    vtxVec.push_back(fVtx24);
-    timeVec.push_back(fSSTT);
-    startVec.push_back(fSSTpos);
-    dirVec.push_back(fSSTp);
-  }
-  if (fhasSBThit && fhasSSThit) {
-    vtxVec.push_back(fVtx34);
-    timeVec.push_back(fSSTT);
-    startVec.push_back(fSSTpos);
-    dirVec.push_back(fSSTp);
-  }
-
-  // Only want to fill DIS in the pre-decay volume material if muon trajectory
-  // does not go through SBT nor SST bool stopAtMS = false; bool stopAtUBT =
-  // false; if (!fhasSBThit && !fhasSSThit) { if (fhasUBThit) stopAtUBT = true;
-  // if (!fhasUBThit) stopAtMS = true;
-  // }
-
-  std::vector<bool> doInit;
-  unsigned nVtx = vtxVec.size();
-  for (unsigned iV(0); iV < nVtx; ++iV) {
-    doInit.push_back(true);
-  }
-
-  LOG(debug) << " Number of vertices found to change track direction: " << nVtx;
-
-  unsigned iV = 0;
-
-  while (currentnode) {
-    // stop early to not waste time propagating a muon that goes out of
-    // acceptance. if (stopAtUBT && zpos > FindZmax("UBT")) break; if (stopAtMS
-    // && zpos > FindZmax("MS")) break;
-
-    // stop when reaching input config zmax position
-    if (zpos > fZmax) break;
-
-    TGeoMaterial* material =
-        currentnode->GetVolume()->GetMedium()->GetMaterial();
-    std::string lvolName = currentnode->GetVolume()->GetName();
-    const Double_t* lpos = gGeoManager->GetCurrentPoint();
-
-    TVector3 currentPos(lpos[0], lpos[1], lpos[2]);
-
-    muonp = dirVec[iV].Mag();
-    if (muonp == 0) {
-      LOG(error) << "Muon has momentum " << muonp << ", stop filling path";
-      break;
+  bool hasPrevious = false;
+  bool hasLargeJump = false;
+  TVector3 previousEnd;
+  for (unsigned i = 0; i < fNSegments; ++i) {
+    const auto& segment = fSegments[i];
+    const auto& m = segment.measurement;
+    const TVector3 direction = m.momentum.Unit();
+    // The POCA supplies only the switching z; both lines stay anchored to
+    // their own measurements, including backward extrapolation to startZ.
+    const TVector3 start = m.position +
+        ((segment.startZ - m.position.Z()) / direction.Z()) * direction;
+    if (hasPrevious) {
+      const double jump = (start - previousEnd).Perp();
+      ++fTransitions;
+      fMaxTransverseJump = std::max(fMaxTransverseJump, jump);
+      if (jump > fPocaJumpThreshold) {
+        ++fLargeJumps;
+        hasLargeJump = true;
+      }
     }
 
-    if (doInit[iV]) {
-      currentnode =
-          gGeoManager->InitTrack(vtxVec[iV].X(), vtxVec[iV].Y(), vtxVec[iV].Z(),
-                                 dirVec[iV].X() / muonp, dirVec[iV].Y() / muonp,
-                                 dirVec[iV].Z() / muonp);
-      if (!currentnode) {
-        LOG(error) << "Muon point out of geometry: x " << vtxVec[iV].X()
-                   << ", y " << vtxVec[iV].Y() << ", z " << vtxVec[iV].Z()
-                   << ", direction: " << dirVec[iV].X() / muonp << ","
-                   << dirVec[iV].Y() / muonp << "," << dirVec[iV].Z() / muonp;
+    // A clamped POCA can give a zero-length segment. Keep its switching
+    // diagnostic, but do not navigate or assign any material to it.
+    if (segment.endZ == segment.startZ) {
+      previousEnd = start;
+      hasPrevious = true;
+      continue;
+    }
+    TGeoNode* node = gGeoManager->InitTrack(
+        start.X(), start.Y(), start.Z(), direction.X(), direction.Y(), direction.Z());
+    if (!node) break;
+
+    unsigned steps = 0;
+    bool reachedEnd = false;
+    while (node) {
+      const Double_t* point = gGeoManager->GetCurrentPoint();
+      const TVector3 current(point[0], point[1], point[2]);
+      const double remaining = (segment.endZ - current.Z()) / direction.Z();
+      if (remaining <= 1.e-8) {
+        reachedEnd = true;
         break;
       }
-      material = currentnode->GetVolume()->GetMedium()->GetMaterial();
-      LOG(debug) << " ---> Update track direction at z=" << zpos;
-      doInit[iV] = false;
+      if (++steps > 10000) {
+        LOG(error) << "Muon geometry stepping did not converge at z = " << current.Z();
+        break;
+      }
+      const auto* volume = node->GetVolume();
+      const auto* material = volume->GetMedium()->GetMaterial();
+      const std::string name = volume->GetName();
+      node = gGeoManager->FindNextBoundaryAndStep(remaining, kFALSE);
+      const double step = std::min(gGeoManager->GetStep(), remaining);
+      if (!std::isfinite(step) || step < 0.) break;
+      if (step > 0.) {
+        MuonPath path;
+        path.AddVolume(name, material->GetName(), material->GetDensity());
+        path.SetVertexInfo(m.position, m.momentum, m.time);
+        path.SetLength(step, current, step * direction.Z());
+        fVolMap[path.GetLabel()].insert(name + "_" + material->GetName());
+        auto inserted = fPathMap.emplace(path.GetLabel(), path);
+        if (!inserted.second) inserted.first->second.Add(path);
+      }
+      if (remaining - step <= 1.e-8) {
+        reachedEnd = true;
+        break;
+      }
     }
-
-    if (!currentnode) {
-      LOG(error) << "Muon point out of geometry: x " << vtxVec[iV].X() << ", y "
-                 << vtxVec[iV].Y() << ", z " << vtxVec[iV].Z()
-                 << ", direction: " << dirVec[iV].X() / muonp << ","
-                 << dirVec[iV].Y() / muonp << "," << dirVec[iV].Z() / muonp;
-      break;
-    }
-    std::ostringstream lInfo;
-    lInfo << currentnode->GetVolume()->GetName() << " " << material->GetName()
-          << " start zpos = " << zpos << " cm";
-    double nextL = 0;
-    bool switchVtx = true;
-    if (iV + 1 < nVtx) {
-      lInfo << " Current vtx: " << vtxVec[iV].X() << " " << vtxVec[iV].Y()
-            << " " << vtxVec[iV].Z();
-      lInfo << " Next vtx: " << vtxVec[iV + 1].X() << " " << vtxVec[iV + 1].Y()
-            << " " << vtxVec[iV + 1].Z();
-      lInfo << " Current pos: " << currentPos.X() << " " << currentPos.Y()
-            << " " << currentPos.Z();
-      nextL = (vtxVec[iV + 1] - currentPos).Mag();
-      if (nextL != nextL) nextL = 0;
-      if (nextL > 0)
-        currentnode = gGeoManager->FindNextBoundaryAndStep(nextL, kFALSE);
-      else
-        currentnode = gGeoManager->FindNextBoundaryAndStep();
-      double step = gGeoManager->GetStep();
-      lInfo << " Vtx-Vtx length 3D: " << nextL << " step taken " << step;
-      if (nextL > 0 && step < nextL) switchVtx = false;
-    } else
-      currentnode = gGeoManager->FindNextBoundaryAndStep();
-    double step = gGeoManager->GetStep();
-    znext = step * dirVec[iV].Z() / muonp;
-    lInfo << " end zpos = " << zpos + znext << " stepz " << znext << " step3D "
-          << step;
-    LOG(debug) << lInfo.str();
-
-    // create new path object
-    MuonPath lpath;
-    lpath.AddVolume(lvolName, material->GetName(), material->GetDensity());
-    // reset vertex info to closest measured point
-    lpath.SetVertexInfo(startVec[iV], dirVec[iV], timeVec[iV]);
-    lpath.SetLength(step, currentPos, znext);
-    lpath.Print();
-
-    // Sanity check: fill a map to print at the end a unique list of volumes
-    // found for each label.
-    fVolMap[lpath.GetLabel()].insert(lvolName + "_" + material->GetName());
-
-    zpos += znext;
-    auto lele = fPathMap.emplace(lpath.GetLabel(), lpath);
-    if (!lele.second) {
-      // already exists, add to it
-      MuonPath& thepath = lele.first->second;
-      thepath.Add(lpath);
-    }
-    // increment vtx index to go to next change in direction...
-    if (iV < nVtx - 1 && switchVtx) iV++;
-    // for safety...
-    if (lcount > 1000) {
-      LOG(info) << "Reached 1000 iterations in filling path, stopping there: z="
-                << zpos << " cm";
-      break;
-    }
-    lcount++;
+    if (!reachedEnd) break;
+    previousEnd = m.position +
+        ((segment.endZ - m.position.Z()) / direction.Z()) * direction;
+    hasPrevious = true;
   }
-
-  LOG(debug) << " -- Map elements after " << lcount
-             << "steps: n=" << fPathMap.size();
-  for (auto lele = fPathMap.begin(); lele != fPathMap.end(); ++lele) {
-    LOG(debug) << lele->first << ": ";
-    lele->second.Print();
-  }
-
+  if (hasLargeJump) ++fMuonsWithLargeJumps;
   return fPathMap;
 }
 

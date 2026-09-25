@@ -777,7 +777,8 @@ void MuDISFilter::ProcessEvents() {
   for (Long64_t event = fstartEvt; event < end; ++event) {
     if ((event - fstartEvt) % 100 == 0)
       LOG(info) << "MuDISFilter: processing entry " << event;
-    if (ftree->GetEntry(event) <= 0 || !finEv.mcTrks || finEv.mcTrks->empty() ||
+    if (!finEv.tdPt.PrepareEntry(ftree, event) || ftree->GetEntry(event) <= 0 ||
+        !finEv.mcTrks || finEv.mcTrks->empty() ||
         !finEv.sbtPt || !finEv.ubtPt || !finEv.sstPt) {
       ++skipped;
       continue;
@@ -904,6 +905,7 @@ void MuDISFilter::ProcessEvents() {
       foutEv.sbtPt = *finEv.sbtPt;
       foutEv.ubtPt = *finEv.ubtPt;
       foutEv.sstPt = *finEv.sstPt;
+      foutEv.tdPt = finEv.tdPt.Get();
       if (fouttree->Fill() < 0)
         throw std::runtime_error("Failed writing MuonDIS entry");
       ++selected;

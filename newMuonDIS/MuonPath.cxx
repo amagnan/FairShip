@@ -19,6 +19,31 @@ void MuonPath::SetVertexInfo(const TVector3& vecpos, const TVector3& vecp,
   fpvec.push_back(vecp);
 }
 
+double MuonPath::GetZAtLength(double length, unsigned& idx) const {
+  idx = 0;
+  if (fendLength.empty()) return 0.;
+  length = std::clamp(length, 0., flength);
+  const auto end = std::upper_bound(fendLength.begin(), fendLength.end(), length);
+  idx = end == fendLength.end() ? fendLength.size() - 1 : end - fendLength.begin();
+  const double previous = idx == 0 ? 0. : fendLength[idx - 1];
+  const double step = fendLength[idx] - previous;
+  return step > 0. ? fstart[idx].Z() + (length - previous) / step *
+                        (fendZ[idx] - fstart[idx].Z())
+                   : fstart[idx].Z();
+}
+
+// Convert the existing compact z coordinate (gaps removed) into path length.
+double MuonPath::GetLengthAtZ(const double& aZ) const {
+  if (fendLength.empty()) return 0.;
+  unsigned idx = 0;
+  const double z = GetZ(aZ, idx);
+  const double previous = idx == 0 ? 0. : fendLength[idx - 1];
+  const double dz = fendZ[idx] - fstart[idx].Z();
+  return previous + (dz > 0. ? std::clamp((z - fstart[idx].Z()) / dz, 0., 1.) *
+                                  (fendLength[idx] - previous)
+                            : 0.);
+}
+
 double MuonPath::GetZ(const double& aZ, unsigned& idx) const {
   //@FIXME AMM- is this efficient enough??
   const unsigned nSlices = GetNSlices();
@@ -121,6 +146,7 @@ bool MuonPath::Add(const MuonPath& aEle) {
   fstartT.push_back(aEle.fstartT[0]);
   fendZ.push_back(aEle.fendZ[0]);
   flength += aEle.flength;
+  fendLength.push_back(flength);
   fwdensity += aEle.fdensity * aEle.flength;
   fzlength += aEle.fendZ[0] - aEle.fstart[0].Z();
   return true;

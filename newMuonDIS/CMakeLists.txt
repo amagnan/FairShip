@@ -5,7 +5,7 @@ ship_add_library(
   NAME ShipMuDIS
   SOURCES MuDISFilter.cxx MagneticTrackPropagator.cxx MuDISProcessor.cxx MuGeoProcessor.cxx MuonPath.cxx NewMuDISGenerator.cxx
   LINKDEF LinkDef.h
-  DEPENDENCIES Base ShipData ShipField veto ShipGen UpstreamTagger strawtubes EvtGen::EvtGen EvtGen::EvtGenExternal FairLogger::FairLogger pythia6::pythia6 pythia6::Pythia6
+  DEPENDENCIES Base ShipData ShipField veto ShipGen UpstreamTagger strawtubes TimeDet EvtGen::EvtGen EvtGen::EvtGenExternal FairLogger::FairLogger pythia6::pythia6 pythia6::Pythia6
   EXTRA_DICT_HEADERS MuDISDefs.h
   INCLUDE_DIRECTORIES ${ROOTEGPythia6_INCLUDE_DIR}
   SYSTEM_INCLUDE_DIRECTORIES ${PYTHIA8_INCLUDE_DIR} ${PYTHIA8_INCLUDE_DIR}/..

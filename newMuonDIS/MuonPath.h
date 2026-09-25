@@ -72,12 +72,14 @@ class MuonPath {
   inline void SetLength(const double& aStep, const TVector3& aStart,
                         const double& aZ) {
     flength += aStep;
+    fendLength.push_back(flength);
     fzlength += aZ;
     fstart.push_back(aStart);
     fendZ.push_back(aStart.Z() + aZ);
     fwdensity += aStep * fdensity;
     const unsigned idx = static_cast<unsigned>(fstart.size() - 1);
-    fstartT.push_back(GetTimeNs(aStart.Z(), idx));
+    fstartT.push_back(0.);
+    fstartT.back() = GetTimeNs(aStart.Z(), idx);
   };
 
   inline unsigned GetNSlices() const {
@@ -110,6 +112,8 @@ class MuonPath {
   std::string GetLabel(const std::string& aVol, const std::string& aMat) const;
   void Print();
   double GetZ(const double& aZ, unsigned& idx) const;
+  double GetZAtLength(double length, unsigned& idx) const;
+  double GetLengthAtZ(const double& aZ) const;
   bool Add(const MuonPath& aEle);
 
   inline double GetX(const double& aZ, const unsigned& idx) const {
@@ -132,13 +136,14 @@ class MuonPath {
   };
 
   inline double GetTimeNs(const double& aZ, const unsigned& idx) const {
-    if (idx >= GetNSlices()) return 0;
+    if (idx >= GetNSlices() || fpvec[idx].Z() == 0.) return 0;
     double P = fpvec[idx].Mag();
     if (P == 0.) return 0;
     double v = c_light * P /
                TMath::Sqrt(TMath::Power(P, 2) + TMath::Power(muon_mass, 2));
     if (v == 0.) return 0;
-    return fvtxT[idx] + GetLength(aZ, idx) / v;
+    // A slice may precede its reference measurement in z.
+    return fvtxT[idx] + (aZ - fvtx[idx].Z()) * P / fpvec[idx].Z() / v;
   };
 
  private:
@@ -155,6 +160,7 @@ class MuonPath {
   std::vector<TVector3> fstart;
   std::vector<double> fstartT;
   std::vector<double> fendZ;
+  std::vector<double> fendLength;  // cumulative segment lengths, excluding jumps
   std::vector<TVector3> fpvec;
 };
 

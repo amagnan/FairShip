@@ -14,6 +14,7 @@
 #include "TROOT.h"
 #include "TTree.h"  // for TTree
 #include "TVector3.h"
+#include "TimeDetPoint.h"
 #include "UpstreamTaggerPoint.h"
 #include "strawtubesPoint.h"
 #include "vetoPoint.h"
@@ -88,12 +89,14 @@ struct MuonBranches {
   std::vector<vetoPoint> sbtPt;
   std::vector<UpstreamTaggerPoint> ubtPt;
   std::vector<strawtubesPoint> sstPt;
+  std::vector<TimeDetPoint> tdPt;
   MuonDISBranches br[nMats];
   void InitTree(TTree*& aT) {
     aT->Branch("muon_MCTracks", &mcTrks);
     aT->Branch("muon_SBTPoints", &sbtPt);
     aT->Branch("muon_SSTPoints", &sstPt);
     aT->Branch("muon_UBTPoints", &ubtPt);
+    aT->Branch("muon_TDPoints", &tdPt);
     for (unsigned i(0); i < nMats; ++i) {
       br[i].InitTree(aT, MatTypeStr[i]);
     }
@@ -107,7 +110,46 @@ struct MuonBranches {
     ubtPt.reserve(nMax);
     sstPt.clear();
     sstPt.reserve(nMax);
+    tdPt.clear();
+    tdPt.reserve(nMax);
   };
+};
+
+// Bind this optional branch on each file change, before the tree reads an
+// entry. Clear it even when absent, so mixed chains cannot retain stale hits.
+class OptionalTDPoints {
+ public:
+  void Setup(const char* name) {
+    fName = name;
+    fTreeNumber = -1;
+    fBranch = nullptr;
+    fPoints.clear();
+    fAddress = &fPoints;
+  }
+
+  bool PrepareEntry(TTree* tree, Long64_t entry) {
+    fPoints.clear();
+    const Long64_t localEntry = tree->LoadTree(entry);
+    if (localEntry < 0) return false;
+    if (tree->GetTreeNumber() != fTreeNumber) {
+      fTreeNumber = tree->GetTreeNumber();
+      fBranch = tree->GetTree()->GetBranch(fName.c_str());
+      if (fBranch) {
+        fBranch->SetAutoDelete(false);
+        fBranch->SetAddress(&fAddress);
+      }
+    }
+    return true;
+  }
+
+  const std::vector<TimeDetPoint>& Get() const { return fPoints; }
+
+ private:
+  std::string fName;
+  int fTreeNumber = -1;
+  TBranch* fBranch = nullptr;
+  std::vector<TimeDetPoint> fPoints;
+  std::vector<TimeDetPoint>* fAddress = &fPoints;
 };
 
 struct CBMSimBranches {
@@ -115,6 +157,7 @@ struct CBMSimBranches {
   std::vector<vetoPoint>* sbtPt = nullptr;
   std::vector<UpstreamTaggerPoint>* ubtPt = nullptr;
   std::vector<strawtubesPoint>* sstPt = nullptr;
+  OptionalTDPoints tdPt;
 
   bool Setup(TChain* aT) {
     bool ok = true;
@@ -122,6 +165,7 @@ struct CBMSimBranches {
     ok &= (aT->SetBranchAddress("vetoPoint", &sbtPt) >= 0);
     ok &= (aT->SetBranchAddress("UpstreamTaggerPoint", &ubtPt) >= 0);
     ok &= (aT->SetBranchAddress("strawtubesPoint", &sstPt) >= 0);
+    tdPt.Setup("TimeDetPoint");
     return ok;
   };
 };
@@ -193,6 +237,7 @@ struct MuonInBranches {
   std::vector<vetoPoint>* sbtPt = nullptr;
   std::vector<UpstreamTaggerPoint>* ubtPt = nullptr;
   std::vector<strawtubesPoint>* sstPt = nullptr;
+  OptionalTDPoints tdPt;
   MuonDISInBranches br[nMats];
 
   bool Setup(TTree* aT) {
@@ -201,6 +246,7 @@ struct MuonInBranches {
     ok &= (aT->SetBranchAddress("muon_SBTPoints", &sbtPt) >= 0);
     ok &= (aT->SetBranchAddress("muon_SSTPoints", &sstPt) >= 0);
     ok &= (aT->SetBranchAddress("muon_UBTPoints", &ubtPt) >= 0);
+    tdPt.Setup("muon_TDPoints");
     for (unsigned i(0); i < nMats; ++i) {
       ok &= br[i].SetupTree(aT, MatTypeStr[i]);
     }
