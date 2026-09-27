@@ -31,6 +31,37 @@ python3 <relative_path_to_FairShip>/FairShip/newMuonDIS/prepareEvents.py -f <you
 python3 <path_to_FairShip>/newMuonDIS/run_simScript_newDIS.py -f <muonDis_output.root> --tag <your_tag> --MuDIS --debug 1 -n 10
 ```
 
+For this generator, `-i/--firstEvent` (or `NewMuDISGenerator::Init`'s
+`startEvent`) is a zero-based **muon entry** in the supplied `MuonDIS` tree
+or chain. In filtered files this indexes the retained muons, not their original
+entry numbers. All retained DIS interactions of that muon and subsequent muons
+are available, in material order. `GetNevents()` returns their total count;
+`-n` limits the number of DIS interactions simulated (`-n -1`: all remaining).
+A start equal to the number of muon entries gives zero events; negative starts
+and starts beyond the end are rejected.
+
+Replay uses each material's stored `muon_nDISevt_<VOL>` count and
+`mudis_nDISdaughters_<VOL>` daughter ranges. Filtering updates both, so replay
+does not need the original number of generated DIS interactions. After all
+materials in one muon entry are exhausted, replay advances to the next muon.
+
+The main simulation macro also supports this generator via `--NewMuDIS`
+(`--MuDIS` there still selects the legacy generator):
+
+```bash
+python macro/run_simScript.py --NewMuDIS -f selected.root -i 0 -n 10 --tag dis
+```
+
+Both entry points call `python/MuDISGenerator_postProcessing.py` after simulation.
+It appends the original muon's UBT, SBT, SST and TD points to each event's
+corresponding detector branches, retaining only points with `GetZ() < DISvz`.
+Points at the DIS vertex or downstream are excluded. Copied points refer to
+`MCTrack[0]` (the incoming muon) and the new event ID; simulated points and file
+metadata are preserved. Older input files without TD points are supported.
+The helper matches the generator's input order, material counts and starting
+muon entry, including filtered inputs and runs ending partway through a muon.
+It must run before any output event skimming or reordering.
+
 ## Overview of classes:
 
 

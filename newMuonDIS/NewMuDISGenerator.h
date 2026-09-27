@@ -27,17 +27,20 @@ class NewMuDISGenerator : public SHiP::Generator {
   /** public method ReadEvent **/
   using SHiP::Generator::Init;
   Bool_t ReadEvent(FairPrimaryGenerator*) override;
+  // startEvent is a zero-based muon entry in the input MuonDIS tree/chain.
   Bool_t Init(const char*, int) override;
   Bool_t Init(const char*) override;
   Bool_t Init(const std::vector<std::string>&, int) override;
   Bool_t Init(const std::vector<std::string>&) override;
-  Int_t GetNevents();
+  Int_t GetNevents();  // DIS interactions from startEvent to the end of input
   void SetNevents();
 
  protected:
   FairLogger* fLogger;
   TChain* fTree;
   int fNevents;
+  int fStartEvent = 0;
+  bool fEntryLoaded = false;
   ShipMuDIS::MuonInBranches finEv;
   int fn;          // counter of final output events
   int fnmu;        // counter of original input muons

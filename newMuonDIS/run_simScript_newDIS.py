@@ -263,7 +263,9 @@ parser.add_argument(
     "-e", "--epsilon", dest="theDPepsilon", help="to set mixing parameter epsilon", default=0.00000008, type=float
 )
 parser.add_argument("-n", "--nEvents", dest="nEvents", help="Number of events to generate", default=100, type=int)
-parser.add_argument("-i", "--firstEvent", help="First event of input file to use", default=0, type=int)
+parser.add_argument(
+    "-i", "--firstEvent", help="First input entry to use (muon entry for --MuDIS)", default=0, type=int
+)
 parser.add_argument(
     "-s",
     "--seed",
@@ -746,7 +748,7 @@ if options.mudis:
     ut.checkFileExists(inputFile)
     primGen.SetTarget(0.0, 0.0)
     DISgen = ROOT.NewMuDISGenerator()
-    if not DISgen.Init(inputFile):
+    if not DISgen.Init(inputFile, options.firstEvent):
         raise RuntimeError(f"Failed to initialize NewMuDISGenerator from input: {inputFile}")
     primGen.AddGenerator(DISgen)
     ROOT.SetOwnership(DISgen, False)  # C++ FairPrimaryGenerator takes ownership
@@ -1075,19 +1077,9 @@ if options.muonback:
     fin.SetWritable(False)  # bpyass flush error
 
 if options.mudis:
-    # temp_filename = outFile.replace(".root", "_tmp.root")
+    from MuDISGenerator_postProcessing import post_process
 
-    # with (
-    #    ROOT.TFile.Open(outFile, "read") as f_outputfile,
-    #   ROOT.TFile.Open(temp_filename, "recreate") as f_temp,
-    # ):
-    #    output_tree = f_outputfile["cbmsim"]
-    #    muondis_tree = ROOT.TChain("MuonDIS")
-    #    for _f in inputFile:
-    #        muondis_tree.Add(_f)
-
-    # os.replace(temp_filename, outFile)
-    print("New DIS code TODO! Need to add input muon to the output file:", outFile)
+    post_process(outFile, inputFile, options.firstEvent)
 
 if options.command == "Genie":
     # breakpoint()

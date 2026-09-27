@@ -42,6 +42,12 @@ Bool_t NewMuDISGenerator::Init(const std::vector<std::string>& fileNames) {
 
 Bool_t NewMuDISGenerator::Init(const std::vector<std::string>& fileNames,
                                const int startEvent) {
+  fNevents = -1;
+  fEntryLoaded = false;
+  if (startEvent < 0) {
+    LOG(error) << "NewMuDISGenerator: startEvent must be nonnegative";
+    return kFALSE;
+  }
   if (fileNames.empty()) {
     LOG(error) << "NewMuDISGenerator: no input files provided. "
                << "Check the -f/--inputFile argument or input file glob.";
@@ -71,6 +77,7 @@ Bool_t NewMuDISGenerator::Init(const std::vector<std::string>& fileNames,
   delete testFile;
 
   if (hasDIStree) {
+    delete fTree;
     fTree = new TChain("MuonDIS");
     for (auto& f : fileNames) {
       LOG(info) << "Opening input file " << f;
@@ -78,8 +85,14 @@ Bool_t NewMuDISGenerator::Init(const std::vector<std::string>& fileNames,
     }
     int treeEvts = fTree->GetEntries();
     LOG(info) << "Reading " << treeEvts << " entries.";
+    if (startEvent > treeEvts) {
+      LOG(error) << "NewMuDISGenerator: startEvent " << startEvent
+                 << " exceeds the number of input muon entries " << treeEvts;
+      return kFALSE;
+    }
+    fStartEvent = startEvent;
     fn = 0;
-    fnmu = 0;
+    fnmu = startEvent;
     fMat = 0;
     fnmuDis = 0;
     fnmuDisDau = 0;
@@ -92,6 +105,7 @@ Bool_t NewMuDISGenerator::Init(const std::vector<std::string>& fileNames,
       return kFALSE;
     }
     SetNevents();
+    if (fNevents < 0) return kFALSE;
     LOG(info) << "NewMuDISGenerator: Initialization successful.";
     return kTRUE;
   }
@@ -106,7 +120,6 @@ Bool_t NewMuDISGenerator::Init(const char* fileName, const int startEvent) {
 
 // -----   Passing the event   ---------------------------------------------
 Bool_t NewMuDISGenerator::ReadEvent(FairPrimaryGenerator* cpg) {
-  static bool firstEvt = true;
   if (fn >= fNevents) {
     LOG(info) << " Reached total number of DIS events: counter " << fn
               << " nTot=" << fNevents;
@@ -115,14 +128,14 @@ Bool_t NewMuDISGenerator::ReadEvent(FairPrimaryGenerator* cpg) {
   LOG(debug) << " - Processing input muon " << fnmu << " fMat " << fMat
              << " fnmuDis " << fnmuDis << " fnmuDisDau " << fnmuDisDau;
 
-  if (firstEvt) {
+  if (!fEntryLoaded) {
     if (fTree->GetEntry(fnmu) <= 0) {
       LOG(error) << " Error reading event " << fnmu;
       return kFALSE;
     } else {
-      LOG(info) << " Updated tree entry: " << fnmu;
+      LOG(debug) << " Updated tree entry: " << fnmu;
     }
-    firstEvt = false;
+    fEntryLoaded = true;
   }
 
   // access the different materials in turn
@@ -134,23 +147,25 @@ Bool_t NewMuDISGenerator::ReadEvent(FairPrimaryGenerator* cpg) {
              << (*lBr->DISparticles).size() << " fMat " << fMat
              << " local evtNumber " << fn;
 
-  while (nDIS == 0) {
-    // if fMat branch has no element, go to the next one already...
+  // Counts describe the interactions actually stored, including after filtering.
+  // Advance only before producing an event: a successful final event must not
+  // fail just because there is no following input muon.
+  while (fnmuDis >= nDIS) {
     fMat++;
     fnmuDis = 0;
     fnmuDisDau = 0;
-    LOG(info) << " -- switching material" << fMat;
+    LOG(debug) << " -- switching material" << fMat;
     if (fMat >= nMats) {
       fMat = 0;
       fnmu++;
-      LOG(info) << " -- switching input muon " << fnmu;
-      LOG(info) << " - Processing input muon " << fnmu << " fMat " << fMat
+      LOG(debug) << " -- switching input muon " << fnmu;
+      LOG(debug) << " - Processing input muon " << fnmu << " fMat " << fMat
                 << " fnmuDis " << fnmuDis << " fnmuDisDau " << fnmuDisDau;
-      if (fTree->GetEntry(fnmu) <= 0) {
+      if (fnmu >= fTree->GetEntries() || fTree->GetEntry(fnmu) <= 0) {
         LOG(error) << " Error reading event " << fnmu;
         return kFALSE;
       } else {
-        LOG(info) << " Updated tree entry: " << fnmu;
+        LOG(debug) << " Updated tree entry: " << fnmu;
       }
     }
     lBr = &finEv.br[fMat];
@@ -158,7 +173,7 @@ Bool_t NewMuDISGenerator::ReadEvent(FairPrimaryGenerator* cpg) {
     nDIS = lBr->nDISevts;
   }
 
-  if (fnmu % 1 == 0 && fnmuDis == 0) {
+  if (fnmu % 10 == 0 && fnmuDis == 0) {
     LOG(info) << "Info NewMuDISGenerator: NewMuDIS original muon event #"
               << fnmu << " material " << fMat << " final event #" << fn;
   }
@@ -220,26 +235,7 @@ Bool_t NewMuDISGenerator::ReadEvent(FairPrimaryGenerator* cpg) {
     return kFALSE;
   }
 
-  if (fnmuDis >= nDIS) {
-    fMat++;
-    fnmuDis = 0;
-    fnmuDisDau = 0;
-    LOG(info) << " -- switching material" << fMat;
-    if (fMat >= nMats) {
-      fMat = 0;
-      fnmu++;
-      LOG(info) << " -- switching input muon " << fnmu;
-      if (fTree->GetEntry(fnmu) <= 0) {
-        LOG(error) << " Error reading event " << fnmu;
-        return kFALSE;
-      } else {
-        LOG(info) << " Updated tree entry: " << fnmu;
-      }
-    }
-    lBr = &finEv.br[fMat];
-  }
-
-  if (fn == fNevents - 1) {
+  if (fn == fNevents) {
     LOG(info) << "-- Reached total number of DIS events: counter " << fn
               << " nTot=" << fNevents;
   }
@@ -252,10 +248,16 @@ Int_t NewMuDISGenerator::GetNevents() { return fNevents; }
 
 void NewMuDISGenerator::SetNevents() {
   fNevents = 0;
+  // Counting reads the tree; reload the current muon before replaying it.
+  fEntryLoaded = false;
   int treeEvts = fTree->GetEntries();
   LOG(debug) << "fTree has " << treeEvts << " entries.";
-  for (int iEv(0); iEv < treeEvts; ++iEv) {
-    fTree->GetEntry(iEv);
+  for (int iEv = fStartEvent; iEv < treeEvts; ++iEv) {
+    if (fTree->GetEntry(iEv) <= 0) {
+      LOG(error) << "NewMuDISGenerator: error counting input muon " << iEv;
+      fNevents = -1;
+      return;
+    }
     for (unsigned iM(0); iM < nMats; ++iM) {
       MuonDISInBranches& lBr = finEv.br[iM];
       LOG(debug) << lBr.Print(iEv, MatTypeStr[iM]).str();
