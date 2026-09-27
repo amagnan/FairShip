@@ -58,6 +58,41 @@ bool FindVolumeRange(TGeoNode* node, const TGeoHMatrix& parent, const std::strin
     if (FindVolumeRange(node->GetDaughter(i), transform, name, range)) return true;
   return false;
 }
+
+bool FindVolumeExitFaceXY(TGeoNode* node, const TGeoHMatrix& parent,
+                          const std::string& name,
+                          std::array<double, 4>& bounds) {
+  TGeoHMatrix transform(parent);
+  transform.Multiply(node->GetMatrix());
+  if (name == node->GetVolume()->GetName()) {
+    auto* box = dynamic_cast<TGeoBBox*>(node->GetVolume()->GetShape());
+    if (!box) throw std::runtime_error("Volume has no bounding box: " + name);
+    box->ComputeBBox();
+    const auto* origin = box->GetOrigin();
+    bounds = {std::numeric_limits<double>::infinity(),
+              -std::numeric_limits<double>::infinity(),
+              std::numeric_limits<double>::infinity(),
+              -std::numeric_limits<double>::infinity()};
+    for (double x : {-box->GetDX(), box->GetDX()})
+      for (double y : {-box->GetDY(), box->GetDY()}) {
+        const double local[3] = {origin[0] + x, origin[1] + y,
+                                 origin[2] + box->GetDZ()};
+        double global[3];
+        transform.LocalToMaster(local, global);
+        bounds[0] = std::min(bounds[0], global[0]);
+        bounds[1] = std::max(bounds[1], global[0]);
+        bounds[2] = std::min(bounds[2], global[1]);
+        bounds[3] = std::max(bounds[3], global[1]);
+      }
+    return std::isfinite(bounds[0]) && std::isfinite(bounds[1]) &&
+           std::isfinite(bounds[2]) && std::isfinite(bounds[3]) &&
+           bounds[0] < bounds[1] && bounds[2] < bounds[3];
+  }
+  for (int i = 0; i < node->GetNdaughters(); ++i)
+    if (FindVolumeExitFaceXY(node->GetDaughter(i), transform, name, bounds))
+      return true;
+  return false;
+}
 }
 
 MagneticTrackPropagator::MagneticTrackPropagator(ShipBFieldMap* field, TGeoManager* geometry,
@@ -116,6 +151,17 @@ std::pair<double, double> MagneticTrackPropagator::GetVolumeZRange(const char* v
       || !FindVolumeRange(fGeometry->GetTopNode(), TGeoHMatrix(), volumeName, range))
     throw std::runtime_error(std::string("Volume z range not found in geometry: ") + (volumeName ? volumeName : "null"));
   return range;
+}
+
+std::array<double, 4> MagneticTrackPropagator::GetVolumeExitFaceXY(
+    const char* volumeName) const {
+  std::array<double, 4> bounds;
+  if (!volumeName || !fGeometry || !fGeometry->GetTopNode() ||
+      !FindVolumeExitFaceXY(fGeometry->GetTopNode(), TGeoHMatrix(), volumeName,
+                            bounds))
+    throw std::runtime_error(std::string("Volume exit face not found in geometry: ") +
+                             (volumeName ? volumeName : "null"));
+  return bounds;
 }
 
 bool MagneticTrackPropagator::InsideBox(const TVector3& position, const Box& box) {

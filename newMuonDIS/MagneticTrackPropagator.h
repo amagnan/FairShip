@@ -2,6 +2,7 @@
 #define SHIPMuDIS_MAGNETICTRACKPROPAGATOR_H_
 
 #include "TVector3.h"
+#include <array>
 #include <cstddef>
 #include <utility>
 #include <vector>
@@ -23,6 +24,8 @@ class MagneticTrackPropagator {
                    double maxStep = 5.);
   double GetPlaneZ(const char* volumeName = "Tr1") const;
   std::pair<double, double> GetVolumeZRange(const char* volumeName) const;
+  // Global x/y limits of the downstream (+local-z) face of a box volume.
+  std::array<double, 4> GetVolumeExitFaceXY(const char* volumeName) const;
   std::pair<double, double> GetMuonShieldZRange() const { return fMuonShieldZRange; }
   bool HasMuonShieldField() const { return fMuonShieldField != nullptr; }
   // Restrict the initial shield scan; a later upstream request widens it safely.

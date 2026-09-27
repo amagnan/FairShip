@@ -1,6 +1,7 @@
 #include "MuDISFilter.h"
 
 #include <Pythia8/Pythia.h>
+#include <TCanvas.h>
 #include <TFile.h>
 #include <TTree.h>
 #include <TTreeReader.h>
@@ -61,6 +62,18 @@ bool PassesChargedMomentumCut(const DISparticle& particle) {
   return std::sqrt(particle.px * particle.px + particle.py * particle.py +
                    particle.pz * particle.pz) > 1.;
 }
+
+constexpr std::array<double, 5> kMomentumEdges =
+    {2., 20., 50., 100., 400.};
+constexpr std::array<double, 6> kPtEdges =
+    {0., 1., 2., 3., 5., 10.};
+
+int KinematicBin(double value, const double* edges, unsigned bins) {
+  if (!std::isfinite(value) || value < edges[0] || value > edges[bins]) return -1;
+  for (unsigned bin = 0; bin < bins; ++bin)
+    if (value < edges[bin + 1] || bin + 1 == bins) return bin;
+  return -1;
+}
 }  // namespace
 
 // -----   Default constructor   -------------------------------------------
@@ -72,6 +85,28 @@ MuDISFilter::MuDISFilter() {
   fnEvts = -1;
   fstartEvt = 0;
   fPDG = TDatabasePDG::Instance();
+}
+
+void MuDISFilter::SetFilterEfficiencyBinning(
+    double xmin, double xmax, unsigned xbins, double ymin, double ymax,
+    unsigned ybins, double zmin, double zmax, unsigned zbins) {
+  const auto symmetricAboutZero = [](double low, double high) {
+    return std::abs(low + high) <=
+           1.e-12 * std::max({1., std::abs(low), std::abs(high)});
+  };
+  if (!std::isfinite(xmin) || !std::isfinite(xmax) || !std::isfinite(ymin) ||
+      !std::isfinite(ymax) || !std::isfinite(zmin) || !std::isfinite(zmax) ||
+      xmin >= xmax || ymin >= ymax || zmin >= zmax || xbins == 0 ||
+      ybins == 0 || zbins == 0 || xbins % 2 == 0 || ybins % 2 == 0 ||
+      !symmetricAboutZero(xmin, xmax) || !symmetricAboutZero(ymin, ymax))
+    throw std::invalid_argument(
+        "Filter-efficiency x/y axes must be symmetric about zero with an odd "
+        "positive number of bins; all axis bounds must increase");
+  fEfficiencyXYBounds = {xmin, xmax, ymin, ymax};
+  fEfficiencyXBins = xbins;
+  fEfficiencyYBins = ybins;
+  fEfficiencyZBounds = {zmin, zmax};
+  fEfficiencyZBins = zbins;
 }
 
 Histograms MuDISFilter::BookHistograms(TDirectory* dir, const TString& mat,
@@ -161,6 +196,144 @@ Histograms MuDISFilter::BookHistograms(TDirectory* dir, const TString& mat,
       Form("DIS vertex weight - %s;wDIS;Input mu events", mat.Data()), 100, 0.,
       1.);
   return h;
+}
+
+void MuDISFilter::BookFilterEfficiencyHistograms(TDirectory* dir) {
+  fEfficiencyDirectory = dir;
+  const double xmin = fEfficiencyXYBounds[0], xmax = fEfficiencyXYBounds[1];
+  const double ymin = fEfficiencyXYBounds[2], ymax = fEfficiencyXYBounds[3];
+  for (unsigned ip = 0; ip < kMomentumBins; ++ip)
+    for (unsigned ipt = 0; ipt < kPtBins; ++ipt)
+      for (unsigned imat = 0; imat < kEfficiencyMaterials; ++imat) {
+        const TString tag = Form("p%u_pt%u_%s", ip, ipt,
+                                 MatTypeStr[imat].Data());
+        const TString title = Form("DIS filter efficiency, %.0f #leq p < %.0f GeV, "
+                                   "%.0f #leq p_{T} < %.0f GeV - %s;x_{#mu,start} [cm];"
+                                   "y_{#mu,start} [cm]", kMomentumEdges[ip],
+                                   kMomentumEdges[ip + 1], kPtEdges[ipt],
+                                   kPtEdges[ipt + 1], MatTypeStr[imat].Data());
+        auto*& all = fFilterEfficiency.allXY[ip][ipt][imat];
+        auto*& passed = fFilterEfficiency.passedXY[ip][ipt][imat];
+        all = new TH2D(Form("filter_efficiency_all_%s", tag.Data()), title,
+                       fEfficiencyXBins, xmin, xmax, fEfficiencyYBins, ymin, ymax);
+        passed = new TH2D(Form("filter_efficiency_passed_%s", tag.Data()), title,
+                          fEfficiencyXBins, xmin, xmax, fEfficiencyYBins, ymin, ymax);
+        all->SetDirectory(nullptr);
+        passed->SetDirectory(nullptr);
+        auto& allZByX = fFilterEfficiency.allZ[ip][ipt];
+        auto& passedZByX = fFilterEfficiency.passedZ[ip][ipt];
+        allZByX.resize(fEfficiencyXBins);
+        passedZByX.resize(fEfficiencyXBins);
+        for (unsigned ix = 0; ix < fEfficiencyXBins; ++ix) {
+          allZByX[ix].resize(fEfficiencyYBins);
+          passedZByX[ix].resize(fEfficiencyYBins);
+          for (unsigned iy = 0; iy < fEfficiencyYBins; ++iy) {
+            auto*& allZ = fFilterEfficiency.allZ[ip][ipt][ix][iy][imat];
+            auto*& passedZ = fFilterEfficiency.passedZ[ip][ipt][ix][iy][imat];
+            allZ = new TH1D(Form("filter_efficiency_z_all_%s_x%u_y%u",
+                                  tag.Data(), ix, iy),
+                            title + Form(";z_{DIS} [cm];Weighted DIS events"),
+                            fEfficiencyZBins, fEfficiencyZBounds[0], fEfficiencyZBounds[1]);
+            passedZ = new TH1D(Form("filter_efficiency_z_passed_%s_x%u_y%u",
+                                     tag.Data(), ix, iy),
+                               allZ->GetTitle(), fEfficiencyZBins,
+                               fEfficiencyZBounds[0], fEfficiencyZBounds[1]);
+            allZ->SetDirectory(nullptr);
+            passedZ->SetDirectory(nullptr);
+          }
+        }
+      }
+}
+
+void MuDISFilter::FillFilterEfficiencyHistograms(
+    unsigned material, double momentum, double pt, double x, double y, double z,
+    double weight, bool passed) {
+  if (material >= kEfficiencyMaterials || !std::isfinite(weight)) return;
+  const int ip = KinematicBin(momentum, kMomentumEdges.data(), kMomentumBins);
+  const int ipt = KinematicBin(pt, kPtEdges.data(), kPtBins);
+  if (ip < 0 || ipt < 0) return;
+  auto* all = fFilterEfficiency.allXY[ip][ipt][material];
+  auto* accepted = fFilterEfficiency.passedXY[ip][ipt][material];
+  all->Fill(x, y, weight);
+  if (passed) accepted->Fill(x, y, weight);
+  const int ix = all->GetXaxis()->FindFixBin(x) - 1;
+  const int iy = all->GetYaxis()->FindFixBin(y) - 1;
+  if (ix < 0 || ix >= static_cast<int>(fEfficiencyXBins) || iy < 0 ||
+      iy >= static_cast<int>(fEfficiencyYBins))
+    return;
+  fFilterEfficiency.allZ[ip][ipt][ix][iy][material]->Fill(z, weight);
+  if (passed)
+    fFilterEfficiency.passedZ[ip][ipt][ix][iy][material]->Fill(z, weight);
+}
+
+void MuDISFilter::FinalizeFilterEfficiencyHistograms() {
+  if (!fEfficiencyDirectory) return;
+  fEfficiencyDirectory->cd();
+  for (unsigned ip = 0; ip < kMomentumBins; ++ip)
+    for (unsigned ipt = 0; ipt < kPtBins; ++ipt) {
+      for (unsigned imat = 0; imat < kEfficiencyMaterials + 1; ++imat) {
+        const TString material = imat == kEfficiencyMaterials ? "sum" : MatTypeStr[imat];
+        const TString tag = Form("p%u_pt%u_%s", ip, ipt, material.Data());
+        auto* efficiency = new TH2D(
+            Form("filter_efficiency_%s", tag.Data()),
+            Form("Weighted DIS filter efficiency, %.0f #leq p < %.0f GeV, "
+                 "%.0f #leq p_{T} < %.0f GeV - %s;x_{#mu,start} [cm];"
+                 "y_{#mu,start} [cm]", kMomentumEdges[ip], kMomentumEdges[ip + 1],
+                 kPtEdges[ipt], kPtEdges[ipt + 1], material.Data()),
+            fEfficiencyXBins, fEfficiencyXYBounds[0], fEfficiencyXYBounds[1], fEfficiencyYBins,
+            fEfficiencyXYBounds[2], fEfficiencyXYBounds[3]);
+        for (unsigned bx = 1; bx <= fEfficiencyXBins; ++bx)
+          for (unsigned by = 1; by <= fEfficiencyYBins; ++by) {
+            double all = 0., accepted = 0.;
+            const unsigned first = imat == kEfficiencyMaterials ? 0 : imat;
+            const unsigned last = imat == kEfficiencyMaterials ? kEfficiencyMaterials : imat + 1;
+            for (unsigned source = first; source < last; ++source) {
+              all += fFilterEfficiency.allXY[ip][ipt][source]->GetBinContent(bx, by);
+              accepted += fFilterEfficiency.passedXY[ip][ipt][source]->GetBinContent(bx, by);
+            }
+            if (all != 0.) efficiency->SetBinContent(bx, by, accepted / all);
+          }
+      }
+      auto* canvas = new TCanvas(Form("filter_efficiency_z_p%u_pt%u", ip, ipt),
+                                 Form("DIS filter efficiency vs z, p bin %u, p_{T} bin %u", ip, ipt),
+                                 1800, 1200);
+      canvas->Divide(fEfficiencyXBins, fEfficiencyYBins);
+      for (unsigned ix = 0; ix < fEfficiencyXBins; ++ix)
+        for (unsigned iy = 0; iy < fEfficiencyYBins; ++iy) {
+          canvas->cd(iy * fEfficiencyXBins + ix + 1);
+          for (unsigned imat = 0; imat < kEfficiencyMaterials + 1; ++imat) {
+            const TString material = imat == kEfficiencyMaterials ? "sum" : MatTypeStr[imat];
+            auto* efficiency = new TH1D(
+                Form("filter_efficiency_z_p%u_pt%u_x%u_y%u_%s", ip, ipt, ix, iy,
+                     material.Data()),
+                Form("%.0f #leq x < %.0f cm, %.0f #leq y < %.0f cm;z_{DIS} [cm];"
+                     "Weighted filter efficiency", fEfficiencyXYBounds[0] + ix *
+                     (fEfficiencyXYBounds[1] - fEfficiencyXYBounds[0]) / fEfficiencyXBins,
+                     fEfficiencyXYBounds[0] + (ix + 1) *
+                     (fEfficiencyXYBounds[1] - fEfficiencyXYBounds[0]) / fEfficiencyXBins,
+                     fEfficiencyXYBounds[2] + iy *
+                     (fEfficiencyXYBounds[3] - fEfficiencyXYBounds[2]) / fEfficiencyYBins,
+                     fEfficiencyXYBounds[2] + (iy + 1) *
+                     (fEfficiencyXYBounds[3] - fEfficiencyXYBounds[2]) / fEfficiencyYBins),
+                fEfficiencyZBins, fEfficiencyZBounds[0], fEfficiencyZBounds[1]);
+            for (int bin = 1; bin <= efficiency->GetNbinsX(); ++bin) {
+              double all = 0., accepted = 0.;
+              const unsigned first = imat == kEfficiencyMaterials ? 0 : imat;
+              const unsigned last = imat == kEfficiencyMaterials ? kEfficiencyMaterials : imat + 1;
+              for (unsigned source = first; source < last; ++source) {
+                all += fFilterEfficiency.allZ[ip][ipt][ix][iy][source]->GetBinContent(bin);
+                accepted += fFilterEfficiency.passedZ[ip][ipt][ix][iy][source]->GetBinContent(bin);
+              }
+              if (all != 0.) efficiency->SetBinContent(bin, accepted / all);
+            }
+            efficiency->SetLineColor(imat + 1);
+            efficiency->SetStats(true);
+            //efficiency->GetYaxis()->SetRangeUser(0., 1.);
+            efficiency->Draw(imat == 0 ? "hist" : "hist same");
+          }
+        }
+      canvas->Write();
+    }
 }
 
 void MuDISFilter::init(const int& aEvts, const int& aStart) {
@@ -329,6 +502,7 @@ void MuDISFilter::process_file(const std::vector<std::string>& input,
     hist_all[imat] = BookHistograms(dir, MatTypeStr[imat]);
     hist_filt[imat] = BookHistograms(dir, MatTypeStr[imat], "filtered");
   }
+  BookFilterEfficiencyHistograms(outfile->mkdir("filter_efficiency"));
 
   outfile->cd();
   fouttree = new TTree(
@@ -871,6 +1045,9 @@ void MuDISFilter::ProcessEvents() {
         const bool accepted = fFilter ? fFilter(daughters) : PassCandidates(candidates);
         FillDIS(hist_all[imat], in, idis, daughters, candidates,
                 accepted ? &hist_filt[imat] : nullptr);
+        FillFilterEfficiencyHistograms(
+            imat, muonP, muonPt, muon.GetStartX(), muon.GetStartY(),
+            vertex.Z(), in.wDIS, accepted);
         if (!accepted) continue;
         ++out.nDISevts;
         out.DISxsec.push_back(in.DISxsec->at(idis));
@@ -917,6 +1094,7 @@ void MuDISFilter::ProcessEvents() {
   }
   LOG(info) << "MuDISFilter: saved " << selected << " muon entries; skipped "
             << skipped << " unreadable or malformed entries.";
+  FinalizeFilterEfficiencyHistograms();
   for (unsigned imat = 0; imat < nMats; ++imat) {
     LOG(info) << "MuDISFilter: selected DIS events in "
               << MatTypeStr[imat].Data() << ": raw = " << selectedDIS[imat]

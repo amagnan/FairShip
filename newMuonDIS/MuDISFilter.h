@@ -78,6 +78,9 @@ class MuDISFilter {
   }
   void SetUsePythiaDecays(bool enabled);
   void SetPythiaDecaySeed(unsigned seed);
+  void SetFilterEfficiencyBinning(double xmin, double xmax, unsigned xbins,
+                                  double ymin, double ymax, unsigned ybins,
+                                  double zmin, double zmax, unsigned zbins);
   double GetDetectorZ() const { return fDetectorZ; }
 
   bool PassFilter(const std::vector<DISparticle>& daughters) const;
@@ -120,6 +123,27 @@ class MuDISFilter {
   void FillDIS(Histograms& h, const ShipMuDIS::MuonDISInBranches& br, int idis,
                const std::vector<DISparticle>& daughters,
                const std::vector<FilterCandidate>& candidates, Histograms* filtered);
+  static constexpr unsigned kMomentumBins = 4;
+  static constexpr unsigned kPtBins = 5;
+  static constexpr unsigned kEfficiencyMaterials = nMats - 1;  // Exclude REST.
+  using EfficiencyMaps = std::array<
+      std::array<std::array<TH2D*, kEfficiencyMaterials>, kPtBins>,
+      kMomentumBins>;
+  using EfficiencyZHistograms = std::array<
+      std::array<std::vector<std::vector<std::array<TH1D*, kEfficiencyMaterials>>>,
+                 kPtBins>,
+      kMomentumBins>;
+  struct FilterEfficiencyHistograms {
+    EfficiencyMaps allXY = {};
+    EfficiencyMaps passedXY = {};
+    EfficiencyZHistograms allZ = {};
+    EfficiencyZHistograms passedZ = {};
+  };
+  void BookFilterEfficiencyHistograms(TDirectory* dir);
+  void FillFilterEfficiencyHistograms(unsigned material, double momentum,
+                                      double pt, double x, double y, double z,
+                                      double weight, bool passed);
+  void FinalizeFilterEfficiencyHistograms();
   unsigned fMinChargedDaughters = 2;
   unsigned fFilterOption = 0;
   std::array<double, 5> fStationZ = {};  //! Tr1, Tr2, Tr3, Tr4, TD plane
@@ -147,6 +171,13 @@ class MuDISFilter {
   TDatabasePDG* fPDG;
   Histograms hist_all[nMats];
   Histograms hist_filt[nMats];
+  FilterEfficiencyHistograms fFilterEfficiency;
+  TDirectory* fEfficiencyDirectory = nullptr;  //! Owned by the output file.
+  std::array<double, 4> fEfficiencyXYBounds = {-200., 200., -300., 300.};
+  unsigned fEfficiencyXBins = 5;
+  unsigned fEfficiencyYBins = 5;
+  std::array<double, 2> fEfficiencyZBounds = {2500., 9500.};
+  unsigned fEfficiencyZBins = 70;
 };
 
 #endif

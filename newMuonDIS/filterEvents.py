@@ -99,6 +99,18 @@ def main():
     parser.add_argument("--muon-shield-field-map", help="Override files/<ShipGeo.shieldName>.root for the shield")
     parser.add_argument("--muon-shield-field-z", type=float,
                         help="Shield map z offset in cm (default: ShipGeo.muShield.Entrance[0])")
+    parser.add_argument("--filter-efficiency-x-bounds", type=float, nargs=2, metavar=("MIN", "MAX"),
+                        default=(-200., 200.), help="X-axis bounds in cm (default: -200 200)")
+    parser.add_argument("--filter-efficiency-x-bins", type=int, default=5,
+                        help="Odd number of X bins, centred on zero (default: 5)")
+    parser.add_argument("--filter-efficiency-y-bounds", type=float, nargs=2, metavar=("MIN", "MAX"),
+                        default=(-300., 300.), help="Y-axis bounds in cm (default: -300 300)")
+    parser.add_argument("--filter-efficiency-y-bins", type=int, default=5,
+                        help="Odd number of Y bins, centred on zero (default: 5)")
+    parser.add_argument("--filter-efficiency-z-bounds", type=float, nargs=2, metavar=("MIN", "MAX"),
+                        default=(2500., 9500.), help="Z-axis bounds in cm (default: 2500 9500)")
+    parser.add_argument("--filter-efficiency-z-bins", type=int, default=70,
+                        help="Number of Z bins (default: 70)")
     parser.add_argument("--no-detector-acceptance", action="store_true", help="Use charged multiplicity alone")
     parser.add_argument("--pythia-decays", action="store_true",
                         help="Decay daughters upstream of Tr1 with Pythia8 before filtering")
@@ -118,6 +130,15 @@ def main():
         parser.error("--ignore-input-containing must not be empty")
     if not 0 <= args.pythia_decay_seed <= 900000000:
         parser.error("--pythia-decay-seed must be in [0, 900000000]")
+    for axis, bounds, bins, centered in (
+        ("x", args.filter_efficiency_x_bounds, args.filter_efficiency_x_bins, True),
+        ("y", args.filter_efficiency_y_bounds, args.filter_efficiency_y_bins, True),
+        ("z", args.filter_efficiency_z_bounds, args.filter_efficiency_z_bins, False),
+    ):
+        if not all(math.isfinite(value) for value in bounds) or bounds[0] >= bounds[1] or bins <= 0:
+            parser.error(f"Filter-efficiency {axis} axis requires finite increasing bounds and positive bins")
+        if centered and (bins % 2 == 0 or not math.isclose(bounds[0], -bounds[1], rel_tol=1.e-12, abs_tol=1.e-12)):
+            parser.error(f"Filter-efficiency {axis} axis requires symmetric bounds and an odd bin count to centre zero")
     if (not args.no_detector_acceptance or args.pythia_decays) and not args.geoFile:
         parser.error("Detector acceptance requires -g/--geoFile")
     if args.pythia_decays and args.no_detector_acceptance:
@@ -203,6 +224,11 @@ def main():
     selection.SetFilterOption(args.filter_option)
     selection.SetMinChargedDaughters(args.min_charged)
     selection.SetIncludeMuons(not args.exclude_muons)
+    selection.SetFilterEfficiencyBinning(
+        *args.filter_efficiency_x_bounds, args.filter_efficiency_x_bins,
+        *args.filter_efficiency_y_bounds, args.filter_efficiency_y_bins,
+        *args.filter_efficiency_z_bounds, args.filter_efficiency_z_bins,
+    )
     if args.no_detector_acceptance:
         selection.SetUseDetectorAcceptance(False)
     else:
