@@ -500,10 +500,9 @@ ShipBFieldMap::binPair ShipBFieldMap::getBinInfo(
 
 Int_t ShipBFieldMap::getMapBin(Int_t iX, Int_t iY, Int_t iZ) {
   // Get the index of the map entry corresponding to the x,y,z bins.
-  // Remember that the map is ordered in ascending z, x, then y
+  // Remember that the map is ordered in ascending z, y, then x
 
-  //Int_t index = (iX * Ny_ + iY) * Nz_ + iZ;
-  Int_t index = (iY * Nx_ + iX) * Nz_ + iZ;
+  Int_t index = (iX * Ny_ + iY) * Nz_ + iZ;
   if (index < 0) {
     index = 0;
   } else if (index >= N_) {
