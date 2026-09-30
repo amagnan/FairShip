@@ -344,7 +344,7 @@ parser.add_argument("-D", "--display", dest="eventDisplay", help="store trajecto
 parser.add_argument(
     "--shieldName",
     help="The name of the muon shield in the database to use.",
-    default="TRY_2025",
+    default="TRY_2026",
     choices=["TRY_2025", "TRY_2026"],
 )
 parser.add_argument(
@@ -361,7 +361,7 @@ parser.add_argument("--print-fields", help="Print VMC fields and weights informa
 parser.add_argument("--check-overlaps", help="Perform geometry overlap checking", action="store_true")
 parser.add_argument(
     "--field_map",
-    default="files/2026_05_07_MainSpectrometerField_V21_3000.root",
+    default=None,
     help="Specify spectrometer field map as files/<name>.root. Default set in geometry_config.py: files/2025_02_12_SHiP_SpectrometerField_ECN3_MgB2.root",
 )
 parser.add_argument(
