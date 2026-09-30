@@ -468,7 +468,7 @@ def configure(run, ship_geo):
         run.SetField(fMagField)
         ROOT.SetOwnership(fMagField, False)  # C++ FairRunSim takes ownership
 
-    exclusionList = ["SplitCal"]
+    exclusionList = []
     # exclusionList = ["strawtubes","TargetTrackers","NuTauTarget",\
     #                 "SiliconTarget","Veto","Magnet","MuonShield","TargetStation", "TimeDet", "UpstreamTagger"]
 
