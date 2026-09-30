@@ -107,6 +107,16 @@ class MuonPath {
     return fstart[idx].Z();
   };
 
+  inline double GetEndZ(const unsigned& idx) const {
+    if (idx >= GetNSlices()) return 0;
+    return fendZ[idx];
+  };
+
+  inline double GetSliceLength(const unsigned& idx) const {
+    if (idx >= GetNSlices()) return 0;
+    return fendLength[idx] - (idx == 0 ? 0. : fendLength[idx - 1]);
+  };
+
   void SetVertexInfo(const TVector3& vecpos, const TVector3& vecp,
                      const double& time);
   std::string GetLabel(const std::string& aVol, const std::string& aMat) const;
