@@ -119,6 +119,7 @@ var hierarchy =
     [ "hnl.HNLbranchings", "classhnl_1_1HNLbranchings.html", [
       [ "hnl.HNL", "classhnl_1_1HNL.html", null ]
     ] ],
+    [ "makeCascadePythia8.InclusiveSignalEvents", "classmakeCascadePythia8_1_1InclusiveSignalEvents.html", null ],
     [ "eventDisplay.IO", "classeventDisplay_1_1IO.html", null ],
     [ "ISTLPointContainer", "classISTLPointContainer.html", [
       [ "SHiP::Detector< MTCDetPoint >", "classSHiP_1_1Detector.html", null ],
@@ -140,6 +141,7 @@ var hierarchy =
       [ "study_muMSC.Block", "classstudy__muMSC_1_1Block.html", null ],
       [ "study_thinTarget.Block", "classstudy__thinTarget_1_1Block.html", null ]
     ] ],
+    [ "makeCascadePythia8.PythiaFactory", "classmakeCascadePythia8_1_1PythiaFactory.html", null ],
     [ "Pythia8::RndmEngine", null, [
       [ "PyTr1Rng", "classPyTr1Rng.html", null ],
       [ "PyTr3Rng", "classPyTr3Rng.html", null ]
@@ -150,6 +152,7 @@ var hierarchy =
     [ "SciFiMapping.SciFiMapping", "classSciFiMapping_1_1SciFiMapping.html", null ],
     [ "experimental.analysis_toolkit.selection_check", "classexperimental_1_1analysis__toolkit_1_1selection__check.html", null ],
     [ "shipDigiReco.ShipDigiReco", "classshipDigiReco_1_1ShipDigiReco.html", null ],
+    [ "makeCascadePythia8.SignalEvents", "classmakeCascadePythia8_1_1SignalEvents.html", null ],
     [ "shipVertex.Task", "classshipVertex_1_1Task.html", null ],
     [ "shipVeto.Task", "classshipVeto_1_1Task.html", null ],
     [ "TG4VUserPostDetConstruction", null, [
@@ -195,6 +198,7 @@ var hierarchy =
       ] ]
     ] ],
     [ "NamedTuple", null, [
+      [ "makeCascadePythia8.SignalConfig", "classmakeCascadePythia8_1_1SignalConfig.html", null ],
       [ "study_GammaConv.Setup", "classstudy__GammaConv_1_1Setup.html", null ],
       [ "study_muMSC.Setup", "classstudy__muMSC_1_1Setup.html", null ]
     ] ]
