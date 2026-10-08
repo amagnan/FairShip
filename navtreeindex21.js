@@ -1,5 +1,7 @@
 var NAVTREEINDEX21 =
 {
+"namespaceexperimental_1_1compare__histograms.html#aeb831e15a289966f95345e6a202e7c05":[6,0,31,2,2],
+"namespaceexperimental_1_1compare__histograms.html#af21aa23c8a8ae248277f3dedbd6918b2":[6,0,31,2,6],
 "namespaceexperimental_1_1compare__histograms.html#af6dbf09acea43aceea58147dcfbeece0":[6,0,31,2,1],
 "namespaceexperimental_1_1eminem__importer.html":[6,0,31,3],
 "namespaceexperimental_1_1eminem__importer.html#a00e0523bb0f7a736351a6aae59ecd397":[6,0,31,3,4],
@@ -21,12 +23,12 @@ var NAVTREEINDEX21 =
 "namespaceextractMuonsAndUpdateWeight.html#a57763c60dba4b7e8637e1cb6b4d6b3f5":[6,0,32,3],
 "namespaceextractMuonsAndUpdateWeight.html#a58b5c8c3d5a08aa8a3a4c4b197c72517":[6,0,32,1],
 "namespaceextractMuonsAndUpdateWeight.html#a6931ea78c2f6638c3581e970e932c7cd":[6,0,32,15],
+"namespaceextractMuonsAndUpdateWeight.html#a70a6083dac0b34d42ad8f64e3db0e041":[6,0,32,4],
 "namespaceextractMuonsAndUpdateWeight.html#a71a62f94a5c841e87ffdbad0497b8de8":[6,0,32,9],
 "namespaceextractMuonsAndUpdateWeight.html#a78c024da4bd6482a82d5fdd95cd8fe7b":[6,0,32,12],
 "namespaceextractMuonsAndUpdateWeight.html#a9180a92836c1141948632a4a7616ba77":[6,0,32,8],
 "namespaceextractMuonsAndUpdateWeight.html#aa0feb4b8f8e763d2c876eda743804b27":[6,0,32,6],
 "namespaceextractMuonsAndUpdateWeight.html#aa62f94d168950261430ef026b2b30db5":[6,0,32,16],
-"namespaceextractMuonsAndUpdateWeight.html#aabe80f39b29e261cb965455cf6b6882e":[6,0,32,4],
 "namespaceextractMuonsAndUpdateWeight.html#ab67d73adf091feb460bcbabaae730de3":[6,0,32,13],
 "namespaceextractMuonsAndUpdateWeight.html#ac10ab68bb29c16815e14776f291b16cf":[6,0,32,5],
 "namespaceextractMuonsAndUpdateWeight.html#adfec8af16ddc9104b3a740bc14d0759f":[6,0,32,14],
@@ -247,7 +249,5 @@ var NAVTREEINDEX21 =
 "namespacehepunit.html#ac05e0c73ef63320e4b4ed9413941a362":[6,0,43,0],
 "namespacehepunit.html#ac07f845c832b3d6b8678fc48a4c8ed7c":[6,0,43,96],
 "namespacehepunit.html#ac1f4c6dab9b2a5e965a31a013ad06ea0":[6,0,43,37],
-"namespacehepunit.html#ac3326f1c0779c8e049b8a5f7705b4196":[6,0,43,120],
-"namespacehepunit.html#ac6ef5132b19473fded6b88f37267bd35":[6,0,43,126],
-"namespacehepunit.html#ac71c8869e7ecdce035ca7a64c86d5164":[6,0,43,70]
+"namespacehepunit.html#ac3326f1c0779c8e049b8a5f7705b4196":[6,0,43,120]
 };
