@@ -24,6 +24,8 @@
 #include "MagneticTrackPropagator.h"
 
 using namespace ShipMuDIS;
+using ROOT::Math::XYZPoint;
+using ROOT::Math::XYZVector;
 
 namespace {
 // Keep the nominal bin width and reserve one visible bin at each end.
@@ -73,7 +75,7 @@ bool IsNeutrino(const DISparticle& particle) {
   return pid == 12 || pid == 14 || pid == 16;
 }
 
-bool InsideXY(const TVector3& hit, const std::array<double, 4>& bounds) {
+bool InsideXY(const XYZPoint& hit, const std::array<double, 4>& bounds) {
   return hit.X() >= bounds[0] && hit.X() <= bounds[1] && hit.Y() >= bounds[2] &&
          hit.Y() <= bounds[3];
 }
@@ -639,7 +641,7 @@ void MuDISFilter::SetPythiaDecaySeed(unsigned seed) {
 }
 
 std::vector<MuDISFilter::FilterCandidate> MuDISFilter::DecayDaughters(
-    const std::vector<DISparticle>& daughters, const TVector3& vertex) const {
+    const std::vector<DISparticle>& daughters, const XYZPoint& vertex) const {
   if (!fUsePythiaDecays) {
     std::vector<FilterCandidate> candidates;
     candidates.reserve(daughters.size());
@@ -660,7 +662,7 @@ std::vector<MuDISFilter::FilterCandidate> MuDISFilter::DecayDaughters(
     daughter.pz = particle.pz();
     daughter.E = particle.e();
     candidates.push_back(
-        {daughter, TVector3(particle.xProd() / 10., particle.yProd() / 10.,
+        {daughter, XYZPoint(particle.xProd() / 10., particle.yProd() / 10.,
                             particle.zProd() / 10.)});
   };
   for (const auto& daughter : daughters) {
@@ -728,10 +730,11 @@ bool MuDISFilter::HitsDetectorPlane(const FilterCandidate& candidate,
                                     const std::array<double, 4>& bounds) const {
   if (!IsForwardToPlane(candidate, z)) return false;
   const auto& particle = candidate.particle;
-  TVector3 hit, momentum;
+  XYZPoint hit;
+  XYZVector momentum;
   return fPropagator->Extrapolate(
              charge, candidate.vertex,
-             TVector3(particle.px, particle.py, particle.pz), z, hit,
+             XYZVector(particle.px, particle.py, particle.pz), z, hit,
              momentum) &&
          InsideXY(hit, bounds);
 }
@@ -740,7 +743,8 @@ bool MuDISFilter::HitsTrackingAndTD(const FilterCandidate& candidate,
                                     double charge) const {
   const auto& particle = candidate.particle;
   const auto& vertex = candidate.vertex;
-  TVector3 position = vertex, momentum(particle.px, particle.py, particle.pz);
+  XYZPoint position = vertex;
+  XYZVector momentum(particle.px, particle.py, particle.pz);
   std::array<unsigned, 5> order = {0, 1, 2, 3, 4};
   std::sort(order.begin(), order.end(),
             [this, &particle](unsigned a, unsigned b) {
@@ -750,7 +754,8 @@ bool MuDISFilter::HitsTrackingAndTD(const FilterCandidate& candidate,
   bool firstPair = false, secondPair = false, TD = false;
   for (unsigned station : order) {
     if (!IsForwardToPlane(candidate, fStationZ[station])) continue;
-    TVector3 hit, nextMomentum;
+    XYZPoint hit;
+    XYZVector nextMomentum;
     if (!fPropagator->Extrapolate(charge, position, momentum,
                                   fStationZ[station], hit, nextMomentum))
       return false;
@@ -771,11 +776,11 @@ bool MuDISFilter::HitsTrackingAndTD(const FilterCandidate& candidate,
 bool MuDISFilter::HitsDetectorVolume(const FilterCandidate& candidate) const {
   const auto& particle = candidate.particle;
   if (IsNeutrino(particle) || !IncludesParticle(particle)) return false;
-  const TVector3 minimum(-200., -300., fDetectorVolumeZ.first);
-  const TVector3 maximum(200., 300., fDetectorVolumeZ.second);
+  const XYZPoint minimum(-200., -300., fDetectorVolumeZ.first);
+  const XYZPoint maximum(200., 300., fDetectorVolumeZ.second);
   return fPropagator->IntersectsBox(
       Charge(particle), candidate.vertex,
-      TVector3(particle.px, particle.py, particle.pz), minimum, maximum);
+      XYZVector(particle.px, particle.py, particle.pz), minimum, maximum);
 }
 
 bool MuDISFilter::PassChargedCandidates(
@@ -843,11 +848,11 @@ bool MuDISFilter::PassFilter(const std::vector<DISparticle>& daughters) const {
     throw std::runtime_error(
         "Detector acceptance requires the DIS vertex; use "
         "PassFilter(daughters, vertex)");
-  return PassFilter(daughters, TVector3());
+  return PassFilter(daughters, XYZPoint());
 }
 
 bool MuDISFilter::PassFilter(const std::vector<DISparticle>& daughters,
-                             const TVector3& vertex) const {
+                             const XYZPoint& vertex) const {
   if (fFilter) return fFilter(daughters);
   return PassCandidates(DecayDaughters(daughters, vertex));
 }
@@ -981,7 +986,7 @@ void MuDISFilter::ProcessEvents() {
             in.DISparticles->begin() + offset,
             in.DISparticles->begin() + endOffset);
         offset = endOffset;
-        const TVector3 vertex(in.DISvx->at(idis), in.DISvy->at(idis),
+        const XYZPoint vertex(in.DISvx->at(idis), in.DISvy->at(idis),
                               in.DISvz->at(idis));
         std::vector<FilterCandidate> candidates;
         if (fFilter) {
