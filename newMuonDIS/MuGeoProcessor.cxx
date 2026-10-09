@@ -14,9 +14,11 @@
 
 #include "TGeoBBox.h"
 
-using namespace ShipMuDIS;
 using ROOT::Math::XYZPoint;
 using ROOT::Math::XYZVector;
+using ShipMuDIS::kMuonShieldTailZ;
+using ShipMuDIS::MatTypeStr;
+using ShipMuDIS::MuonBranches;
 
 MuGeoProcessor::MuGeoProcessor() = default;
 MuGeoProcessor::~MuGeoProcessor() = default;
