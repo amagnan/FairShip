@@ -341,8 +341,23 @@ var namespaces_dup =
       [ "PathLike", "namespacegenie__interface.html#a68539ce63930ec8fb7cd576ae839bb04", null ]
     ] ],
     [ "geometry_config", "namespacegeometry__config.html", [
-      [ "create_config", "namespacegeometry__config.html#afb514e222a0f704f678c3b3f465ee7e7", null ],
+      [ "create_config", "namespacegeometry__config.html#a14c64c715c02fde546cf42f7c9d6f09f", null ],
       [ "shield_db", "namespacegeometry__config.html#a4ebc72f6a5c5803cfcc7f6a783c1aaf3", null ]
+    ] ],
+    [ "geometry_from_file", "namespacegeometry__from__file.html", [
+      [ "_define_swap_class", "namespacegeometry__from__file.html#a4343d70f112d7f1fc3e2fa68a08a0428", null ],
+      [ "check_file", "namespacegeometry__from__file.html#a04a46c3c1fb6eb2b52661a6443354076", null ],
+      [ "check_swapped", "namespacegeometry__from__file.html#a15e149c06726d938db03869db1e93e70", null ],
+      [ "check_yaml_configs", "namespacegeometry__from__file.html#ad003da7c4d900ff4a2edc37862a51494", null ],
+      [ "make_swap", "namespacegeometry__from__file.html#a39ee39f2ff59b2dacdc40abf83aa1fa6", null ],
+      [ "stored_yaml_configs", "namespacegeometry__from__file.html#a084611c24c0a258117d0b689d187ec6e", null ],
+      [ "_HELPER", "namespacegeometry__from__file.html#a53f0cacc6428058fca1021a91080bb8c", null ],
+      [ "_swap_class", "namespacegeometry__from__file.html#a689bef891192aef41d4c0dfe5bb7be51", null ],
+      [ "error", "namespacegeometry__from__file.html#ad232dcc15bc0553bad570e1756cabf9a", null ],
+      [ "geofile", "namespacegeometry__from__file.html#ab380ad34fa475b58dddbc9d7b7ba920e", null ],
+      [ "loaded", "namespacegeometry__from__file.html#a8ce2714b9cecdfe3f038fe94e07dafb2", null ],
+      [ "SWAP_NAME", "namespacegeometry__from__file.html#a72281533c8b2d80b6557018be831c881", null ],
+      [ "YAML_CONFIGS", "namespacegeometry__from__file.html#a95cd91ab64400027db0202d9acb2c451", null ]
     ] ],
     [ "geomGeant4", "namespacegeomGeant4.html", [
       [ "_collectVolumeNames", "namespacegeomGeant4.html#aced3292aa39fec0f3597a18f514e402f", null ],
@@ -994,8 +1009,7 @@ var namespaces_dup =
       [ "addHNLdecayChannels", "namespacereadDecayTable.html#a7b20cc3e8df553c9dfbb68addb0e2665", null ],
       [ "load", "namespacereadDecayTable.html#accb3ca4d591c8a297fc406190aa012d1", null ],
       [ "PDGcode", "namespacereadDecayTable.html#a94bdd8639bf7a4e00cb64f1d4d0c820e", null ],
-      [ "configuredDecays", "namespacereadDecayTable.html#ac7b78e10a0805dc3d04baed8475ec3d7", null ],
-      [ "pdg", "namespacereadDecayTable.html#a216e0525d0705b0b1690f178c74c2cf9", null ]
+      [ "configuredDecays", "namespacereadDecayTable.html#ac7b78e10a0805dc3d04baed8475ec3d7", null ]
     ] ],
     [ "rootUtils", "namespacerootUtils.html", [
       [ "assignClonesArrayItem", "namespacerootUtils.html#ae9fb99014f636adbd119f23c5eaf6b5f", null ],
@@ -1005,6 +1019,8 @@ var namespaces_dup =
       [ "checkFileExists", "namespacerootUtils.html#a4e338bc5e188e11be1877ab8fd706a3d", null ],
       [ "checkForBranch", "namespacerootUtils.html#a9d1a57fa6c9b71b21004e66bb1fae7c4", null ],
       [ "errorSummary", "namespacerootUtils.html#a9fad8948a40e9aac00e89f938b0a03af", null ],
+      [ "get_particle", "namespacerootUtils.html#a6fa7b470c587fa9daf3ee30c2b2be4e3", null ],
+      [ "is_known_particle", "namespacerootUtils.html#a135d7bfa10a1e034374497fd828da1b9", null ],
       [ "readHists", "namespacerootUtils.html#a61db3e66b871a770b6bc264b9e3ac33e", null ],
       [ "reportError", "namespacerootUtils.html#ab807114738eb9dfb5fef001e2fa9bc54", null ],
       [ "writeHists", "namespacerootUtils.html#a4288202f324fd0dae890c6208e1b9deb", null ],
@@ -1205,8 +1221,12 @@ var namespaces_dup =
       [ "genie_parser", "namespacerun__simScript.html#a893491cd4d054b1dc81038ab02105345", null ],
       [ "Geniegen", "namespacerun__simScript.html#a398412a7d37ba1709a08e7da785209eb", null ],
       [ "GenieOptions", "namespacerun__simScript.html#abb5c7a5b05a93048a8e607f187efb37a", null ],
+      [ "geofile", "namespacerun__simScript.html#a5e79a75be52139a3f0705a0764ff7640", null ],
       [ "geofile_name", "namespacerun__simScript.html#a71febbcacc1bfb3c737de2f3599e1817", null ],
+      [ "geometry_options", "namespacerun__simScript.html#a8f9ff0a9bb830ce5558944c89ef3f593", null ],
+      [ "geometryBuiltWithFairShip", "namespacerun__simScript.html#ae98893db8e1ffe8e4ee5a54ec73ef6f6", null ],
       [ "gErrorIgnoreLevel", "namespacerun__simScript.html#a4a2c7d62cdeabab2c2a9e10cc0301312", null ],
+      [ "given", "namespacerun__simScript.html#afa13cafe7e20562d6467916817d7b940", null ],
       [ "gMC", "namespacerun__simScript.html#a671e51e119017a06d69c162c6e24b051", null ],
       [ "gst", "namespacerun__simScript.html#aa3e34199d5fbf0a1ded3a5a739c356da", null ],
       [ "gst_copy", "namespacerun__simScript.html#a7d8ddabaf399fe627d86b2c91119fb14", null ],
@@ -1260,8 +1280,9 @@ var namespaces_dup =
       [ "passDPconf", "namespacerun__simScript.html#ac85e155d7819b32f9cea74f7c8fb2856", null ],
       [ "pdg", "namespacerun__simScript.html#aad907b322536b84e4c66abf9dc6a29a9", null ],
       [ "pg_parser", "namespacerun__simScript.html#a8c915c1feda8cda0b474712da99ccadb", null ],
-      [ "pointContainers", "namespacerun__simScript.html#aca9cae97fbde7b554a903d47eada7864", null ],
+      [ "pointContainers", "namespacerun__simScript.html#a415c7f13d139ee01e225b3f0a781eaf7", null ],
       [ "primGen", "namespacerun__simScript.html#aaf5d00485deac08f339575f5765fb79e", null ],
+      [ "probe", "namespacerun__simScript.html#adc84bf2f5f0738bdfca75ffc5dfb3f8b", null ],
       [ "pythia8", "namespacerun__simScript.html#a8fb1d87868691be90334fae6651ab73d", null ],
       [ "rc1", "namespacerun__simScript.html#a7761e3105d78ab195878b40089abdfa1", null ],
       [ "rc2", "namespacerun__simScript.html#a8e3710513bb2a7ae510a9326d0bf6de5", null ],
@@ -1289,7 +1310,6 @@ var namespaces_dup =
       [ "timer", "namespacerun__simScript.html#a951f17627d18a53dbf261a8d57a2d6de", null ],
       [ "tmpFile", "namespacerun__simScript.html#a150102ed78b5fdc0a1a9efe0f7f9f796", null ],
       [ "trajFilter", "namespacerun__simScript.html#abb91726f585a0ba37957110e3883be6a", null ],
-      [ "True", "namespacerun__simScript.html#a0b3358b38fe3ce42b8126e2fb000b0b6", null ],
       [ "type", "namespacerun__simScript.html#adfb7a695088d9373dc7c795b7d8abb52", null ],
       [ "usedInputFiles", "namespacerun__simScript.html#a37c103c6ae06010e41e8c513b9a45096", null ],
       [ "z", "namespacerun__simScript.html#a90c25390918b8dd5a6f17d8efa00c9ed", null ],
@@ -1533,7 +1553,7 @@ var namespaces_dup =
       [ "volDict", "namespaceShipAna.html#a23ccb7a304d314d18d7e31877052b68a", null ]
     ] ],
     [ "shipDet_conf", "namespaceshipDet__conf.html", [
-      [ "configure", "namespaceshipDet__conf.html#a7f232397871353ce80c1ea03eb15bd20", null ],
+      [ "configure", "namespaceshipDet__conf.html#a6e3eaea419c04a40644184c1c4bd7ae0", null ],
       [ "configure_snd_mtc", "namespaceshipDet__conf.html#aa4ac8d6cef9fc6657dedbd2090cf8f13", null ],
       [ "configure_snd_old", "namespaceshipDet__conf.html#a2fecde7180ef767c70ab332f3e6fd134", null ],
       [ "configure_snd_siliconTarget", "namespaceshipDet__conf.html#a840ad4a7a2937c9e65146af686f32d6b", null ],
@@ -1791,7 +1811,6 @@ var namespaces_dup =
     [ "skim_muonback_smoke", "namespaceskim__muonback__smoke.html", [
       [ "main", "namespaceskim__muonback__smoke.html#acd265e66314c1a63a4f8d835f99a00f0", null ]
     ] ],
-    [ "splitcalDetector", "namespacesplitcalDetector.html", "namespacesplitcalDetector" ],
     [ "strawtubesDetector", "namespacestrawtubesDetector.html", "namespacestrawtubesDetector" ],
     [ "study_GammaConv", "namespacestudy__GammaConv.html", "namespacestudy__GammaConv" ],
     [ "study_muMSC", "namespacestudy__muMSC.html", "namespacestudy__muMSC" ],
