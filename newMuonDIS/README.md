@@ -260,3 +260,119 @@ geometry scan (also available as `MuDISProcessor::CheckAllVolumes()`).
 
 The filter preserves both generation metadata values for every material,
 even when none of that material's DIS events survive.
+
+## Parallel analysis and merging
+
+`analyseEvents.py` always saves `histograms.npz`, containing bin edges, raw and
+weighted bin contents, and outside-range counts and weight sums. It also saves
+the count tables and `run.json`. The latter records the analysis code hash,
+effective type/weight/geometry settings, source paths and ROOT file UUIDs, and
+the exact processed entry ranges within each source file. Entry ranges are
+zero-based and half-open: `[start, stop)`.
+
+Split analysis over the sorted input-file TChain with `first_entry` and
+`n_events` in the YAML, or override them on the command line. Each job needs
+a new or empty output directory. For example, these two jobs cover entries
+`[0, 10000)` and `[10000, 20000)`:
+
+```bash
+pixi run --as-is python -u newMuonDIS/analyseEvents.py newMuonDIS/analyseEvents.yaml \
+  --first-entry 0 --n-events 10000 --output-dir analysis/job_000 --no-plots
+pixi run --as-is python -u newMuonDIS/analyseEvents.py newMuonDIS/analyseEvents.yaml \
+  --first-entry 10000 --n-events 10000 --output-dir analysis/job_001 --no-plots
+```
+
+`--no-plots` (or `save_plots: false` in YAML) skips rendering, while retaining
+all mergeable outputs. `n_events: -1` processes all entries from `first_entry`
+to the end. A range extending beyond the input is truncated; `first_entry`
+beyond the end is an error. Keep the input files and analysis code unchanged
+throughout a split run so that the sorted chain and selections remain stable.
+Jobs may instead use different production directories containing disjoint files.
+
+Merge the completed output directories with:
+
+```bash
+pixi run --as-is python -u newMuonDIS/mergeAnalysis.py analysis/job_* \
+  --output-dir analysis/combined
+```
+
+The merger reads only the output artifacts; it does not load ROOT or reread
+the production data. It checks matching analysis code, type, weight factor,
+explicit geometry override, histogram names, and bin edges. It rejects
+overlapping source ranges identified by either path or ROOT UUID, including
+copied files. It cannot infer whether distinct ROOT files contain duplicate
+physics events, or whether the requested jobs cover every intended entry;
+check the processed-entry total against your planned production size.
+
+Counts and weight sums are added within each material/step/PDG composition.
+`ALL` rows are summed separately from per-material rows. Histograms and their
+outside-range counters are added, and PNG/PDF plots are regenerated from the
+combined contents, with logarithmic colour scales for 2D plots. Pair weight
+squares are sums over pairs, not an estimate accounting for correlations
+between pairs from the same event.
+
+The merged output has the same archive/table format and retains all original
+source ranges, so it can be merged again. Use the merger's `--no-plots` for
+intermediate merges. Its `entries_available` counts the distinct source files
+represented in those ranges; `entries_processed` is the actual merged total.
+Output directories must be new or empty. A completed `run.json` is written
+last; failed jobs without this manifest cannot be merged. Older outputs
+without histogram archives and source-range metadata must be regenerated.
+
+## Input-muon normalization
+
+Preparation, filtering, and `NewMuDISGenerator` store a `muDIS_normalization`
+list in the output tree's `GetUserInfo()`. Each stage invocation has a UUID
+record containing its stage name, input-muon count, sum of weights, and sum of
+squared weights. These are the original `MCTrack[0].fW` values (the first
+`muon_MCTracks` element in prepared/filtered inputs), before momentum,
+acceptance, or DIS selection. Unreadable entries or entries without a first
+track cannot contribute a weight. No event count is inferred from the number
+of surviving DIS interactions.
+
+Replay counts each muon once during the input-range scan in `SetNevents`,
+including muons with no DIS interactions; expanding a muon into several
+replay events does not multiply these counters. The scan covers the configured
+input-muon range, even if a caller subsequently stops replay early. Recounting
+resets the replay counters. Empty output trees retain their metadata.
+
+All ancestor records are copied unchanged, including preparation records for
+muons absent from the filtered trees. Shared records are identified by UUID
+and counted only once when inputs or analysis outputs are combined. Repeated
+filtering adds a distinct filtering invocation; the stage summary sums the
+unique invocations, while preparation remains unchanged. The full records
+are preserved in `run.json`, and `normalization.csv` gives their totals by
+stage. Metadata is collected from every configured input file, including empty
+trees, and is not prorated when analysing only a range of its surviving events.
+
+Configure normalization in `analyseEvents.yaml`:
+
+```yaml
+weight_factor: 1.0
+target_sum_weights: 1.0e12  # Desired total incoming-muon sum of weights
+failed_job_factor: 1.0     # Multiplicative correction; 1.25 for 80% success
+save_plots: false          # Suitable for split jobs
+```
+
+The additional scale is
+`target_sum_weights / preparation_sum_weights * failed_job_factor`.
+Preparation's denominator is the sum over unique preparation records. Existing
+`sum_weights` and `sum_weights_squared` columns keep the processed event/pair
+weights, including `weight_factor`. New `scaled_sum_weights` and
+`scaled_sum_weights_squared` columns apply the additional scale and its square.
+Counts always describe processed events/pairs and are never extrapolated.
+The stage totals in `normalization.csv` use the original muon weights, without
+`weight_factor`, and also show their target-scaled values. Use `weight_factor:
+1.0` when the target normalization supplies the full desired normalization.
+
+Rendered plots retain `unweighted` and `weighted` versions and add a `scaled`
+version when a target is set. Histogram archives always retain the processed
+contents. The merger recomputes the scale from the combined preparation records
+and regenerates scaled columns and plots; it never adds independently scaled
+job yields. All merged jobs must have the same target and failed-job factor.
+
+`target_sum_weights: null` disables target scaling; `failed_job_factor` is used
+only when a target is supplied. Legacy ROOT inputs remain usable for processed
+counts but are explicitly marked as incomplete. Target scaling requires complete
+preparation metadata in every input and a positive preparation sum of weights;
+it does not substitute the selected event count for a missing denominator.

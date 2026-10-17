@@ -12,6 +12,7 @@
 #include <iostream>
 
 #include "FairLogger.h"
+#include "MuDISNormalization.h"
 #include "TMath.h"
 #include "TROOT.h"
 #include "TRandom.h"
@@ -380,10 +381,12 @@ void MuDISProcessor::generateDISevents(const std::string& tType,
 }
 
 void MuDISProcessor::ProcessMuons() {
+  ShipMuDIS::Normalization normalization("prepareEvents");
   LOG(info) << " * Start of event loop" << std::endl;
   fGeoProcessor.ResetDiagnostics();
 
   if (static_cast<Long64_t>(fstartEvt) >= ftree->GetEntries()) {
+    normalization.Attach(fouttree);
     LOG(error) << " ** Trying to start from event " << fstartEvt
                << " which is greater than the tree entries: "
                << ftree->GetEntries() << ". Doing nothing...";
@@ -452,6 +455,7 @@ void MuDISProcessor::ProcessMuons() {
     ShipMCTrack& track = (*finEv.MCTrack)[static_cast<unsigned>(muIdx)];
     int pid = track.GetPdgCode();
     double muW = track.GetWeight();
+    normalization.Add(muW);
 
     double mup = track.GetP();
 
@@ -565,6 +569,7 @@ void MuDISProcessor::ProcessMuons() {
             << " muons with too low p" << std::endl
             << "Counted: " << skipMu_acc
             << " muons with no recorded hits in UBT,SBT,SST,TD.";
+  normalization.Attach(fouttree);
   LOG(info) << "Weighted counts (sum MCTrack[0].fW): " << wplus << " mu+ and "
             << wminus << " mu- (after momentum cut)." << std::endl
             << "Skipped (sum MCTrack[0].fW): " << skipMu_pminW

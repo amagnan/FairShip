@@ -5,6 +5,7 @@
 
 import argparse
 import csv
+import hashlib
 import json
 import math
 from dataclasses import dataclass
@@ -16,6 +17,8 @@ import yaml
 
 MATERIALS = ("MS", "UBT", "SBTsens", "SBTfr", "SSTsens", "SSTfr", "HE", "AIR", "HeBalloon", "REST")
 TYPES = ("disgen", "disfilter", "disreplay_gen", "disreplay_filter")
+OUTPUT_VERSION = 2
+ANALYSIS_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 STEPS = (
     "all",
     "at least two tracks: Tr1-4 + TD, p > 1 GeV/c",
@@ -24,6 +27,114 @@ STEPS = (
     "target-plane IP < 250 cm",
     "target-plane IP < 10 cm",
 )
+
+
+def combine_normalization(inputs):
+    records = {}
+    complete = bool(inputs)
+    for metadata in inputs:
+        complete = complete and metadata["preparation_complete"]
+        for record in metadata["records"]:
+            identity = record["id"]
+            if identity in records and records[identity] != record:
+                raise ValueError(f"Conflicting normalization record: {identity}")
+            records[identity] = record
+    return {"preparation_complete": complete, "records": [records[key] for key in sorted(records)]}
+
+
+def read_normalization(root, files, tree_name):
+    inputs = []
+    for path in files:
+        source = root.TFile.Open(str(path), "READ")
+        if not source or source.IsZombie():
+            raise ValueError(f"Cannot read normalization metadata: {path}")
+        try:
+            tree = source.Get(tree_name)
+            if not tree:
+                raise ValueError(f"Missing {tree_name} tree: {path}")
+            metadata = tree.GetUserInfo().FindObject("muDIS_normalization")
+            records = []
+            complete = False
+            if metadata:
+                version = metadata.FindObject("version")
+                if not version or int(version.GetVal()) != 1:
+                    raise ValueError(f"Unsupported normalization metadata: {path}")
+                flag = metadata.FindObject("preparation_complete")
+                complete = bool(flag and flag.GetVal())
+                for item in metadata:
+                    if not item.InheritsFrom("TList"):
+                        continue
+                    stage = item.FindObject("stage")
+                    record = {"id": str(item.GetName()), "stage": str(stage.GetTitle()) if stage else ""}
+                    for name in ("input_muons", "sum_weights", "sum_weights_squared"):
+                        value = item.FindObject(name)
+                        if not value:
+                            raise ValueError(f"Missing normalization field {name}: {path}")
+                        record[name] = int(value.GetVal()) if name == "input_muons" else float(value.GetVal())
+                    if (
+                        record["stage"] not in ("prepareEvents", "filterEvents", "NewMuDISGenerator")
+                        or record["input_muons"] < 0
+                        or record["sum_weights_squared"] < 0
+                        or not all(math.isfinite(record[key]) for key in ("sum_weights", "sum_weights_squared"))
+                    ):
+                        raise ValueError(f"Invalid normalization record: {path}")
+                    records.append(record)
+            inputs.append({"preparation_complete": complete, "records": records})
+        finally:
+            source.Close()
+    return combine_normalization(inputs)
+
+
+def normalization_scale(config, metadata):
+    target = config.get("target_sum_weights")
+    failed = float(config.get("failed_job_factor", 1.0))
+    if not math.isfinite(failed) or failed <= 0:
+        raise ValueError("failed_job_factor must be finite and positive")
+    if target is None:
+        return None
+    target = float(target)
+    if not math.isfinite(target) or target <= 0:
+        raise ValueError("target_sum_weights must be finite and positive")
+    if not metadata["preparation_complete"]:
+        raise ValueError("Target normalization requires complete prepareEvents metadata in every input file")
+    denominator = math.fsum(
+        record["sum_weights"] for record in metadata["records"] if record["stage"] == "prepareEvents"
+    )
+    if denominator <= 0 or not math.isfinite(denominator):
+        raise ValueError("Preparation sum_weights must be finite and positive for target normalization")
+    return target / denominator * failed
+
+
+def scaled_rows(rows, scale):
+    if scale is None:
+        return rows
+    return [
+        dict(
+            row,
+            scaled_sum_weights=row["sum_weights"] * scale,
+            scaled_sum_weights_squared=row["sum_weights_squared"] * scale * scale,
+        )
+        for row in rows
+    ]
+
+
+def save_normalization(output, metadata, scale):
+    rows = []
+    for stage in ("prepareEvents", "filterEvents", "NewMuDISGenerator"):
+        records = [record for record in metadata["records"] if record["stage"] == stage]
+        if records:
+            rows.append(
+                {
+                    "stage": stage,
+                    "input_muons": sum(record["input_muons"] for record in records),
+                    "sum_weights": math.fsum(record["sum_weights"] for record in records),
+                    "sum_weights_squared": math.fsum(record["sum_weights_squared"] for record in records),
+                }
+            )
+    fields = ["stage", "input_muons", "sum_weights", "sum_weights_squared"]
+    if scale is not None:
+        fields += ["scaled_sum_weights", "scaled_sum_weights_squared"]
+    write_table(output / "normalization.csv", scaled_rows(rows, scale), fields)
 
 
 def discover(path, kind):
@@ -41,7 +152,9 @@ def discover(path, kind):
         elif kind == "disfilter":
             match = name.startswith("muonDis_") and name.endswith("_disfilter")
         else:
-            match = name.startswith("muonDis_") and not any(token in name for token in ("disfilter", "disreplay"))
+            match = name.startswith("muonDis_") and (
+                name.endswith("_disgen") or not any(token in name for token in ("disfilter", "disreplay"))
+            )
         if match:
             result.append(file)
     if not result:
@@ -55,6 +168,7 @@ class Track:
     momentum: np.ndarray
     charge: float
     weight: float = 1.0
+    pdg_id: int = 0
 
 
 @dataclass
@@ -64,6 +178,7 @@ class Vertex:
     doca: float
     opposite: bool
     weight: float = 1.0
+    tracks: tuple = ()
 
 
 def shared_weight(weights, muon_weight, *, event=False):
@@ -153,7 +268,7 @@ def selected_tracks(event, pdg):
             charge = 3.0 * z * (1 if code > 0 else -1)
         else:
             raise ValueError(f"Unknown PDG code: {code}")
-        tracks.append(Track(position, momentum, charge, weight))
+        tracks.append(Track(position, momentum, charge, weight, code))
     return tracks, momenta
 
 
@@ -233,47 +348,187 @@ class Plots:
                 weight,
             )
 
-    def save(self, output):
+    def save_archive(self, path):
+        arrays, histograms = {}, []
+        for i, (name, (edges, raw, weighted, flow, wflow)) in enumerate(self.histograms.items()):
+            prefix = f"h{i}"
+            histograms.append({"name": name, "prefix": prefix, "dimensions": len(edges)})
+            for axis, edge in enumerate(edges):
+                arrays[f"{prefix}_edge{axis}"] = edge
+            arrays[f"{prefix}_raw"] = raw
+            arrays[f"{prefix}_weighted"] = weighted
+            arrays[f"{prefix}_flow"] = np.array(flow, dtype=np.int64)
+            arrays[f"{prefix}_wflow"] = np.array(wflow)
+        arrays["metadata"] = np.array(json.dumps({"version": OUTPUT_VERSION, "histograms": histograms}))
+        np.savez_compressed(path, **arrays)
+
+    @classmethod
+    def load_archive(cls, path):
+        plots = cls({})
+        with np.load(path, allow_pickle=False) as archive:
+            metadata = json.loads(str(archive["metadata"]))
+            if metadata["version"] != OUTPUT_VERSION:
+                raise ValueError(f"Unsupported histogram archive version: {path}")
+            for item in metadata["histograms"]:
+                name, prefix, dimensions = item["name"], item["prefix"], item["dimensions"]
+                if name in plots.histograms or dimensions not in (1, 2):
+                    raise ValueError(f"Invalid histogram definition: {name}")
+                if Path(name).is_absolute() or ".." in Path(name).parts:
+                    raise ValueError(f"Invalid histogram name: {name}")
+                edges = tuple(archive[f"{prefix}_edge{axis}"] for axis in range(dimensions))
+                if any(
+                    edge.ndim != 1 or len(edge) < 2 or not np.all(np.isfinite(edge)) or not np.all(np.diff(edge) > 0)
+                    for edge in edges
+                ):
+                    raise ValueError(f"Invalid histogram edges: {name}")
+                plots.book(name, edges)
+                raw, weighted = archive[f"{prefix}_raw"], archive[f"{prefix}_weighted"]
+                if raw.shape != plots.histograms[name][1].shape or weighted.shape != raw.shape:
+                    raise ValueError(f"Invalid histogram shape: {name}")
+                flow, wflow = int(archive[f"{prefix}_flow"]), float(archive[f"{prefix}_wflow"])
+                if (
+                    not np.all(np.isfinite(raw))
+                    or not np.all(np.isfinite(weighted))
+                    or np.any(raw < 0)
+                    or np.any(raw != np.floor(raw))
+                    or flow < 0
+                    or not math.isfinite(wflow)
+                ):
+                    raise ValueError(f"Invalid histogram contents: {name}")
+                plots.histograms[name] = [edges, raw.astype(float), weighted.astype(float), flow, wflow]
+        return plots
+
+    def merge(self, other):
+        if self.histograms.keys() != other.histograms.keys():
+            raise ValueError("Histogram names differ between jobs")
+        for name, (edges, raw, weighted, flow, wflow) in other.histograms.items():
+            stored = self.histograms[name]
+            if len(edges) != len(stored[0]) or any(not np.array_equal(a, b) for a, b in zip(edges, stored[0])):
+                raise ValueError(f"Histogram bin edges differ: {name}")
+            stored[1] += raw
+            stored[2] += weighted
+            stored[3] += flow
+            stored[4] += wflow
+
+    def save_flows(self, output, scale=None):
+        rows = [
+            {"histogram": name, "outside_range": values[3], "weighted_outside_range": values[4]}
+            for name, values in self.histograms.items()
+        ]
+        if scale is not None:
+            for row in rows:
+                row["scaled_weighted_outside_range"] = row["weighted_outside_range"] * scale
+        write_table(output / "histogram_flows.csv", rows)
+
+    def save(self, output, scale=None):
         import matplotlib
 
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
+        from matplotlib.colors import LogNorm
 
-        flows = []
         for name, (edges, raw, weighted, flow, wflow) in self.histograms.items():
-            for label, data in [("unweighted", raw), ("weighted", weighted)]:
+            samples = [("unweighted", raw, flow), ("weighted", weighted, wflow)]
+            if scale is not None:
+                samples.append(("scaled", weighted * scale, wflow * scale))
+            for label, data, outside in samples:
                 destination = output / "plots" / name / label
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 fig, ax = plt.subplots(figsize=(8, 6))
                 if len(edges) == 2:
-                    mesh = ax.pcolormesh(edges[0], edges[1], data.T, shading="auto")
-                    fig.colorbar(mesh, ax=ax, label="Sum of weights" if label == "weighted" else "Entries")
+                    positive = data[data > 0]
+                    vmin = float(positive.min()) if positive.size else 1.0
+                    vmax = float(positive.max()) if positive.size else 10.0
+                    if vmax <= vmin:
+                        vmax = 10.0 * vmin
+                    mesh = ax.pcolormesh(
+                        edges[0],
+                        edges[1],
+                        np.ma.masked_less_equal(data.T, 0),
+                        shading="auto",
+                        norm=LogNorm(vmin=vmin, vmax=vmax),
+                    )
+                    fig.colorbar(mesh, ax=ax, label="Entries" if label == "unweighted" else "Sum of weights")
                     vertical, horizontal = name.split("/")[-1].split("_vs_")
                     ax.set_xlabel(f"{horizontal} [cm]")
                     ax.set_ylabel(f"{vertical} [cm]")
                 else:
                     ax.stairs(data, edges[0])
                     ax.set_xlabel(name.split("/")[-1])
-                    ax.set_ylabel("Sum of weights" if label == "weighted" else "Entries")
-                ax.set_title(f"{name} ({label})\nOutside plotted range: {wflow if label == 'weighted' else flow:g}")
+                    ax.set_ylabel("Entries" if label == "unweighted" else "Sum of weights")
+                ax.set_title(f"{name} ({label})\nOutside plotted range: {outside:g}")
                 fig.tight_layout()
                 for extension in ("pdf", "png"):
                     fig.savefig(destination.with_suffix("." + extension))
                 plt.close(fig)
-            flows.append({"histogram": name, "outside_range": flow, "weighted_outside_range": wflow})
-        write_table(output / "histogram_flows.csv", flows)
+        self.save_flows(output, scale)
 
 
-def write_table(path, rows):
-    if not rows:
+def write_table(path, rows, fieldnames=None):
+    if not rows and fieldnames is None:
         return
     with path.open("w", newline="") as stream:
-        writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
+        writer = csv.DictWriter(stream, fieldnames=fieldnames or list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
 
 
-def replay(event, plots, geometry, pdg, factor, counts):
+class PairCutflow:
+    """Count unordered pairs, retaining the PDG ID associated with each origin."""
+
+    fields = (
+        "material",
+        "step",
+        "selection",
+        "composition",
+        "pdg_id_1",
+        "pdg_id_2",
+        "origin_1",
+        "origin_2",
+        "pairs",
+        "sum_weights",
+        "sum_weights_squared",
+    )
+    compositions = ("DIS-DIS", "DIS-Soft", "Soft-Soft")
+
+    def __init__(self):
+        self.counts = {}
+        self.totals = {}
+
+    def add(self, material, step, tracks, muon_weight, weight):
+        particles = sorted(
+            ("Soft" if math.isclose(track.weight, muon_weight, rel_tol=1.0e-6, abs_tol=0.0) else "DIS", track.pdg_id)
+            for track in tracks
+        )
+        (origin1, pdg1), (origin2, pdg2) = particles
+        composition = f"{origin1}-{origin2}"
+        for mat in ("ALL", material):
+            key = (mat, step, composition, pdg1, pdg2, origin1, origin2)
+            count = self.counts.setdefault(key, [0, 0.0, 0.0])
+            count[0] += 1
+            count[1] += weight
+            count[2] += weight * weight
+            total_key = (mat, step, composition)
+            self.totals[total_key] = self.totals.get(total_key, 0) + 1
+
+    def summary(self, material, step):
+        counts = [self.totals.get((material, step, composition), 0) for composition in self.compositions]
+        # Step 0 counts input events, before candidate pairs are defined.
+        return dict(
+            zip(
+                ("pairs", "pairs_DIS_DIS", "pairs_DIS_Soft", "pairs_Soft_Soft"),
+                [sum(counts), *counts] if step else [""] * 4,
+            )
+        )
+
+    def rows(self):
+        return [
+            dict(zip(self.fields, (mat, step, STEPS[step], composition, pdg1, pdg2, origin1, origin2, *count)))
+            for (mat, step, composition, pdg1, pdg2, origin1, origin2), count in sorted(self.counts.items())
+        ]
+
+
+def replay(event, plots, geometry, pdg, factor, counts, material_counts=None, pair_counts=None):
     if not len(event.MCTrack):
         raise ValueError("Replay event has no initial MCTrack[0]")
     muon_weight = float(event.MCTrack[0].GetWeight())
@@ -283,9 +538,14 @@ def replay(event, plots, geometry, pdg, factor, counts):
         return shared_weight(weights, muon_weight, event=True) * factor
 
     def passed(step, weight):
-        counts[step][0] += 1
-        counts[step][1] += weight
-        counts[step][2] += weight * weight
+        for cutflow in (counts,) if material_counts is None else (counts, material_counts):
+            cutflow[step][0] += 1
+            cutflow[step][1] += weight
+            cutflow[step][2] += weight * weight
+
+    def pair_passed(step, tracks, weight):
+        if pair_counts is not None:
+            pair_counts.add(str(event.muDIS_material), step, tracks, muon_weight, weight)
 
     passed(0, base_weight)
     tracks, momenta = selected_tracks(event, pdg)
@@ -303,15 +563,18 @@ def replay(event, plots, geometry, pdg, factor, counts):
     candidates = []
     for (a, b), pair_weight in zip(combinations(tracks, 2), pair_weights):
         weight = pair_weight * factor
+        pair_passed(1, (a, b), weight)
         plots.one("step1/opposite_sign", int(a.charge * b.charge < 0), -0.5, 1.5, weight, 2)
         vertex = make_vertex(a, b)
         if vertex is None:
             continue
         vertex.weight = pair_weight
+        vertex.tracks = (a, b)
         plots.one("step1/doca_cm", vertex.doca, 0, 10, weight)
         if vertex.opposite:
             plots.one("step1/opposite_sign_doca_cm", vertex.doca, 0, 10, weight)
         if vertex.opposite and vertex.doca < 1.0:
+            pair_passed(2, vertex.tracks, weight)
             candidates.append(vertex)
     plots.one("step1/n_good_pairs", len(candidates), -0.5, 20.5, stage1_weight, 21)
     if not candidates:
@@ -324,6 +587,7 @@ def replay(event, plots, geometry, pdg, factor, counts):
         clearance = geometry.clearance(vertex.position)
         plots.one("step2/helium_clearance_cm", clearance, -2, 300, weight)
         if clearance >= 5.0:
+            pair_passed(3, vertex.tracks, weight)
             contained.append(vertex)
     if not contained:
         return
@@ -334,6 +598,7 @@ def replay(event, plots, geometry, pdg, factor, counts):
         ip = target_ip(vertex)
         plots.one("step3/target_ip_cm", ip, 0, 500, weight)
         if ip < 250.0:
+            pair_passed(4, vertex.tracks, weight)
             loose.append(vertex)
     if not loose:
         return
@@ -345,6 +610,7 @@ def replay(event, plots, geometry, pdg, factor, counts):
         plots.one("step4/target_ip_cm", ip, 0, 250, weight)
         plots.one("step4/target_ip_zoom_cm", ip, 0, 20, weight)
         if ip < 10.0:
+            pair_passed(5, vertex.tracks, weight)
             tight.append(vertex)
     if tight:
         passed(5, event_weight(v.weight for v in tight))
@@ -358,10 +624,18 @@ def run(config):
     limit = config.get("n_events", -1)
     if isinstance(limit, bool) or not isinstance(limit, int) or limit < -1:
         raise ValueError("n_events must be -1 or a nonnegative integer")
+    first = config.get("first_entry", 0)
+    if isinstance(first, bool) or not isinstance(first, int) or first < 0:
+        raise ValueError("first_entry must be a nonnegative integer")
+    save_plots = config.get("save_plots", True)
+    if not isinstance(save_plots, bool):
+        raise ValueError("save_plots must be true or false")
     factor = float(config.get("weight_factor", 1.0))
     if not math.isfinite(factor):
         raise ValueError("weight_factor must be finite")
     output = Path(config.get("output_dir", f"analyseEvents_{kind}")).expanduser()
+    if output.exists() and any(output.iterdir()):
+        raise ValueError(f"Output directory must be empty: {output}")
     output.mkdir(parents=True, exist_ok=True)
     import ROOT
 
@@ -373,12 +647,16 @@ def run(config):
         raise RuntimeError("Cannot load libShipMuDIS.so")
     is_replay = kind.startswith("disreplay")
     tree_name = "cbmsim" if is_replay else "MuonDIS"
+    normalization = read_normalization(ROOT, files, tree_name)
+    scale = normalization_scale(config, normalization)
     chain = ROOT.TChain(tree_name)
     for file in files:
         if chain.Add(str(file)) != 1:
             raise ValueError(f"Cannot add {file}")
     total = int(chain.GetEntries())
-    n = total if limit == -1 else min(limit, total)
+    if first > total:
+        raise ValueError(f"first_entry {first} exceeds the {total} available entries")
+    n = total - first if limit == -1 else min(limit, total - first)
     plots = Plots(config.get("plot_axes", {}))
     # Book even empty stages/materials so every requested output is present.
     prefixes = ["step2/vertices", "step5/vertices"] if is_replay else MATERIALS
@@ -402,16 +680,20 @@ def run(config):
             plots.book(name, (np.linspace(low, high, bins + 1),))
     geometry = Geometry(ROOT, config.get("geometry_file"))
     counts = [[0, 0.0, 0.0] for _ in STEPS]
+    replay_counts = {mat: [[0, 0.0, 0.0] for _ in STEPS] for mat in MATERIALS}
+    pair_counts = PairCutflow()
     material_counts = {mat: [0, 0.0, 0.0] for mat in MATERIALS}
     previous_tree = -1
-    print(f"{len(files)} files; processing {n}/{total} tree entries", flush=True)
-    for entry in range(n):
-        if chain.LoadTree(entry) < 0:
+    source_ranges = []
+    print(f"{len(files)} files; processing entries [{first}, {first + n}) of {total}", flush=True)
+    for entry in range(first, first + n):
+        local_entry = int(chain.LoadTree(entry))
+        if local_entry < 0:
             raise RuntimeError(f"Cannot load entry {entry}")
         if chain.GetTreeNumber() != previous_tree:
             previous_tree = chain.GetTreeNumber()
             required = (
-                ["MCTrack", "strawtubesPoint", "TimeDetPoint"]
+                ["MCTrack", "strawtubesPoint", "TimeDetPoint", "muDIS_material"]
                 if is_replay
                 else [
                     f"{prefix}_{mat}"
@@ -424,10 +706,23 @@ def run(config):
                 raise ValueError(f"Missing branches in {chain.GetFile().GetName()}: {missing}")
             if is_replay:
                 geometry.load(Path(chain.GetFile().GetName()))
+            source_ranges.append(
+                {
+                    "path": str(Path(chain.GetFile().GetName()).resolve()),
+                    "file_uuid": str(chain.GetFile().GetUUID().AsString()),
+                    "tree": tree_name,
+                    "entries": int(chain.GetTree().GetEntries()),
+                    "start": local_entry,
+                    "stop": local_entry,
+                }
+            )
         if chain.GetEntry(entry) <= 0:
             raise RuntimeError(f"Cannot read entry {entry}")
+        source_ranges[-1]["stop"] = local_entry + 1
         if is_replay:
-            replay(chain, plots, geometry, ROOT.TDatabasePDG.Instance(), factor, counts)
+            material = str(chain.muDIS_material)
+            cutflow = replay_counts.setdefault(material, [[0, 0.0, 0.0] for _ in STEPS])
+            replay(chain, plots, geometry, ROOT.TDatabasePDG.Instance(), factor, counts, cutflow, pair_counts)
         else:
             for mat in MATERIALS:
                 xyz = [getattr(chain, f"mudis_DISv{axis}_{mat}") for axis in "xyz"]
@@ -443,30 +738,64 @@ def run(config):
                     material_counts[mat][0] += 1
                     material_counts[mat][1] += weight
                     material_counts[mat][2] += weight * weight
-        if (entry + 1) % 1000 == 0:
-            print(f"Processed {entry + 1}/{n}", flush=True)
+        if (entry - first + 1) % 1000 == 0:
+            print(f"Processed {entry - first + 1}/{n}", flush=True)
     if is_replay:
         rows = [
             {
+                "material": material,
                 "step": i,
                 "selection": label,
                 "events": count[0],
                 "sum_weights": count[1],
                 "sum_weights_squared": count[2],
+                **pair_counts.summary(material, i),
             }
-            for i, (label, count) in enumerate(zip(STEPS, counts))
+            for material, cutflow in [("ALL", counts), *replay_counts.items()]
+            for i, (label, count) in enumerate(zip(STEPS, cutflow))
         ]
+        pair_fields = list(PairCutflow.fields)
+        if scale is not None:
+            pair_fields += ["scaled_sum_weights", "scaled_sum_weights_squared"]
+        write_table(output / "pair_cutflow.csv", scaled_rows(pair_counts.rows(), scale), pair_fields)
     else:
         rows = [
             {"material": mat, "vertices": count[0], "sum_weights": count[1], "sum_weights_squared": count[2]}
             for mat, count in material_counts.items()
         ]
+    rows = scaled_rows(rows, scale)
     write_table(output / ("cutflow.csv" if is_replay else "vertex_counts.csv"), rows)
+    save_normalization(output, normalization, scale)
+    plots.save_archive(output / "histograms.npz")
+    if save_plots:
+        print("Rendering plots", flush=True)
+        plots.save(output, scale)
+    else:
+        plots.save_flows(output, scale)
+    # Write the completion manifest last, after every requested output succeeds.
     with (output / "run.json").open("w") as stream:
         json.dump(
             {
+                "output_version": OUTPUT_VERSION,
+                "analysis_signature": {
+                    "sha256": ANALYSIS_SHA256,
+                    "type": kind,
+                    "weight_factor": factor,
+                    "target_sum_weights": float(config["target_sum_weights"])
+                    if config.get("target_sum_weights") is not None
+                    else None,
+                    "failed_job_factor": float(config.get("failed_job_factor", 1.0)),
+                    "geometry_file": str(Path(config["geometry_file"]).expanduser().resolve())
+                    if config.get("geometry_file")
+                    else None,
+                },
                 "config": config,
-                "files": [str(file) for file in files],
+                "files": [str(file.resolve()) for file in files],
+                "source_ranges": source_ranges,
+                "normalization": normalization,
+                "normalization_scale": scale,
+                "chain_entry_start": first,
+                "chain_entry_stop": first + n,
                 "entries_available": total,
                 "entries_processed": n,
                 "weight_definition": (
@@ -480,8 +809,6 @@ def run(config):
             stream,
             indent=2,
         )
-    print("Rendering plots", flush=True)
-    plots.save(output)
     for row in rows:
         print(row, flush=True)
     print(f"Output: {output}", flush=True)
@@ -490,11 +817,20 @@ def run(config):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("config", type=Path, help="Analysis YAML file")
+    parser.add_argument("--first-entry", type=int, help="First TChain entry (zero-based)")
+    parser.add_argument("--n-events", type=int, help="Number of entries, or -1 for all remaining")
+    parser.add_argument("--output-dir", help="Unique, empty output directory for this job")
+    parser.add_argument("--no-plots", action="store_true", help="Save tables and histograms without rendering")
     args = parser.parse_args()
     with args.config.open() as stream:
         config = yaml.safe_load(stream)
     if not isinstance(config, dict):
         parser.error("YAML must contain a mapping")
+    for key in ("first_entry", "n_events", "output_dir"):
+        if getattr(args, key) is not None:
+            config[key] = getattr(args, key)
+    if args.no_plots:
+        config["save_plots"] = False
     run(config)
 
 

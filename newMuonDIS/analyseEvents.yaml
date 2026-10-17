@@ -2,8 +2,14 @@
 production_path: /eos/experiment/ship/user/ammagnan/MuonDIS/TRY2026/261009/
 type: disgen  # disgen, disfilter, disreplay_gen, disreplay_filter
 n_events: 100000  # TChain entries (input muons for gen/filter; events for replay)
+first_entry: 0  # Zero-based entry in the sorted input-file TChain; use disjoint ranges for jobs.
+save_plots: true  # Set false (or pass --no-plots) for split jobs; archives are always saved.
 weight_factor: 3.6e-6
-output_dir: analyseEvents_disgen
+# Additional scaling uses the original, unselected prepareEvents sum of MCTrack[0].fW.
+# null keeps only processed weights (including weight_factor).
+target_sum_weights: null
+failed_job_factor: 1.0  # Multiplicative correction: e.g. 1.25 for 80% successful jobs.
+output_dir: analyseEvents_disgen  # Must be new or empty; use a unique directory per job.
 # Replay automatically uses the geo_ file beside each sim_ file.
 # Override only when all input files use the same geometry:
 # geometry_file: /path/to/geometry.root
