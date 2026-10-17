@@ -319,6 +319,30 @@ Output directories must be new or empty. A completed `run.json` is written
 last; failed jobs without this manifest cannot be merged. Older outputs
 without histogram archives and source-range metadata must be regenerated.
 
+## Pair tables
+
+Replay analysis also writes three complementary pair tables:
+
+- `pair_cutflow.csv` groups **all** passing pairs by material, cut step, origin
+  composition, and signed PDG IDs. It contains only observed combinations.
+- `pair_composition_cutflow.csv` gives DIS-DIS, DIS-Soft, and Soft-Soft totals
+  separately for every material and `ALL`, at every pair-selection step (1–5).
+  Zero-count categories are always included, with processed and optional
+  target-scaled weight sums.
+- `pairs.csv` has one row per individual pair **per passed step**, including the
+  source file/UUID, zero-based entry within that file, both original MCTrack
+  indices, signed PDG IDs, origins, and processed/optional scaled weight.
+  A pair passing all cuts appears five times, once at each step. There are no
+  duplicate `ALL` rows in this file. Step 1 includes every unordered pair of
+  selected tracks, including those later rejected by the vertex fit or cuts.
+
+The individual file is streamed to disk, so memory usage does not grow with
+its row count. The merger streams these rows, recomputes their scaled weights,
+checks their counts against the aggregated pair cutflow, and regenerates the
+three-composition summary. Existing outputs must be rerun to obtain individual
+pairs: their event and track identities cannot be recovered from aggregated
+PDG counts.
+
 ## Input-muon normalization
 
 Preparation, filtering, and `NewMuDISGenerator` store a `muDIS_normalization`

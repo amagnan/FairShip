@@ -8,6 +8,7 @@ import csv
 import hashlib
 import json
 import math
+from contextlib import ExitStack
 from dataclasses import dataclass
 from itertools import combinations
 from pathlib import Path
@@ -17,7 +18,7 @@ import yaml
 
 MATERIALS = ("MS", "UBT", "SBTsens", "SBTfr", "SSTsens", "SSTfr", "HE", "AIR", "HeBalloon", "REST")
 TYPES = ("disgen", "disfilter", "disreplay_gen", "disreplay_filter")
-OUTPUT_VERSION = 2
+OUTPUT_VERSION = 3
 ANALYSIS_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 STEPS = (
     "all",
@@ -169,6 +170,7 @@ class Track:
     charge: float
     weight: float = 1.0
     pdg_id: int = 0
+    track_id: int = -1
 
 
 @dataclass
@@ -268,7 +270,7 @@ def selected_tracks(event, pdg):
             charge = 3.0 * z * (1 if code > 0 else -1)
         else:
             raise ValueError(f"Unknown PDG code: {code}")
-        tracks.append(Track(position, momentum, charge, weight, code))
+        tracks.append(Track(position, momentum, charge, weight, code, index))
     return tracks, momenta
 
 
@@ -490,18 +492,66 @@ class PairCutflow:
         "sum_weights_squared",
     )
     compositions = ("DIS-DIS", "DIS-Soft", "Soft-Soft")
+    detail_fields = (
+        "source_file",
+        "file_uuid",
+        "source_entry",
+        "material",
+        "step",
+        "selection",
+        "composition",
+        "track_id_1",
+        "track_id_2",
+        "pdg_id_1",
+        "pdg_id_2",
+        "origin_1",
+        "origin_2",
+        "weight",
+    )
 
-    def __init__(self):
+    def __init__(self, writer=None, scale=None):
         self.counts = {}
         self.totals = {}
+        self.writer = writer
+        self.scale = scale
+        self.source = None
 
     def add(self, material, step, tracks, muon_weight, weight):
         particles = sorted(
-            ("Soft" if math.isclose(track.weight, muon_weight, rel_tol=1.0e-6, abs_tol=0.0) else "DIS", track.pdg_id)
+            (
+                "Soft" if math.isclose(track.weight, muon_weight, rel_tol=1.0e-6, abs_tol=0.0) else "DIS",
+                track.pdg_id,
+                track.track_id,
+            )
             for track in tracks
         )
-        (origin1, pdg1), (origin2, pdg2) = particles
+        (origin1, pdg1, track1), (origin2, pdg2, track2) = particles
         composition = f"{origin1}-{origin2}"
+        if self.writer is not None:
+            if self.source is None:
+                raise ValueError("Individual pair output requires source event identity")
+            row = dict(
+                zip(
+                    self.detail_fields,
+                    (
+                        *self.source,
+                        material,
+                        step,
+                        STEPS[step],
+                        composition,
+                        track1,
+                        track2,
+                        pdg1,
+                        pdg2,
+                        origin1,
+                        origin2,
+                        weight,
+                    ),
+                )
+            )
+            if self.scale is not None:
+                row["scaled_weight"] = weight * self.scale
+            self.writer.writerow(row)
         for mat in ("ALL", material):
             key = (mat, step, composition, pdg1, pdg2, origin1, origin2)
             count = self.counts.setdefault(key, [0, 0.0, 0.0])
@@ -526,6 +576,33 @@ class PairCutflow:
             dict(zip(self.fields, (mat, step, STEPS[step], composition, pdg1, pdg2, origin1, origin2, *count)))
             for (mat, step, composition, pdg1, pdg2, origin1, origin2), count in sorted(self.counts.items())
         ]
+
+
+def pair_composition_rows(rows):
+    """Include all three compositions, even when no pairs survive a cut."""
+    materials = list(dict.fromkeys(["ALL", *MATERIALS, *(row["material"] for row in rows)]))
+    totals = {
+        (mat, step, composition): [0, 0.0, 0.0]
+        for mat in materials
+        for step in range(1, len(STEPS))
+        for composition in PairCutflow.compositions
+    }
+    for row in rows:
+        count = totals[row["material"], int(row["step"]), row["composition"]]
+        for i, column in enumerate(("pairs", "sum_weights", "sum_weights_squared")):
+            count[i] += row[column]
+    return [
+        {
+            "material": mat,
+            "step": step,
+            "selection": STEPS[step],
+            "composition": composition,
+            "pairs": count[0],
+            "sum_weights": count[1],
+            "sum_weights_squared": count[2],
+        }
+        for (mat, step, composition), count in totals.items()
+    ]
 
 
 def replay(event, plots, geometry, pdg, factor, counts, material_counts=None, pair_counts=None):
@@ -619,6 +696,11 @@ def replay(event, plots, geometry, pdg, factor, counts, material_counts=None, pa
 
 
 def run(config):
+    with ExitStack() as output_streams:
+        _run(config, output_streams)
+
+
+def _run(config, output_streams):
     kind = config["type"]
     files = discover(config["production_path"], kind)
     limit = config.get("n_events", -1)
@@ -681,7 +763,13 @@ def run(config):
     geometry = Geometry(ROOT, config.get("geometry_file"))
     counts = [[0, 0.0, 0.0] for _ in STEPS]
     replay_counts = {mat: [[0, 0.0, 0.0] for _ in STEPS] for mat in MATERIALS}
-    pair_counts = PairCutflow()
+    pair_writer = None
+    if is_replay:
+        pair_stream = output_streams.enter_context((output / "pairs.csv").open("w", newline=""))
+        detail_fields = [*PairCutflow.detail_fields, *(["scaled_weight"] if scale is not None else [])]
+        pair_writer = csv.DictWriter(pair_stream, fieldnames=detail_fields)
+        pair_writer.writeheader()
+    pair_counts = PairCutflow(pair_writer, scale)
     material_counts = {mat: [0, 0.0, 0.0] for mat in MATERIALS}
     previous_tree = -1
     source_ranges = []
@@ -721,6 +809,7 @@ def run(config):
         source_ranges[-1]["stop"] = local_entry + 1
         if is_replay:
             material = str(chain.muDIS_material)
+            pair_counts.source = (source_ranges[-1]["path"], source_ranges[-1]["file_uuid"], local_entry)
             cutflow = replay_counts.setdefault(material, [[0, 0.0, 0.0] for _ in STEPS])
             replay(chain, plots, geometry, ROOT.TDatabasePDG.Instance(), factor, counts, cutflow, pair_counts)
         else:
@@ -740,6 +829,7 @@ def run(config):
                     material_counts[mat][2] += weight * weight
         if (entry - first + 1) % 1000 == 0:
             print(f"Processed {entry - first + 1}/{n}", flush=True)
+    output_streams.close()
     if is_replay:
         rows = [
             {
@@ -758,6 +848,9 @@ def run(config):
         if scale is not None:
             pair_fields += ["scaled_sum_weights", "scaled_sum_weights_squared"]
         write_table(output / "pair_cutflow.csv", scaled_rows(pair_counts.rows(), scale), pair_fields)
+        write_table(
+            output / "pair_composition_cutflow.csv", scaled_rows(pair_composition_rows(pair_counts.rows()), scale)
+        )
     else:
         rows = [
             {"material": mat, "vertices": count[0], "sum_weights": count[1], "sum_weights_squared": count[2]}

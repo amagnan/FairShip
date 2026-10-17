@@ -16,6 +16,7 @@ from analyseEvents import (
     Plots,
     combine_normalization,
     normalization_scale,
+    pair_composition_rows,
     save_normalization,
     scaled_rows,
     write_table,
@@ -108,6 +109,42 @@ def merge_table(inputs, filename, keys, integer_columns, float_columns, scaled=F
     return [combined[key] for key in sorted(combined)], fields
 
 
+def merge_pairs(inputs, output, scale, expected):
+    """Stream individual pairs and recompute their target-scaled weights."""
+    fields = [*PairCutflow.detail_fields, *(["scaled_weight"] if scale is not None else [])]
+    counts = {}
+    with (output / "pairs.csv").open("w", newline="") as destination:
+        writer = csv.DictWriter(destination, fieldnames=fields)
+        writer.writeheader()
+        for directory in inputs:
+            path = directory / "pairs.csv"
+            with path.open(newline="") as stream:
+                reader = csv.DictReader(stream)
+                if reader.fieldnames != fields:
+                    raise ValueError(f"Unexpected individual-pair columns: {path}")
+                for row in reader:
+                    if None in row or any(value is None for value in row.values()):
+                        raise ValueError(f"Malformed individual pair: {path}")
+                    weight = float(row["weight"])
+                    if not math.isfinite(weight):
+                        raise ValueError(f"Nonfinite individual-pair weight: {path}")
+                    for column in ("source_entry", "track_id_1", "track_id_2"):
+                        if int(row[column]) < 0:
+                            raise ValueError(f"Invalid pair {column}: {path}")
+                    key = (row["material"], int(row["step"]), row["composition"])
+                    counts[key] = counts.get(key, 0) + 1
+                    if scale is not None:
+                        row["scaled_weight"] = weight * scale
+                    writer.writerow(row)
+    expected_counts = {
+        (row["material"], row["step"], row["composition"]): row["pairs"]
+        for row in expected
+        if row["material"] != "ALL" and row["pairs"]
+    }
+    if counts != expected_counts:
+        raise ValueError("Individual pair counts do not match the pair cutflow")
+
+
 def merge(inputs, output, *, save_plots=True):
     inputs = [Path(directory).expanduser().resolve() for directory in inputs]
     output = Path(output).expanduser().resolve()
@@ -161,12 +198,18 @@ def merge(inputs, output, *, save_plots=True):
         for filename, keys, integers, floats in tables
     ]
 
-    # Validate every input before creating any merged output.
+    # Metadata and summaries are validated first; individual pairs are checked
+    # while streaming, before the completion manifest is written.
     output.mkdir(parents=True, exist_ok=True)
     for filename, rows, fields in merged_tables:
         if scale is not None:
             fields += ["scaled_sum_weights", "scaled_sum_weights_squared"]
         write_table(output / filename, scaled_rows(rows, scale), fields)
+    if signature["type"].startswith("disreplay"):
+        pair_rows = next(rows for filename, rows, _ in merged_tables if filename == "pair_cutflow.csv")
+        compositions = pair_composition_rows(pair_rows)
+        write_table(output / "pair_composition_cutflow.csv", scaled_rows(compositions, scale))
+        merge_pairs(inputs, output, scale, compositions)
     save_normalization(output, normalization, scale)
     plots.save_archive(output / "histograms.npz")
     if save_plots:
