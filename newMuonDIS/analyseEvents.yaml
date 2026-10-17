@@ -1,0 +1,14 @@
+# Paths are relative to the working directory, or absolute.
+production_path: /eos/experiment/ship/user/ammagnan/MuonDIS/TRY2026/261009/
+type: disgen  # disgen, disfilter, disreplay_gen, disreplay_filter
+n_events: 100000  # TChain entries (input muons for gen/filter; events for replay)
+weight_factor: 3.6e-6
+output_dir: analyseEvents_disgen
+# Replay automatically uses the geo_ file beside each sim_ file.
+# Override only when all input files use the same geometry:
+# geometry_file: /path/to/geometry.root
+# Each axis specifies [minimum_cm, maximum_cm, number_of_bin_edges].
+plot_axes:
+  x: [-500, 500, 500]
+  y: [-500, 500, 500]
+  z: [2000, 10000, 800]
