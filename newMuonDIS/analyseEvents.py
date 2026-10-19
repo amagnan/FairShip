@@ -730,6 +730,7 @@ def _run(config, output_streams):
     is_replay = kind.startswith("disreplay")
     tree_name = "cbmsim" if is_replay else "MuonDIS"
     normalization = read_normalization(ROOT, files, tree_name)
+    normalization["weight_factor"] = factor
     scale = normalization_scale(config, normalization)
     chain = ROOT.TChain(tree_name)
     for file in files:

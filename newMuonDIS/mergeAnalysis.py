@@ -175,6 +175,7 @@ def merge(inputs, output, *, save_plots=True):
             raise ValueError(f"Incompatible analysis code, type, weight factor, or geometry settings: {directory}")
     sources, available = check_sources(manifests)
     normalization = combine_normalization([manifest["normalization"] for manifest in manifests])
+    normalization["weight_factor"] = signature["weight_factor"]
     scale = normalization_scale(signature, normalization)
     plots = Plots.load_archive(inputs[0] / "histograms.npz")
     for directory in inputs[1:]:
