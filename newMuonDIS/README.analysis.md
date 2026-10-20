@@ -15,6 +15,12 @@ Geometry and parameter files are excluded. `n_events: -1` processes all entries;
 for prepared files each tree entry is an input muon and can contain multiple DIS
 vertices per material. The limit is global across the sorted input files.
 
+Empty ROOT files with no keys are skipped with a warning before normalization
+and chain construction. They are excluded from the completion manifest's input
+list. If all inputs are empty, analysis fails with a clear error. Unreadable
+files and nonempty files missing the expected tree still fail. A valid tree with
+zero entries is retained, including its normalization metadata.
+
 The `MuonDIS` tree supplies `mudis_DISvx/y/z_<material>` and
 `muon_wDIS_<material>`. Every DIS vertex contributes once to the raw plots and
 with `wDIS * weight_factor` to the weighted plots. There is no additional

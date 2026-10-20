@@ -44,12 +44,17 @@ def combine_normalization(inputs):
 
 
 def read_normalization(root, files, tree_name):
+    """Return normalization and usable inputs, excluding keyless ROOT files."""
     inputs = []
+    usable_files = []
     for path in files:
         source = root.TFile.Open(str(path), "READ")
         if not source or source.IsZombie():
             raise ValueError(f"Cannot read normalization metadata: {path}")
         try:
+            if source.GetNkeys() == 0:
+                print(f"WARNING: Skipping empty ROOT file (no keys): {path}", flush=True)
+                continue
             tree = source.Get(tree_name)
             if not tree:
                 raise ValueError(f"Missing {tree_name} tree: {path}")
@@ -81,9 +86,12 @@ def read_normalization(root, files, tree_name):
                         raise ValueError(f"Invalid normalization record: {path}")
                     records.append(record)
             inputs.append({"preparation_complete": complete, "records": records})
+            usable_files.append(path)
         finally:
             source.Close()
-    return combine_normalization(inputs)
+    if not usable_files:
+        raise ValueError("No usable analysis inputs remain: all ROOT files are empty")
+    return combine_normalization(inputs), usable_files
 
 
 def normalization_scale(config, metadata):
@@ -729,7 +737,7 @@ def _run(config, output_streams):
         raise RuntimeError("Cannot load libShipMuDIS.so")
     is_replay = kind.startswith("disreplay")
     tree_name = "cbmsim" if is_replay else "MuonDIS"
-    normalization = read_normalization(ROOT, files, tree_name)
+    normalization, files = read_normalization(ROOT, files, tree_name)
     normalization["weight_factor"] = factor
     scale = normalization_scale(config, normalization)
     chain = ROOT.TChain(tree_name)
