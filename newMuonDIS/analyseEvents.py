@@ -293,6 +293,7 @@ def selected_tracks(event, pdg):
 class Geometry:
     def __init__(self, root, override=None):
         self.root, self.override, self.path, self.manager = root, override, None, None
+        self.sbt_cells = {}
 
     def load(self, event_file):
         path = (
@@ -307,7 +308,39 @@ class Geometry:
         self.manager = self.root.TGeoManager.Import(str(path))
         if not self.manager:
             raise ValueError(f"Cannot import geometry: {path}")
+        self.sbt_cells = self._sbt_cells()
         self.path = path
+
+    @staticmethod
+    def _cell_wall(name, position):
+        if name.startswith(("LiScX_", "LiSc_S3_", "LiSc_S5_")):
+            return "top" if position[1] > 0 else "bottom"
+        if name.startswith(("LiScY_", "LiSc_S4_", "LiSc_S6_")):
+            return "right" if position[0] > 0 else "left"
+        return None
+
+    def _sbt_cells(self):
+        """Map sensitive copy numbers to walls using their placed cell centres."""
+        cells = {}
+
+        def visit(node, parent):
+            matrix = self.root.TGeoHMatrix(parent)
+            matrix.Multiply(node.GetMatrix())
+            volume = node.GetVolume()
+            name = str(volume.GetName())
+            if self._cell_wall(name, (1, 1, 0)) is not None:
+                center = np.empty(3, dtype=np.float64)
+                matrix.LocalToMaster(volume.GetShape().GetOrigin(), center)
+                wall = self._cell_wall(name, center)
+                detector_id = int(node.GetNumber())
+                if detector_id in cells and cells[detector_id] != wall:
+                    raise ValueError(f"Ambiguous SBT detector ID {detector_id} in replay geometry")
+                cells[detector_id] = wall
+            for index in range(node.GetNdaughters()):
+                visit(node.GetDaughter(index), matrix)
+
+        visit(self.manager.GetTopNode(), self.root.TGeoHMatrix())
+        return cells
 
     def clearance(self, position):
         node = self.manager.FindNode(*map(float, position))
@@ -325,20 +358,22 @@ class Geometry:
         # any direction, including endcaps and any daughter-volume surfaces.
         return float(self.manager.GetCurrentNavigator().Safety())
 
-    def sbt_wall(self, position):
+    def sbt_wall(self, position, detector_id=None):
         """Identify the actual scintillator cell, including tapered corner cells.
 
-        These volume families are defined in veto::add_block. Unlike coordinate
-        signs alone, their orientation distinguishes adjacent walls at corners.
+        veto::ProcessHits records the sensitive cell's copy number, but its
+        stored entry/exit midpoint need not locate that cell with FindNode.
+        Prefer the cell placement over the measured position when available.
         For other geometry versions, use transverse helium boundaries at hit z.
         """
+        if detector_id in self.sbt_cells:
+            return self.sbt_cells[detector_id]
         x, y, z = map(float, position)
         node = self.manager.FindNode(x, y, z)
         name = str(node.GetVolume().GetName()) if node else ""
-        if name.startswith(("LiScX_", "LiSc_S3_", "LiSc_S5_")):
-            return "top" if y > 0 else "bottom"
-        if name.startswith(("LiScY_", "LiSc_S4_", "LiSc_S6_")):
-            return "right" if x > 0 else "left"
+        wall = self._cell_wall(name, position)
+        if wall is not None:
+            return wall
         # Find the decay-medium cross section at this z, in world coordinates.
         # DistFromInside on the actual shape accounts for its taper, rather
         # than using the bounding box's maximum width/height at every z.
@@ -767,7 +802,8 @@ class ReplayDiagnostics:
                 self.hits[index][detector].append(point)
         self.truth_cache = {}
         self.wall_hits = {
-            index: [geometry.sbt_wall(point[:3]) for point in hits["SBT"]] for index, hits in self.hits.items()
+            index: [geometry.sbt_wall(point[:3], point[4]) for point in hits["SBT"]]
+            for index, hits in self.hits.items()
         }
 
     def window_hits(self, index, window):

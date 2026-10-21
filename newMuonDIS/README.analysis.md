@@ -129,11 +129,15 @@ daughter's weight times `weight_factor`. The row's `weight` is the plot weight.
 Under `stepN/tagger/{muon,daughter}/`, UBT plots show y versus x for every
 window. SBT plots show x versus z for top (y>0) and bottom (y<0), and y versus z
 for left (x<0) and right (x>0). **Each hit belongs to exactly one wall.**
-The loaded geometry identifies the actual sensitive volume at the hit position:
+The hit's detector ID identifies the sensitive cell copy in the loaded geometry;
+its placed centre determines the side of the vessel. This remains valid when
+the stored hit midpoint lies outside the cell or outside the helium z range.
 `LiScX`, `LiSc_S3`, and `LiSc_S5` cells belong to top/bottom;
 `LiScY`, `LiSc_S4`, and `LiSc_S6` belong to left/right. These volume families,
-including the corner cells, are defined in `veto::add_block`. No detector-ID
-decoding is required. For other volume names, the fallback finds the helium
+including the corner cells, are defined in `veto::add_block`. The copy numbers
+are read from geometry nodes, without assuming a detector-ID encoding. If the
+ID does not match a known cell, the hit position is used to locate one. For
+other volume names, the fallback finds the helium
 cross section at the hit's z using the actual ROOT shape, then assigns the
 nearest transverse wall segment (exact corner ties go to top/bottom). This
 accounts for the changing vessel dimensions; it does not use fixed x/y limits.
