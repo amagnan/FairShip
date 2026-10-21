@@ -26,7 +26,10 @@ The `MuonDIS` tree supplies `mudis_DISvx/y/z_<material>` and
 with `wDIS * weight_factor` to the weighted plots. There is no additional
 normalization by the number of generated or retained vertices.
 
-Replay uses `cbmsim`, `MCTrack`, `strawtubesPoint`, and `TimeDetPoint`.
+Replay uses `cbmsim`, `MCTrack`, `strawtubesPoint`, `TimeDetPoint`,
+`UpstreamTaggerPoint`, and `vetoPoint`. Both tagger branches are required;
+missing branches are not interpreted as zero hits. Run replay post-processing
+first to restore the input muon's upstream hits into `MCTrack[0]`.
 Hits are associated by MCTrack index, with straw stations decoded as
 `GetDetectorID() // 1000000`. Each distinct track must have hits in all four
 stations and TD. Momentum and position come from the smallest-z Tr1 hit;
@@ -85,3 +88,82 @@ input file list, entry counts and weighting convention. `histogram_flows.csv`
 records entries outside the plotted ranges; those entries still contribute to
 the cutflow. `plot_axes` adjusts the vertex histogram ranges without changing
 selection. One-dimensional histogram ranges are fixed in the script.
+
+## Replay tagger and DIS truth diagnostics
+
+Every passed stage also records tagger diagnostics. The input muon is always
+`MCTrack[0]`. The daughter sample requires `GetMotherId() == 0`, nonzero charge,
+and a weight different from the input muon's weight, using the same tolerance
+as the pair composition. The weight requirement excludes injected soft tracks,
+which also have mother ID 0 in the replay generator. At step0 all such daughters
+are considered; at step1 only daughters passing the detector/momentum selection
+are considered; at steps 2–5 only daughters belonging to a surviving pair are
+considered. A daughter shared by several pairs contributes once per stage.
+
+`tagger_cutflow.csv` counts events by material (including `ALL`), stage, sample,
+UBT window, and hit category: `UBT_only`, `SBT_only`, `both`, or `neither`.
+The UBT windows are the full plane and centered rectangles of **full width**
+400×600, 360×300, and 140×310 cm. Boundaries are included; for example the
+400×600 window requires |x| ≤ 200 and |y| ≤ 300 cm. SBT presence always uses
+all associated `vetoPoint` hits, independent of the UBT window.
+
+The `muon` sample partitions the events into four categories. `daughter_any`
+counts an event in a category when at least one eligible daughter has that
+category; these counts can overlap. `daughter_all` requires a nonempty daughter
+sample with every daughter in that same category. Mixed categories therefore
+do not contribute to `daughter_all`. Events with no eligible daughters are
+recorded as `no_daughters` for both daughter summaries, never as `neither` or
+as satisfying an empty "all" condition. Summary weights are the existing
+event weights for that stage.
+
+`tagger_tracks.csv` retains one row per input muon or eligible daughter per
+passed stage, including source file/UUID/entry, MCTrack index, PDG ID, weight,
+and JSON columns for the four window categories and all associated UBT/SBT
+points. Each point is `[x_cm, y_cm, z_cm, time_ns, detector_id]`; `sbt_walls`
+contains the corresponding wall assignment for each SBT point. This preserves
+hit coordinates and multiplicities, including hits outside histogram ranges,
+and permits alternative per-daughter combinations without rerunning ROOT.
+Muon hit plots use the stage's event weight; daughter hit plots use the
+daughter's weight times `weight_factor`. The row's `weight` is the plot weight.
+
+Under `stepN/tagger/{muon,daughter}/`, UBT plots show y versus x for every
+window. SBT plots show x versus z for top (y>0) and bottom (y<0), and y versus z
+for left (x<0) and right (x>0). **Each hit belongs to exactly one wall.**
+The loaded geometry identifies the actual sensitive volume at the hit position:
+`LiScX`, `LiSc_S3`, and `LiSc_S5` cells belong to top/bottom;
+`LiScY`, `LiSc_S4`, and `LiSc_S6` belong to left/right. These volume families,
+including the corner cells, are defined in `veto::add_block`. No detector-ID
+decoding is required. For other volume names, the fallback finds the helium
+cross section at the hit's z using the actual ROOT shape, then assigns the
+nearest transverse wall segment (exact corner ties go to top/bottom). This
+accounts for the changing vessel dimensions; it does not use fixed x/y limits.
+Failure to locate the helium cross section is reported explicitly.
+For each wall, `n_hits_vs_entry_z` counts one entry per track with
+at least one SBT hit, including zero hits in an unvisited wall.
+The entry z is the z position of the earliest-time hit **anywhere in SBT**;
+tracks without an SBT hit have no defined entry z and do not fill this plot.
+Multiplicity bins cover 0–100 hits; overflow is retained in the usual flow table.
+
+Under `stepN/truth_DIS/` (steps 1–5), `distance_xy_cm`, `distance_z_cm`, and
+`distance_3d_cm` compare each built pair vertex with its associated truth DIS
+vertex. The z distance is absolute. The broad plots cover 0–15000 cm and
+`*_zoom_cm` plots cover 0–100 cm. A DIS secondary is traced to its mother-0
+DIS ancestor, whose `GetStartX/Y/Z()` supplies the interaction position; soft
+tracks are excluded. A shared truth position contributes once per pair, not
+once per daughter. If distinct truth positions occur, each is retained.
+Step1 includes all successfully built vertices before the opposite-sign/DOCA
+cut; later steps use only pairs surviving that stage. Pure soft pairs do not
+fill these plots.
+
+`pairs.csv` includes JSON `truth_dis_vertices` and the flags
+`truth_dis_in_decay_volume` (any associated truth vertex inside) and
+`truth_dis_all_in_decay_volume` (all inside). Containment means helium under
+`DecayVolume`, without the reconstructed vertex's 5 cm clearance cut. Pairs
+without an associated DIS vertex have an empty vertex list and blank flags.
+`truth_DIS/in_decay_volume` counts one entry per pair with associated DIS truth,
+including step1 pairs for which a reconstructed vertex could not be built.
+
+The histogram archive and both tagger tables are supported by `mergeAnalysis.py`.
+Output version 4 requires rerunning older analysis outputs before merging with
+these diagnostics. Use `--no-plots` for split jobs to defer rendering the
+additional plots until the merge.

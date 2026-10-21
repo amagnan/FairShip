@@ -18,7 +18,7 @@ import yaml
 
 MATERIALS = ("MS", "UBT", "SBTsens", "SBTfr", "SSTsens", "SSTfr", "HE", "AIR", "HeBalloon", "REST")
 TYPES = ("disgen", "disfilter", "disreplay_gen", "disreplay_filter")
-OUTPUT_VERSION = 3
+OUTPUT_VERSION = 4
 ANALYSIS_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 STEPS = (
     "all",
@@ -28,6 +28,22 @@ STEPS = (
     "target-plane IP < 250 cm",
     "target-plane IP < 10 cm",
 )
+UBT_WINDOWS = {"full": None, "400x600": (400, 600), "360x300": (360, 300), "140x310": (140, 310)}
+HIT_CATEGORIES = ("neither", "UBT_only", "SBT_only", "both")
+SBT_WALLS = {"top": (1, 1), "bottom": (1, -1), "left": (0, -1), "right": (0, 1)}
+
+
+def particle_charge(code, pdg):
+    particle = pdg.GetParticle(code)
+    if particle:
+        return float(particle.Charge())
+    if 1000000000 <= abs(code) < 1100000000:
+        return 3.0 * ((abs(code) // 10000) % 1000) * (1 if code > 0 else -1)
+    raise ValueError(f"Unknown PDG code: {code}")
+
+
+def is_soft(weight, muon_weight):
+    return math.isclose(weight, muon_weight, rel_tol=1.0e-6, abs_tol=0.0)
 
 
 def combine_normalization(inputs):
@@ -269,15 +285,7 @@ def selected_tracks(event, pdg):
         if p <= 1.0:
             continue
         code = int(event.MCTrack[index].GetPdgCode())
-        particle = pdg.GetParticle(code)
-        if particle:
-            charge = float(particle.Charge())
-        elif 1000000000 <= abs(code) < 1100000000:
-            # Nuclear codes are +/-10LZZZAAAI; ROOT charges are in units of e/3.
-            z = (abs(code) // 10000) % 1000
-            charge = 3.0 * z * (1 if code > 0 else -1)
-        else:
-            raise ValueError(f"Unknown PDG code: {code}")
+        charge = particle_charge(code, pdg)
         tracks.append(Track(position, momentum, charge, weight, code, index))
     return tracks, momenta
 
@@ -316,6 +324,51 @@ class Geometry:
         # ROOT navigator safety is the distance to the nearest boundary in
         # any direction, including endcaps and any daughter-volume surfaces.
         return float(self.manager.GetCurrentNavigator().Safety())
+
+    def sbt_wall(self, position):
+        """Identify the actual scintillator cell, including tapered corner cells.
+
+        These volume families are defined in veto::add_block. Unlike coordinate
+        signs alone, their orientation distinguishes adjacent walls at corners.
+        For other geometry versions, use transverse helium boundaries at hit z.
+        """
+        x, y, z = map(float, position)
+        node = self.manager.FindNode(x, y, z)
+        name = str(node.GetVolume().GetName()) if node else ""
+        if name.startswith(("LiScX_", "LiSc_S3_", "LiSc_S5_")):
+            return "top" if y > 0 else "bottom"
+        if name.startswith(("LiScY_", "LiSc_S4_", "LiSc_S6_")):
+            return "right" if x > 0 else "left"
+        # Find the decay-medium cross section at this z, in world coordinates.
+        # DistFromInside on the actual shape accounts for its taper, rather
+        # than using the bounding box's maximum width/height at every z.
+        if self.clearance((0, 0, z)) < 0:
+            raise ValueError(f"Cannot locate decay helium at SBT hit z={z}: {position}")
+        navigator = self.manager.GetCurrentNavigator()
+        shape = navigator.GetCurrentNode().GetVolume().GetShape()
+        center = np.array([0.0, 0.0, z], dtype=np.float64)
+        local = np.empty(3, dtype=np.float64)
+        navigator.MasterToLocal(center, local)
+        bounds = {}
+        for wall, (axis, sign) in SBT_WALLS.items():
+            direction = np.zeros(3, dtype=np.float64)
+            direction[axis] = sign
+            local_direction = np.empty(3, dtype=np.float64)
+            navigator.MasterToLocalVect(direction, local_direction)
+            distance = float(shape.DistFromInside(local, local_direction, 3))
+            if not math.isfinite(distance) or not 0 < distance < 1.0e10:
+                raise ValueError(f"Invalid decay-volume boundary for SBT hit: {position}")
+            bounds[wall] = sign * distance
+        # Distance to the finite transverse side segment resolves corner hits
+        # uniquely. Exact ties go to top/bottom (dictionary order).
+        distances = {}
+        for wall, (axis, _) in SBT_WALLS.items():
+            along = x if axis == 1 else y
+            low, high = (bounds["left"], bounds["right"]) if axis == 1 else (bounds["bottom"], bounds["top"])
+            beyond_end = max(low - along, 0.0, along - high)
+            across = (y if axis == 1 else x) - bounds[wall]
+            distances[wall] = math.hypot(across, beyond_end)
+        return min(distances, key=distances.get)
 
 
 class Plots:
@@ -461,7 +514,7 @@ class Plots:
                     fig.colorbar(mesh, ax=ax, label="Entries" if label == "unweighted" else "Sum of weights")
                     vertical, horizontal = name.split("/")[-1].split("_vs_")
                     ax.set_xlabel(f"{horizontal} [cm]")
-                    ax.set_ylabel(f"{vertical} [cm]")
+                    ax.set_ylabel("Number of hits" if vertical == "n_hits" else f"{vertical} [cm]")
                 else:
                     ax.stairs(data, edges[0])
                     ax.set_xlabel(name.split("/")[-1])
@@ -515,6 +568,9 @@ class PairCutflow:
         "origin_1",
         "origin_2",
         "weight",
+        "truth_dis_vertices",
+        "truth_dis_in_decay_volume",
+        "truth_dis_all_in_decay_volume",
     )
 
     def __init__(self, writer=None, scale=None):
@@ -524,7 +580,7 @@ class PairCutflow:
         self.scale = scale
         self.source = None
 
-    def add(self, material, step, tracks, muon_weight, weight):
+    def add(self, material, step, tracks, muon_weight, weight, truth=None):
         particles = sorted(
             (
                 "Soft" if math.isclose(track.weight, muon_weight, rel_tol=1.0e-6, abs_tol=0.0) else "DIS",
@@ -557,6 +613,7 @@ class PairCutflow:
                     ),
                 )
             )
+            row.update(truth or dict.fromkeys(ReplayDiagnostics.truth_fields, ""))
             if self.scale is not None:
                 row["scaled_weight"] = weight * self.scale
             self.writer.writerow(row)
@@ -613,24 +670,284 @@ def pair_composition_rows(rows):
     ]
 
 
-def replay(event, plots, geometry, pdg, factor, counts, material_counts=None, pair_counts=None):
+class ReplayDiagnostics:
+    """Stage-wise event categories and streaming, lossless track hit records."""
+
+    fields = (
+        "material",
+        "step",
+        "selection",
+        "sample",
+        "window",
+        "category",
+        "events",
+        "sum_weights",
+        "sum_weights_squared",
+    )
+    detail_fields = (
+        "source_file",
+        "file_uuid",
+        "source_entry",
+        "material",
+        "step",
+        "selection",
+        "sample",
+        "track_id",
+        "pdg_id",
+        "weight",
+        "categories",
+        "ubt_hits",
+        "sbt_hits",
+        "sbt_walls",
+    )
+    truth_fields = ("truth_dis_vertices", "truth_dis_in_decay_volume", "truth_dis_all_in_decay_volume")
+
+    def __init__(self, plots, writer=None, scale=None):
+        self.plots, self.writer, self.scale = plots, writer, scale
+        self.source = None
+        self.counts = {}
+        self.materials = set()
+        for material in ("ALL", *MATERIALS):
+            self.book_counts(material)
+        for step in range(len(STEPS)):
+            for sample in ("muon", "daughter"):
+                prefix = f"step{step}/tagger/{sample}"
+                for window in UBT_WINDOWS:
+                    plots.book(f"{prefix}/UBT/{window}/y_vs_x", (plots.axes["x"], plots.axes["y"]))
+                for wall, (axis, _) in SBT_WALLS.items():
+                    coordinate = "x" if axis == 1 else "y"
+                    plots.book(f"{prefix}/SBT/{wall}/{coordinate}_vs_z", (plots.axes["z"], plots.axes[coordinate]))
+                    plots.book(f"{prefix}/SBT/{wall}/n_hits_vs_entry_z", (plots.axes["z"], np.arange(-0.5, 101.5)))
+            if step:
+                for name in ("distance_xy_cm", "distance_z_cm", "distance_3d_cm"):
+                    plots.book(f"step{step}/truth_DIS/{name}", (np.linspace(0, 15000, 301),))
+                    plots.book(f"step{step}/truth_DIS/{name.removesuffix('_cm')}_zoom_cm", (np.linspace(0, 100, 201),))
+                plots.book(f"step{step}/truth_DIS/in_decay_volume", (np.arange(-0.5, 2.5),))
+
+    def book_counts(self, material):
+        if material in self.materials:
+            return
+        self.materials.add(material)
+        for step in range(len(STEPS)):
+            for sample in ("muon", "daughter_any", "daughter_all"):
+                for window in UBT_WINDOWS:
+                    for category in (*HIT_CATEGORIES, "no_daughters"):
+                        if sample == "muon" and category == "no_daughters":
+                            continue
+                        self.counts.setdefault((material, step, sample, window, category), [0, 0.0, 0.0])
+
+    def start_event(self, event, pdg, geometry, factor):
+        self.event, self.geometry, self.factor = event, geometry, factor
+        self.muon_weight = float(event.MCTrack[0].GetWeight())
+        self.material = str(event.muDIS_material)
+        self.book_counts(self.material)
+        self.daughters = {
+            i
+            for i, track in enumerate(event.MCTrack)
+            if i
+            and track.GetMotherId() == 0
+            and not is_soft(float(track.GetWeight()), self.muon_weight)
+            and particle_charge(int(track.GetPdgCode()), pdg) != 0
+        }
+        self.hits = {i: {"UBT": [], "SBT": []} for i in (0, *sorted(self.daughters))}
+        for branch, detector in (("UpstreamTaggerPoint", "UBT"), ("vetoPoint", "SBT")):
+            for hit in getattr(event, branch):
+                index = int(hit.GetTrackID())
+                if index not in self.hits:
+                    continue
+                point = [
+                    float(hit.GetX()),
+                    float(hit.GetY()),
+                    float(hit.GetZ()),
+                    float(hit.GetTime()),
+                    int(hit.GetDetectorID()),
+                ]
+                if not all(math.isfinite(v) for v in point):
+                    raise ValueError(f"Nonfinite {branch} hit for track {index}")
+                self.hits[index][detector].append(point)
+        self.truth_cache = {}
+        self.wall_hits = {
+            index: [geometry.sbt_wall(point[:3]) for point in hits["SBT"]] for index, hits in self.hits.items()
+        }
+
+    def window_hits(self, index, window):
+        hits = self.hits[index]["UBT"]
+        widths = UBT_WINDOWS[window]
+        return (
+            hits if widths is None else [p for p in hits if abs(p[0]) <= widths[0] / 2 and abs(p[1]) <= widths[1] / 2]
+        )
+
+    def categories(self, index):
+        return {
+            window: HIT_CATEGORIES[int(bool(self.window_hits(index, window))) + 2 * int(bool(self.hits[index]["SBT"]))]
+            for window in UBT_WINDOWS
+        }
+
+    def stage(self, step, weight, tracks=()):
+        daughters = self.daughters if step == 0 else self.daughters.intersection(t.track_id for t in tracks)
+        categories = {i: self.categories(i) for i in (0, *sorted(daughters))}
+        for window in UBT_WINDOWS:
+            selected = [categories[i][window] for i in daughters]
+            samples = {
+                "muon": [categories[0][window]],
+                "daughter_any": sorted(set(selected)) if selected else ["no_daughters"],
+                "daughter_all": [selected[0]]
+                if selected and len(set(selected)) == 1
+                else ([] if selected else ["no_daughters"]),
+            }
+            for sample, labels in samples.items():
+                for label in labels:
+                    for mat in ("ALL", self.material):
+                        count = self.counts[mat, step, sample, window, label]
+                        count[0] += 1
+                        count[1] += weight
+                        count[2] += weight * weight
+        for index, labels in categories.items():
+            sample = "muon" if index == 0 else "daughter"
+            track = self.event.MCTrack[index]
+            track_weight = weight if index == 0 else float(track.GetWeight()) * self.factor
+            if not math.isfinite(track_weight):
+                raise ValueError(f"Nonfinite diagnostic weight for track {index}")
+            prefix = f"step{step}/tagger/{sample}"
+            for window in UBT_WINDOWS:
+                for x, y, *_ in self.window_hits(index, window):
+                    self.plots.fill(
+                        f"{prefix}/UBT/{window}/y_vs_x",
+                        (x, y),
+                        (self.plots.axes["x"], self.plots.axes["y"]),
+                        track_weight,
+                    )
+            sbt = self.hits[index]["SBT"]
+            for wall, (axis, _) in SBT_WALLS.items():
+                hits = [p for p, assigned in zip(sbt, self.wall_hits[index]) if assigned == wall]
+                coordinate = "x" if axis == 1 else "y"
+                for point in hits:
+                    self.plots.fill(
+                        f"{prefix}/SBT/{wall}/{coordinate}_vs_z",
+                        (point[2], point[1 - axis]),
+                        (self.plots.axes["z"], self.plots.axes[coordinate]),
+                        track_weight,
+                    )
+                if sbt:
+                    # Time ordering also handles backward-going daughters. Use the
+                    # first SBT hit overall, with zero counts for unvisited walls.
+                    entry_z = min(sbt, key=lambda p: p[3])[2]
+                    self.plots.fill(
+                        f"{prefix}/SBT/{wall}/n_hits_vs_entry_z",
+                        (entry_z, len(hits)),
+                        (self.plots.axes["z"], np.arange(-0.5, 101.5)),
+                        track_weight,
+                    )
+            if self.writer is not None:
+                if self.source is None:
+                    raise ValueError("Track diagnostics require source event identity")
+                row = dict(
+                    zip(
+                        self.detail_fields,
+                        (
+                            *self.source,
+                            self.material,
+                            step,
+                            STEPS[step],
+                            sample,
+                            index,
+                            int(track.GetPdgCode()),
+                            track_weight,
+                            json.dumps(labels),
+                            json.dumps(self.hits[index]["UBT"]),
+                            json.dumps(sbt),
+                            json.dumps(self.wall_hits[index]),
+                        ),
+                    )
+                )
+                if self.scale is not None:
+                    row["scaled_weight"] = track_weight * self.scale
+                self.writer.writerow(row)
+
+    def truth_vertices(self, tracks):
+        vertices = set()
+        for track in tracks:
+            if is_soft(track.weight, self.muon_weight):
+                continue
+            index, visited = track.track_id, set()
+            while index > 0:
+                if index in visited or index >= len(self.event.MCTrack):
+                    raise ValueError("Invalid MCTrack ancestry")
+                visited.add(index)
+                mc = self.event.MCTrack[index]
+                mother = int(mc.GetMotherId())
+                if mother == 0:
+                    if not is_soft(float(mc.GetWeight()), self.muon_weight):
+                        position = tuple(float(getattr(mc, f"GetStart{axis}")()) for axis in "XYZ")
+                        if not all(math.isfinite(v) for v in position):
+                            raise ValueError("Nonfinite truth DIS vertex")
+                        vertices.add(position)
+                    break
+                index = mother
+        return sorted(vertices)
+
+    def pair_truth(self, step, tracks, weight, vertex=None):
+        positions = self.truth_vertices(tracks)
+        contained = []
+        for position in positions:
+            if position not in self.truth_cache:
+                self.truth_cache[position] = self.geometry.clearance(position) >= 0
+            contained.append(self.truth_cache[position])
+            if vertex is not None:
+                delta = vertex.position - np.asarray(position)
+                for name, distance in (
+                    ("xy", np.linalg.norm(delta[:2])),
+                    ("z", abs(delta[2])),
+                    ("3d", np.linalg.norm(delta)),
+                ):
+                    self.plots.one(f"step{step}/truth_DIS/distance_{name}_cm", distance, 0, 15000, weight, 300)
+                    self.plots.one(f"step{step}/truth_DIS/distance_{name}_zoom_cm", distance, 0, 100, weight, 200)
+        if positions:
+            self.plots.one(f"step{step}/truth_DIS/in_decay_volume", int(any(contained)), -0.5, 1.5, weight, 2)
+        return dict(
+            zip(
+                self.truth_fields,
+                (
+                    json.dumps(positions),
+                    int(any(contained)) if positions else "",
+                    int(all(contained)) if positions else "",
+                ),
+            )
+        )
+
+    def rows(self):
+        return [
+            dict(zip(self.fields, (mat, step, STEPS[step], sample, window, category, *count)))
+            for (mat, step, sample, window, category), count in sorted(self.counts.items())
+        ]
+
+
+def replay(event, plots, geometry, pdg, factor, counts, material_counts=None, pair_counts=None, diagnostics=None):
     if not len(event.MCTrack):
         raise ValueError("Replay event has no initial MCTrack[0]")
     muon_weight = float(event.MCTrack[0].GetWeight())
     base_weight = shared_weight([], muon_weight) * factor
+    if diagnostics is None:
+        diagnostics = ReplayDiagnostics(plots)
+    diagnostics.start_event(event, pdg, geometry, factor)
 
     def event_weight(weights):
         return shared_weight(weights, muon_weight, event=True) * factor
 
-    def passed(step, weight):
+    def passed(step, weight, tracks=()):
         for cutflow in (counts,) if material_counts is None else (counts, material_counts):
             cutflow[step][0] += 1
             cutflow[step][1] += weight
             cutflow[step][2] += weight * weight
+        diagnostics.stage(step, weight, tracks)
 
-    def pair_passed(step, tracks, weight):
+    def pair_passed(step, tracks, weight, vertex=None):
+        truth = diagnostics.pair_truth(step, tracks, weight, vertex)
         if pair_counts is not None:
-            pair_counts.add(str(event.muDIS_material), step, tracks, muon_weight, weight)
+            pair_counts.add(str(event.muDIS_material), step, tracks, muon_weight, weight, truth)
+
+    def surviving_tracks(vertices):
+        return [track for vertex in vertices for track in vertex.tracks]
 
     passed(0, base_weight)
     tracks, momenta = selected_tracks(event, pdg)
@@ -644,13 +961,13 @@ def replay(event, plots, geometry, pdg, factor, counts, material_counts=None, pa
     shared_weight((track.weight for track in tracks), muon_weight)
     pair_weights = [shared_weight((a.weight, b.weight), muon_weight) for a, b in combinations(tracks, 2)]
     stage1_weight = event_weight(pair_weights)
-    passed(1, stage1_weight)
+    passed(1, stage1_weight, tracks)
     candidates = []
     for (a, b), pair_weight in zip(combinations(tracks, 2), pair_weights):
         weight = pair_weight * factor
-        pair_passed(1, (a, b), weight)
         plots.one("step1/opposite_sign", int(a.charge * b.charge < 0), -0.5, 1.5, weight, 2)
         vertex = make_vertex(a, b)
+        pair_passed(1, (a, b), weight, vertex)
         if vertex is None:
             continue
         vertex.weight = pair_weight
@@ -659,12 +976,12 @@ def replay(event, plots, geometry, pdg, factor, counts, material_counts=None, pa
         if vertex.opposite:
             plots.one("step1/opposite_sign_doca_cm", vertex.doca, 0, 10, weight)
         if vertex.opposite and vertex.doca < 1.0:
-            pair_passed(2, vertex.tracks, weight)
+            pair_passed(2, vertex.tracks, weight, vertex)
             candidates.append(vertex)
     plots.one("step1/n_good_pairs", len(candidates), -0.5, 20.5, stage1_weight, 21)
     if not candidates:
         return
-    passed(2, event_weight(v.weight for v in candidates))
+    passed(2, event_weight(v.weight for v in candidates), surviving_tracks(candidates))
     contained = []
     for vertex in candidates:
         weight = vertex.weight * factor
@@ -672,22 +989,22 @@ def replay(event, plots, geometry, pdg, factor, counts, material_counts=None, pa
         clearance = geometry.clearance(vertex.position)
         plots.one("step2/helium_clearance_cm", clearance, -2, 300, weight)
         if clearance >= 5.0:
-            pair_passed(3, vertex.tracks, weight)
+            pair_passed(3, vertex.tracks, weight, vertex)
             contained.append(vertex)
     if not contained:
         return
-    passed(3, event_weight(v.weight for v in contained))
+    passed(3, event_weight(v.weight for v in contained), surviving_tracks(contained))
     loose = []
     for vertex in contained:
         weight = vertex.weight * factor
         ip = target_ip(vertex)
         plots.one("step3/target_ip_cm", ip, 0, 500, weight)
         if ip < 250.0:
-            pair_passed(4, vertex.tracks, weight)
+            pair_passed(4, vertex.tracks, weight, vertex)
             loose.append(vertex)
     if not loose:
         return
-    passed(4, event_weight(v.weight for v in loose))
+    passed(4, event_weight(v.weight for v in loose), surviving_tracks(loose))
     tight = []
     for vertex in loose:
         weight = vertex.weight * factor
@@ -695,10 +1012,10 @@ def replay(event, plots, geometry, pdg, factor, counts, material_counts=None, pa
         plots.one("step4/target_ip_cm", ip, 0, 250, weight)
         plots.one("step4/target_ip_zoom_cm", ip, 0, 20, weight)
         if ip < 10.0:
-            pair_passed(5, vertex.tracks, weight)
+            pair_passed(5, vertex.tracks, weight, vertex)
             tight.append(vertex)
     if tight:
-        passed(5, event_weight(v.weight for v in tight))
+        passed(5, event_weight(v.weight for v in tight), surviving_tracks(tight))
         for vertex in tight:
             plots.vertex("step5/vertices", vertex.position, vertex.weight * factor)
 
@@ -779,6 +1096,13 @@ def _run(config, output_streams):
         pair_writer = csv.DictWriter(pair_stream, fieldnames=detail_fields)
         pair_writer.writeheader()
     pair_counts = PairCutflow(pair_writer, scale)
+    diagnostics = None
+    if is_replay:
+        track_stream = output_streams.enter_context((output / "tagger_tracks.csv").open("w", newline=""))
+        track_fields = [*ReplayDiagnostics.detail_fields, *(["scaled_weight"] if scale is not None else [])]
+        track_writer = csv.DictWriter(track_stream, fieldnames=track_fields)
+        track_writer.writeheader()
+        diagnostics = ReplayDiagnostics(plots, track_writer, scale)
     material_counts = {mat: [0, 0.0, 0.0] for mat in MATERIALS}
     previous_tree = -1
     source_ranges = []
@@ -790,7 +1114,7 @@ def _run(config, output_streams):
         if chain.GetTreeNumber() != previous_tree:
             previous_tree = chain.GetTreeNumber()
             required = (
-                ["MCTrack", "strawtubesPoint", "TimeDetPoint", "muDIS_material"]
+                ["MCTrack", "strawtubesPoint", "TimeDetPoint", "UpstreamTaggerPoint", "vetoPoint", "muDIS_material"]
                 if is_replay
                 else [
                     f"{prefix}_{mat}"
@@ -819,8 +1143,11 @@ def _run(config, output_streams):
         if is_replay:
             material = str(chain.muDIS_material)
             pair_counts.source = (source_ranges[-1]["path"], source_ranges[-1]["file_uuid"], local_entry)
+            diagnostics.source = pair_counts.source
             cutflow = replay_counts.setdefault(material, [[0, 0.0, 0.0] for _ in STEPS])
-            replay(chain, plots, geometry, ROOT.TDatabasePDG.Instance(), factor, counts, cutflow, pair_counts)
+            replay(
+                chain, plots, geometry, ROOT.TDatabasePDG.Instance(), factor, counts, cutflow, pair_counts, diagnostics
+            )
         else:
             for mat in MATERIALS:
                 xyz = [getattr(chain, f"mudis_DISv{axis}_{mat}") for axis in "xyz"]
@@ -840,6 +1167,11 @@ def _run(config, output_streams):
             print(f"Processed {entry - first + 1}/{n}", flush=True)
     output_streams.close()
     if is_replay:
+        tagger_fields = [
+            *ReplayDiagnostics.fields,
+            *(["scaled_sum_weights", "scaled_sum_weights_squared"] if scale is not None else []),
+        ]
+        write_table(output / "tagger_cutflow.csv", scaled_rows(diagnostics.rows(), scale), tagger_fields)
         rows = [
             {
                 "material": material,

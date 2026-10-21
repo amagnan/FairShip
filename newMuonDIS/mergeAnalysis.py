@@ -14,6 +14,7 @@ from analyseEvents import (
     TYPES,
     PairCutflow,
     Plots,
+    ReplayDiagnostics,
     combine_normalization,
     normalization_scale,
     pair_composition_rows,
@@ -145,6 +146,32 @@ def merge_pairs(inputs, output, scale, expected):
         raise ValueError("Individual pair counts do not match the pair cutflow")
 
 
+def merge_tagger_tracks(inputs, output, scale):
+    """Keep every per-stage track record and recompute target normalization."""
+    fields = [*ReplayDiagnostics.detail_fields, *(["scaled_weight"] if scale is not None else [])]
+    with (output / "tagger_tracks.csv").open("w", newline="") as destination:
+        writer = csv.DictWriter(destination, fieldnames=fields)
+        writer.writeheader()
+        for directory in inputs:
+            path = directory / "tagger_tracks.csv"
+            with path.open(newline="") as stream:
+                reader = csv.DictReader(stream)
+                if reader.fieldnames != fields:
+                    raise ValueError(f"Unexpected tagger track columns: {path}")
+                for row in reader:
+                    if None in row or any(value is None for value in row.values()):
+                        raise ValueError(f"Malformed tagger track: {path}")
+                    weight = float(row["weight"])
+                    if not math.isfinite(weight):
+                        raise ValueError(f"Nonfinite tagger track weight: {path}")
+                    for column in ("source_entry", "track_id"):
+                        if int(row[column]) < 0:
+                            raise ValueError(f"Invalid tagger track {column}: {path}")
+                    if scale is not None:
+                        row["scaled_weight"] = weight * scale
+                    writer.writerow(row)
+
+
 def merge(inputs, output, *, save_plots=True):
     inputs = [Path(directory).expanduser().resolve() for directory in inputs]
     output = Path(output).expanduser().resolve()
@@ -191,6 +218,7 @@ def merge(inputs, output, *, save_plots=True):
                 weights,
             ),
             ("pair_cutflow.csv", PairCutflow.fields[:8], ("pairs",), weights),
+            ("tagger_cutflow.csv", ReplayDiagnostics.fields[:6], ("events",), weights),
         ]
     else:
         tables = [("vertex_counts.csv", ("material",), ("vertices",), weights)]
@@ -211,6 +239,7 @@ def merge(inputs, output, *, save_plots=True):
         compositions = pair_composition_rows(pair_rows)
         write_table(output / "pair_composition_cutflow.csv", scaled_rows(compositions, scale))
         merge_pairs(inputs, output, scale, compositions)
+        merge_tagger_tracks(inputs, output, scale)
     save_normalization(output, normalization, scale)
     plots.save_archive(output / "histograms.npz")
     if save_plots:
