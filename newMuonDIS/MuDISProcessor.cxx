@@ -289,6 +289,12 @@ void MuDISProcessor::generateDISevents(const std::string& tType,
   }
   const Long64_t entry = ftree ? ftree->GetReadEntry() : -1;
   const auto initialize = [&](const char* target) {
+    // PYINPR/PYSAVE overwrite these cuts for photon-process mixing.
+    // PYGAGA reads them at the NEXT initialization before they are recomputed;
+    // a previous, harder muon can otherwise leave an empty photon phase space.
+    // Restore our starting cuts (Pythia defaults) for each beam/target pair.
+    fPythia->SetCKIN(1, 2.);
+    fPythia->SetCKIN(3, 0.);
     LOG(debug1) << std::setprecision(17) << "PYTHIA Initialize BEGIN: entry="
                 << entry << " material=" << aLabel << " beam=" << tType
                 << " target=" << target << " beamP=" << P
@@ -297,7 +303,10 @@ void MuDISProcessor::generateDISevents(const std::string& tType,
                 << " MSTP(14)=" << fPythia->GetMSTP(14)
                 << " CKIN(1:4)=" << fPythia->GetCKIN(1) << ","
                 << fPythia->GetCKIN(2) << "," << fPythia->GetCKIN(3) << ","
-                << fPythia->GetCKIN(4) << std::endl;
+                << fPythia->GetCKIN(4)
+                << " CKIN(5)=" << fPythia->GetCKIN(5)
+                << " CKIN(77:78)=" << fPythia->GetCKIN(77) << ","
+                << fPythia->GetCKIN(78) << std::endl;
     fPythia->Initialize("FIXT", tType.c_str(), target, P);
     LOG(debug1) << "PYTHIA Initialize END: entry=" << entry
                 << " material=" << aLabel << " target=" << target
