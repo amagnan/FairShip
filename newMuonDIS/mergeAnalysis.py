@@ -147,8 +147,11 @@ def merge_pairs(inputs, output, scale, expected):
 
 
 def merge_tagger_tracks(inputs, output, scale):
-    """Keep every per-stage track record and recompute target normalization."""
-    fields = [*ReplayDiagnostics.detail_fields, *(["scaled_weight"] if scale is not None else [])]
+    """Keep each event/track's hits and stage flags; recompute scaled weights."""
+    fields = [
+        *ReplayDiagnostics.detail_fields,
+        *(ReplayDiagnostics.scaled_detail_fields if scale is not None else []),
+    ]
     with (output / "tagger_tracks.csv").open("w", newline="") as destination:
         writer = csv.DictWriter(destination, fieldnames=fields)
         writer.writeheader()
@@ -161,18 +164,28 @@ def merge_tagger_tracks(inputs, output, scale):
                 for row in reader:
                     if None in row or any(value is None for value in row.values()):
                         raise ValueError(f"Malformed tagger track: {path}")
-                    weight = float(row["weight"])
-                    if not math.isfinite(weight):
-                        raise ValueError(f"Nonfinite tagger track weight: {path}")
                     for column in ("source_entry", "track_id"):
                         if int(row[column]) < 0:
                             raise ValueError(f"Invalid tagger track {column}: {path}")
-                    if scale is not None:
-                        row["scaled_weight"] = weight * scale
+                    for column in ReplayDiagnostics.weight_fields:
+                        if column != "weight":
+                            step = column.removeprefix("weight_")
+                            passed = row[f"passed_{step}"]
+                            if passed not in ("True", "False") or (passed == "True") != (row[column] != ""):
+                                raise ValueError(f"Invalid tagger track selection/weight for {step}: {path}")
+                        if row[column] == "" and column != "weight":
+                            if scale is not None:
+                                row[f"scaled_{column}"] = ""
+                            continue
+                        weight = float(row[column])
+                        if not math.isfinite(weight):
+                            raise ValueError(f"Nonfinite tagger track {column}: {path}")
+                        if scale is not None:
+                            row[f"scaled_{column}"] = weight * scale
                     writer.writerow(row)
 
 
-def merge(inputs, output, *, save_plots=True):
+def merge(inputs, output, *, save_plots=True, skip_tagger_tracks=False):
     inputs = [Path(directory).expanduser().resolve() for directory in inputs]
     output = Path(output).expanduser().resolve()
     if not inputs:
@@ -189,6 +202,8 @@ def merge(inputs, output, *, save_plots=True):
             raise ValueError(
                 f"Missing or unsupported output version in {directory}; rerun the analysis with archive output"
             )
+        if "tagger_tracks.csv" in manifest.get("omitted_files", []) and not skip_tagger_tracks:
+            raise ValueError(f"Tagger tracks were omitted from {directory}; use --skip-tagger-tracks")
         manifests.append(manifest)
     reference = manifests[0]
     signature = reference["analysis_signature"]
@@ -239,7 +254,8 @@ def merge(inputs, output, *, save_plots=True):
         compositions = pair_composition_rows(pair_rows)
         write_table(output / "pair_composition_cutflow.csv", scaled_rows(compositions, scale))
         merge_pairs(inputs, output, scale, compositions)
-        merge_tagger_tracks(inputs, output, scale)
+        if not skip_tagger_tracks:
+            merge_tagger_tracks(inputs, output, scale)
     save_normalization(output, normalization, scale)
     plots.save_archive(output / "histograms.npz")
     if save_plots:
@@ -266,6 +282,8 @@ def merge(inputs, output, *, save_plots=True):
         "weight_definition": reference["weight_definition"],
         "merged_from": [str(directory) for directory in inputs],
     }
+    if skip_tagger_tracks and signature["type"].startswith("disreplay"):
+        manifest["omitted_files"] = ["tagger_tracks.csv"]
     with (output / "run.json").open("w") as stream:
         json.dump(manifest, stream, indent=2)
     print(f"Merged {len(inputs)} outputs, {manifest['entries_processed']} entries: {output}", flush=True)
@@ -276,9 +294,13 @@ def main():
     parser.add_argument("inputs", nargs="+", type=Path, help="Analysis or previously merged output directories")
     parser.add_argument("-o", "--output-dir", required=True, type=Path, help="New or empty output directory")
     parser.add_argument("--no-plots", action="store_true", help="Save merged data without rendering plots")
+    parser.add_argument(
+        "--skip-tagger-tracks", action="store_true",
+        help="Omit tagger_tracks.csv; merge all histograms, cutflows and pair tables",
+    )
     args = parser.parse_args()
     try:
-        merge(args.inputs, args.output_dir, save_plots=not args.no_plots)
+        merge(args.inputs, args.output_dir, save_plots=not args.no_plots, skip_tagger_tracks=args.skip_tagger_tracks)
     except (OSError, ValueError, KeyError) as error:
         parser.exit(2, f"Merge failed: {error}\n")
 

@@ -116,15 +116,24 @@ recorded as `no_daughters` for both daughter summaries, never as `neither` or
 as satisfying an empty "all" condition. Summary weights are the existing
 event weights for that stage.
 
-`tagger_tracks.csv` retains one row per input muon or eligible daughter per
-passed stage, including source file/UUID/entry, MCTrack index, PDG ID, weight,
+`tagger_tracks.csv` retains one row per event and input muon or eligible daughter,
+including source file/UUID/entry, MCTrack index, PDG ID, weight,
 and JSON columns for the four window categories and all associated UBT/SBT
 points. Each point is `[x_cm, y_cm, z_cm, time_ns, detector_id]`; `sbt_walls`
 contains the corresponding wall assignment for each SBT point. This preserves
 hit coordinates and multiplicities, including hits outside histogram ranges,
 and permits alternative per-daughter combinations without rerunning ROOT.
 Muon hit plots use the stage's event weight; daughter hit plots use the
-daughter's weight times `weight_factor`. The row's `weight` is the plot weight.
+daughter's weight times `weight_factor`. The row's `weight` is the track's own
+weight times `weight_factor` (its step0 weight). Boolean columns `passed_step0`
+through `passed_step5` record the stages at which this track contributes: for
+the muon these are the event selections, and for daughters they additionally
+require membership in that stage's daughter sample. `weight_step0` through
+`weight_step5` retain the corresponding plot weights, with blanks for stages
+not reached. This preserves changes to the muon's event weight across stages
+without duplicating any hits. When target normalization is enabled,
+`scaled_weight` and `scaled_weight_step0` through `scaled_weight_step5` are also
+written and recomputed by the merger. Tracks without hits are retained too.
 
 Under `stepN/tagger/{muon,daughter}/`, UBT plots show y versus x for every
 window. SBT plots show x versus z for top (y>0) and bottom (y<0), and y versus z
@@ -168,6 +177,15 @@ without an associated DIS vertex have an empty vertex list and blank flags.
 including step1 pairs for which a reconstructed vertex could not be built.
 
 The histogram archive and both tagger tables are supported by `mergeAnalysis.py`.
-Output version 4 requires rerunning older analysis outputs before merging with
-these diagnostics. Use `--no-plots` for split jobs to defer rendering the
-additional plots until the merge.
+Output version 5 uses this one-row-per-event/track format; older analysis outputs
+must be rerun before merging with it. Use `--no-plots` for split jobs to defer
+rendering the additional plots until the merge.
+
+To merge histograms and summaries without the large detailed track table, use
+`mergeAnalysis.py INPUT... -o OUTPUT --skip-tagger-tracks`. This omits only
+`tagger_tracks.csv`; tagger histograms, `tagger_cutflow.csv`, pair tables and
+normalization are preserved. The merged `run.json` records the omission in
+`omitted_files`. Merging a reduced output again requires the same explicit
+option. The submission repository's `checkAnalysis.py --merge-output OUTPUT
+--skip-tagger-tracks` also skips writing the track CSV while extracting each
+archive, retaining the original archives for later use.

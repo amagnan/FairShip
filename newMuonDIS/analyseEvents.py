@@ -18,7 +18,7 @@ import yaml
 
 MATERIALS = ("MS", "UBT", "SBTsens", "SBTfr", "SSTsens", "SSTfr", "HE", "AIR", "HeBalloon", "REST")
 TYPES = ("disgen", "disfilter", "disreplay_gen", "disreplay_filter")
-OUTPUT_VERSION = 4
+OUTPUT_VERSION = 5
 ANALYSIS_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 STEPS = (
     "all",
@@ -706,7 +706,7 @@ def pair_composition_rows(rows):
 
 
 class ReplayDiagnostics:
-    """Stage-wise event categories and streaming, lossless track hit records."""
+    """Stage-wise event categories and one lossless hit record per event/track."""
 
     fields = (
         "material",
@@ -724,8 +724,6 @@ class ReplayDiagnostics:
         "file_uuid",
         "source_entry",
         "material",
-        "step",
-        "selection",
         "sample",
         "track_id",
         "pdg_id",
@@ -734,7 +732,11 @@ class ReplayDiagnostics:
         "ubt_hits",
         "sbt_hits",
         "sbt_walls",
+        *(f"passed_step{step}" for step in range(len(STEPS))),
+        *(f"weight_step{step}" for step in range(len(STEPS))),
     )
+    weight_fields = ("weight", *(f"weight_step{step}" for step in range(len(STEPS))))
+    scaled_detail_fields = tuple(f"scaled_{column}" for column in weight_fields)
     truth_fields = ("truth_dis_vertices", "truth_dis_in_decay_volume", "truth_dis_all_in_decay_volume")
 
     def __init__(self, plots, writer=None, scale=None):
@@ -773,6 +775,7 @@ class ReplayDiagnostics:
 
     def start_event(self, event, pdg, geometry, factor):
         self.event, self.geometry, self.factor = event, geometry, factor
+        self.stage_weights = {}
         self.muon_weight = float(event.MCTrack[0].GetWeight())
         self.material = str(event.muDIS_material)
         self.book_counts(self.material)
@@ -838,12 +841,14 @@ class ReplayDiagnostics:
                         count[0] += 1
                         count[1] += weight
                         count[2] += weight * weight
-        for index, labels in categories.items():
+        for index in categories:
             sample = "muon" if index == 0 else "daughter"
             track = self.event.MCTrack[index]
             track_weight = weight if index == 0 else float(track.GetWeight()) * self.factor
             if not math.isfinite(track_weight):
                 raise ValueError(f"Nonfinite diagnostic weight for track {index}")
+            if self.writer is not None:
+                self.stage_weights.setdefault(index, [None] * len(STEPS))[step] = track_weight
             prefix = f"step{step}/tagger/{sample}"
             for window in UBT_WINDOWS:
                 for x, y, *_ in self.window_hits(index, window):
@@ -874,31 +879,39 @@ class ReplayDiagnostics:
                         (self.plots.axes["z"], np.arange(-0.5, 101.5)),
                         track_weight,
                     )
-            if self.writer is not None:
-                if self.source is None:
-                    raise ValueError("Track diagnostics require source event identity")
-                row = dict(
-                    zip(
-                        self.detail_fields,
-                        (
-                            *self.source,
-                            self.material,
-                            step,
-                            STEPS[step],
-                            sample,
-                            index,
-                            int(track.GetPdgCode()),
-                            track_weight,
-                            json.dumps(labels),
-                            json.dumps(self.hits[index]["UBT"]),
-                            json.dumps(sbt),
-                            json.dumps(self.wall_hits[index]),
-                        ),
-                    )
+
+    def finish_event(self):
+        """Flush only this event's tracks after all selection stages have run."""
+        if self.writer is None:
+            return
+        if self.source is None:
+            raise ValueError("Track diagnostics require source event identity")
+        for index, weights in sorted(self.stage_weights.items()):
+            track = self.event.MCTrack[index]
+            row = dict(
+                zip(
+                    self.detail_fields,
+                    (
+                        *self.source,
+                        self.material,
+                        "muon" if index == 0 else "daughter",
+                        index,
+                        int(track.GetPdgCode()),
+                        float(track.GetWeight()) * self.factor,
+                        json.dumps(self.categories(index)),
+                        json.dumps(self.hits[index]["UBT"]),
+                        json.dumps(self.hits[index]["SBT"]),
+                        json.dumps(self.wall_hits[index]),
+                        *(weight is not None for weight in weights),
+                        *(weight if weight is not None else "" for weight in weights),
+                    ),
                 )
-                if self.scale is not None:
-                    row["scaled_weight"] = track_weight * self.scale
-                self.writer.writerow(row)
+            )
+            if self.scale is not None:
+                for column in self.weight_fields:
+                    row[f"scaled_{column}"] = row[column] * self.scale if row[column] != "" else ""
+            self.writer.writerow(row)
+        self.stage_weights.clear()
 
     def truth_vertices(self, tracks):
         vertices = set()
@@ -959,12 +972,18 @@ class ReplayDiagnostics:
 
 
 def replay(event, plots, geometry, pdg, factor, counts, material_counts=None, pair_counts=None, diagnostics=None):
+    if diagnostics is None:
+        diagnostics = ReplayDiagnostics(plots)
+    _replay(event, plots, geometry, pdg, factor, counts, material_counts, pair_counts, diagnostics)
+    # _replay returns early when an event fails a cut; flush those events too.
+    diagnostics.finish_event()
+
+
+def _replay(event, plots, geometry, pdg, factor, counts, material_counts, pair_counts, diagnostics):
     if not len(event.MCTrack):
         raise ValueError("Replay event has no initial MCTrack[0]")
     muon_weight = float(event.MCTrack[0].GetWeight())
     base_weight = shared_weight([], muon_weight) * factor
-    if diagnostics is None:
-        diagnostics = ReplayDiagnostics(plots)
     diagnostics.start_event(event, pdg, geometry, factor)
 
     def event_weight(weights):
@@ -1135,7 +1154,10 @@ def _run(config, output_streams):
     diagnostics = None
     if is_replay:
         track_stream = output_streams.enter_context((output / "tagger_tracks.csv").open("w", newline=""))
-        track_fields = [*ReplayDiagnostics.detail_fields, *(["scaled_weight"] if scale is not None else [])]
+        track_fields = [
+            *ReplayDiagnostics.detail_fields,
+            *(ReplayDiagnostics.scaled_detail_fields if scale is not None else []),
+        ]
         track_writer = csv.DictWriter(track_stream, fieldnames=track_fields)
         track_writer.writeheader()
         diagnostics = ReplayDiagnostics(plots, track_writer, scale)
