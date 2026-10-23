@@ -114,6 +114,7 @@ It must run before any output event skimming or reordering.
 
 - prepareEvents.py: python macro with argument parameters to pass to the main processor.
 - filterEvents.py: filter prepared DIS interactions; see [README.filter.md](README.filter.md) for selection and histogram details.
+- replayFilter.py: retain complete replay events with a loose opposite-sign pair selection; see [README.replayFilter.md](README.replayFilter.md).
 - class MuDISProcessor: main processor, reading input and creating output, and calling the others.
 - class MuGeoProcessor: class defining the interface with the geometry. A map of objects of type "MuonPath" is filled, for each input muons, with the specific volumes traversed by the muon. This info will be used to generate vertices for DIS in each specific material, separately, and associate a random vertex position within each of these volumes.
 - class MuonPath: to go along the input muon trajectory, and distribute the path along the list of separate materials defined in MuDISDefs.h. Shield paths use UBT backward extrapolation or magnetic transport; downstream paths use POCAs between detector measurements.
@@ -276,9 +277,9 @@ a new or empty output directory. For example, these two jobs cover entries
 `[0, 10000)` and `[10000, 20000)`:
 
 ```bash
-pixi run --as-is python -u newMuonDIS/analyseEvents.py newMuonDIS/analyseEvents.yaml \
+pixi cvmfs python -u newMuonDIS/analyseEvents.py newMuonDIS/analyseEvents.yaml \
   --first-entry 0 --n-events 10000 --output-dir analysis/job_000 --no-plots
-pixi run --as-is python -u newMuonDIS/analyseEvents.py newMuonDIS/analyseEvents.yaml \
+pixi cvmfs python -u newMuonDIS/analyseEvents.py newMuonDIS/analyseEvents.yaml \
   --first-entry 10000 --n-events 10000 --output-dir analysis/job_001 --no-plots
 ```
 
@@ -292,7 +293,7 @@ Jobs may instead use different production directories containing disjoint files.
 Merge the completed output directories with:
 
 ```bash
-pixi run --as-is python -u newMuonDIS/mergeAnalysis.py analysis/job_* \
+pixi cvmfs python -u newMuonDIS/mergeAnalysis.py analysis/job_* \
   --output-dir analysis/combined
 ```
 
@@ -319,29 +320,26 @@ Output directories must be new or empty. A completed `run.json` is written
 last; failed jobs without this manifest cannot be merged. Older outputs
 without histogram archives and source-range metadata must be regenerated.
 
-## Pair tables
+## Replay event records and pair summaries
 
-Replay analysis also writes three complementary pair tables:
+Replay analysis now requires `replayFilter.py` output. Its four stages are the
+filtered baseline, DOCA < 1 cm with helium clearance >= 5 cm, IP < 250 cm, and
+IP < 10 cm. See [README.analysis.md](README.analysis.md) for the version-6 schema.
 
-- `pair_cutflow.csv` groups **all** passing pairs by material, cut step, origin
-  composition, and signed PDG IDs. It contains only observed combinations.
-- `pair_composition_cutflow.csv` gives DIS-DIS, DIS-Soft, and Soft-Soft totals
-  separately for every material and `ALL`, at every pair-selection step (1–5).
-  Zero-count categories are always included, with processed and optional
-  target-scaled weight sums.
-- `pairs.csv` has one row per individual pair **per passed step**, including the
-  source file/UUID, zero-based entry within that file, both original MCTrack
-  indices, signed PDG IDs, origins, and processed/optional scaled weight.
-  A pair passing all cuts appears five times, once at each step. There are no
-  duplicate `ALL` rows in this file. Step 1 includes every unordered pair of
-  selected tracks, including those later rejected by the vertex fit or cuts.
+`events.jsonl` stores one record per input event: event-level stage flags and
+weights, every MCTrack's identity/ancestry and Tr1 state, all UBT/SBT points,
+charged/neutral particle totals, optional input-muon material path lengths,
+and the smallest-DOCA pair at the furthest stage reached (track IDs only).
+It replaces the detailed `pairs.csv` and `tagger_tracks.csv` files. Pair variables
+can be recomputed from saved tracks; containment still needs the geometry.
 
-The individual file is streamed to disk, so memory usage does not grow with
-its row count. The merger streams these rows, recomputes their scaled weights,
-checks their counts against the aggregated pair cutflow, and regenerates the
-three-composition summary. Existing outputs must be rerun to obtain individual
-pairs: their event and track identities cannot be recovered from aggregated
-PDG counts.
+`pair_cutflow.csv` groups all surviving pairs by material, stage, composition
+and signed PDG IDs. `pair_composition_cutflow.csv` sums over PDG combinations
+and includes zero counts for DIS-DIS, DIS-Soft and Soft-Soft at stages 0–3.
+Histograms are saved both inclusively and separated by material.
+The merger streams the event records and recomputes target-scaled weights.
+Use `--skip-event-records` for a reduced merge containing only aggregate outputs.
+Older analysis outputs must be regenerated before merging with version 6.
 
 ## Input-muon normalization
 

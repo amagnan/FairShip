@@ -1,6 +1,10 @@
 # Paths are relative to the working directory, or absolute.
 production_path: /eos/experiment/ship/user/ammagnan/MuonDIS/TRY2026/261009/
 type: disgen  # disgen, disfilter, disreplay_gen, disreplay_filter
+# Replay types now require replayFilter.py output (DOCA < 5 cm, vertex inside helium).
+# Keep sim_*_disreplay_gen/filter.root names in a separate selected production directory.
+# Four analysis stages: filtered input; DOCA < 1 cm + clearance >= 5 cm; IP < 250; IP < 10.
+# Detailed replay output: events.jsonl (one event, all tracks and UBT/SBT hits).
 n_events: 100000  # TChain entries (input muons for gen/filter; events for replay)
 first_entry: 0  # Zero-based entry in the sorted input-file TChain; use disjoint ranges for jobs.
 save_plots: true  # Set false (or pass --no-plots) for split jobs; archives are always saved.

@@ -18,13 +18,11 @@ import yaml
 
 MATERIALS = ("MS", "UBT", "SBTsens", "SBTfr", "SSTsens", "SSTfr", "HE", "AIR", "HeBalloon", "REST")
 TYPES = ("disgen", "disfilter", "disreplay_gen", "disreplay_filter")
-OUTPUT_VERSION = 5
+OUTPUT_VERSION = 6
 ANALYSIS_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 STEPS = (
-    "all",
-    "at least two tracks: Tr1-4 + TD, p > 1 GeV/c",
-    "opposite sign, backward vertex, DOCA < 1 cm",
-    "inside decay helium, wall clearance >= 5 cm",
+    "filtered input: Tr1-4 + TD, p > 1 GeV/c; opposite sign, backward vertex, DOCA < 5 cm, inside decay helium",
+    "DOCA < 1 cm and helium wall clearance >= 5 cm",
     "target-plane IP < 250 cm",
     "target-plane IP < 10 cm",
 )
@@ -255,8 +253,8 @@ def target_ip(vertex):
     return float(np.linalg.norm(at_target[:2]))
 
 
-def selected_tracks(event, pdg):
-    """Associate hits by MCTrack index; use the smallest-z Tr1 hit per track."""
+def detector_track_states(event):
+    """Associate detector coverage and the smallest-z Tr1 state by MCTrack ID."""
     stations, first = {}, {}
     count = len(event.MCTrack)
     for hit in event.strawtubesPoint:
@@ -270,6 +268,12 @@ def selected_tracks(event, pdg):
                 np.array([hit.GetPx(), hit.GetPy(), hit.GetPz()]),
             )
     timing = {int(hit.GetTrackID()) for hit in event.TimeDetPoint}
+    return stations, first, timing
+
+
+def selected_tracks(event, pdg):
+    """Associate hits by MCTrack index; use the smallest-z Tr1 hit per track."""
+    stations, first, timing = detector_track_states(event)
     tracks, momenta = [], []
     for index, seen in stations.items():
         if seen != {1, 2, 3, 4} or index not in timing:
@@ -411,6 +415,7 @@ class Plots:
 
     def __init__(self, config):
         self.histograms = {}
+        self.material = None
         self.axes = {
             axis: np.linspace(*config.get(axis, default))
             for axis, default in {"x": [-600, 600, 121], "y": [-600, 600, 121], "z": [0, 14000, 141]}.items()
@@ -423,6 +428,11 @@ class Plots:
             self.histograms[name] = [edges, np.zeros(shape), np.zeros(shape), 0, 0.0]
 
     def fill(self, name, values, edges, weight):
+        self._fill(name, values, edges, weight)
+        if self.material is not None:
+            self._fill(f"materials/{self.material}/{name}", values, edges, weight)
+
+    def _fill(self, name, values, edges, weight):
         self.book(name, edges)
         stored, raw, weighted, _, _ = self.histograms[name]
         indices = tuple(int(np.searchsorted(edge, value, side="right") - 1) for edge, value in zip(stored, values))
@@ -497,9 +507,26 @@ class Plots:
         return plots
 
     def merge(self, other):
-        if self.histograms.keys() != other.histograms.keys():
+        # Material histograms are allocated only when filled. Split jobs may
+        # see different materials/stages; their common aggregate schema must match.
+        def base(plots):
+            return {name for name in plots.histograms if not name.startswith("materials/")}
+
+        if base(self) != base(other):
             raise ValueError("Histogram names differ between jobs")
+        for plots in (self, other):
+            for name, (edges, *_) in plots.histograms.items():
+                if name.startswith("materials/"):
+                    parts = name.split("/", 2)
+                    template = self.histograms.get(parts[2]) if len(parts) == 3 else None
+                    if (
+                        template is None
+                        or len(edges) != len(template[0])
+                        or any(not np.array_equal(a, b) for a, b in zip(edges, template[0]))
+                    ):
+                        raise ValueError(f"Invalid material histogram: {name}")
         for name, (edges, raw, weighted, flow, wflow) in other.histograms.items():
+            self.book(name, edges)
             stored = self.histograms[name]
             if len(edges) != len(stored[0]) or any(not np.array_equal(a, b) for a, b in zip(edges, stored[0])):
                 raise ValueError(f"Histogram bin edges differ: {name}")
@@ -663,11 +690,10 @@ class PairCutflow:
 
     def summary(self, material, step):
         counts = [self.totals.get((material, step, composition), 0) for composition in self.compositions]
-        # Step 0 counts input events, before candidate pairs are defined.
         return dict(
             zip(
                 ("pairs", "pairs_DIS_DIS", "pairs_DIS_Soft", "pairs_Soft_Soft"),
-                [sum(counts), *counts] if step else [""] * 4,
+                [sum(counts), *counts],
             )
         )
 
@@ -684,7 +710,7 @@ def pair_composition_rows(rows):
     totals = {
         (mat, step, composition): [0, 0.0, 0.0]
         for mat in materials
-        for step in range(1, len(STEPS))
+        for step in range(len(STEPS))
         for composition in PairCutflow.compositions
     }
     for row in rows:
@@ -703,6 +729,148 @@ def pair_composition_rows(rows):
         }
         for (mat, step, composition), count in totals.items()
     ]
+
+
+def particle_counts(tracks, excluded=()):
+    """Count stored MCTracks, not unique physical particles across a shower."""
+    charges = [track["charge_e"] for track in tracks if track["track_id"] not in excluded]
+    charged = sum(charge != 0 for charge in charges)
+    return {"charged": charged, "neutral": len(charges) - charged}
+
+
+class ReplayRecords:
+    """Stream one self-contained record per event; never expand pairs by stage."""
+
+    def __init__(self, stream, scale=None):
+        self.stream, self.scale = stream, scale
+        self.source = None
+        self.record = None
+
+    @staticmethod
+    def optional_branch(event, name):
+        # Inspect the current tree, not TChain's first-file branch list: older
+        # replay files may lack an optional branch present in another file.
+        tree = event.GetTree() if hasattr(event, "GetTree") else event
+        if hasattr(tree, "GetBranch") and not tree.GetBranch(name):
+            return None
+        return getattr(event, name, None)
+
+    def start_event(self, event, geometry, pdg, factor):
+        if self.source is None:
+            raise ValueError("Event records require source identity")
+        stations, first, timing = detector_track_states(event)
+        muon_weight = float(event.MCTrack[0].GetWeight())
+        tracks = []
+        for index, mc in enumerate(event.MCTrack):
+            weight = float(mc.GetWeight())
+            code = int(mc.GetPdgCode())
+            state = first.get(index)
+            tracks.append(
+                {
+                    "track_id": index,
+                    "pdg_id": code,
+                    "mother_id": int(mc.GetMotherId()),
+                    "charge_e": particle_charge(code, pdg) / 3.0,
+                    "origin": "Soft" if is_soft(weight, muon_weight) else "DIS",
+                    "mc_weight": weight,
+                    "weight": weight * factor,
+                    "start_position_cm": [float(getattr(mc, f"GetStart{axis}")()) for axis in "XYZ"],
+                    "start_momentum_GeV": [float(getattr(mc, f"GetP{axis}")()) for axis in "xyz"],
+                    "straw_stations": sorted(stations.get(index, ())),
+                    "has_timing_hit": index in timing,
+                    "tr1_position_cm": state[0].tolist() if state else None,
+                    "tr1_momentum_GeV": state[1].tolist() if state else None,
+                    "selected": bool(
+                        state is not None
+                        and stations[index] == {1, 2, 3, 4}
+                        and index in timing
+                        and np.linalg.norm(state[1]) > 1.0
+                    ),
+                }
+            )
+        hits = {}
+        for detector, branch in (("UBT", "UpstreamTaggerPoint"), ("SBT", "vetoPoint")):
+            hits[detector] = [
+                [
+                    int(hit.GetTrackID()),
+                    float(hit.GetX()),
+                    float(hit.GetY()),
+                    float(hit.GetZ()),
+                    float(hit.GetTime()),
+                    int(hit.GetDetectorID()),
+                    float(hit.GetPx()),
+                    float(hit.GetPy()),
+                    float(hit.GetPz()),
+                    float(hit.GetEnergyLoss()),
+                ]
+                for hit in getattr(event, branch)
+            ]
+        lengths = {}
+        for material in ("total", *MATERIALS):
+            branch = "muon_path_length" + ("" if material == "total" else f"_{material}")
+            value = self.optional_branch(event, branch)
+            if value is not None:
+                value = float(value)
+                if not math.isfinite(value) or value < 0:
+                    raise ValueError(f"Invalid {branch}: {value}")
+            lengths[material] = value
+        identity = {}
+        for name in ("muDIS_muEntry", "muDIS_disIndex"):
+            value = self.optional_branch(event, name)
+            identity[name] = int(value) if value is not None else None
+        self.record = {
+            "source_file": self.source[0],
+            "file_uuid": self.source[1],
+            "source_entry": self.source[2],
+            "material": str(event.muDIS_material),
+            "geometry_file": str(geometry.path) if getattr(geometry, "path", None) else None,
+            "replay_identity": identity,
+            "passed_steps": [False] * len(STEPS),
+            "stage_weights": [None] * len(STEPS),
+            "particle_counts": {
+                "excluding_input_muon": particle_counts(tracks, excluded={0}),
+                "all": particle_counts(tracks),
+                "direct_daughters": particle_counts([track for track in tracks if track["mother_id"] == 0]),
+            },
+            "leading_pair": None,
+            "tracks": tracks,
+            "hits": hits,
+            "muon_path_length_cm": lengths,
+        }
+        self.leading_rank = None
+
+    def stage(self, step, weight):
+        self.record["passed_steps"][step] = True
+        self.record["stage_weights"][step] = weight
+
+    def pair(self, step, tracks, vertex):
+        if vertex is None:
+            return
+        indices = sorted(track.track_id for track in tracks)
+        rank = (-step, vertex.doca, *indices)
+        if self.leading_rank is None or rank < self.leading_rank:
+            self.leading_rank = rank
+            self.record["leading_pair"] = {"track_ids": indices, "step": step}
+
+    @staticmethod
+    def rescale(record, scale):
+        record.pop("scaled_stage_weights", None)
+        for track in record["tracks"]:
+            track.pop("scaled_weight", None)
+        if scale is not None:
+            record["scaled_stage_weights"] = [None if w is None else w * scale for w in record["stage_weights"]]
+            for track in record["tracks"]:
+                track["scaled_weight"] = track["weight"] * scale
+
+    def finish_event(self):
+        record = self.record
+        pair = record["leading_pair"]
+        record["particle_counts"]["excluding_input_muon_and_leading_pair"] = particle_counts(
+            record["tracks"], excluded={0, *(pair["track_ids"] if pair else [])}
+        )
+        self.rescale(record, self.scale)
+        self.stream.write(json.dumps(record, allow_nan=False, separators=(",", ":")) + "\n")
+        self.record = None
 
 
 class ReplayDiagnostics:
@@ -747,6 +915,10 @@ class ReplayDiagnostics:
         for material in ("ALL", *MATERIALS):
             self.book_counts(material)
         for step in range(len(STEPS)):
+            for charge in ("charged", "neutral"):
+                plots.book(f"step{step}/particles/n_{charge}", (np.arange(-0.5, 1001.5),))
+            for axis in ("x", "y"):
+                plots.book(f"step{step}/tagger/all/SBT/{axis}_vs_z", (plots.axes["z"], plots.axes[axis]))
             for sample in ("muon", "daughter"):
                 prefix = f"step{step}/tagger/{sample}"
                 for window in UBT_WINDOWS:
@@ -755,11 +927,10 @@ class ReplayDiagnostics:
                     coordinate = "x" if axis == 1 else "y"
                     plots.book(f"{prefix}/SBT/{wall}/{coordinate}_vs_z", (plots.axes["z"], plots.axes[coordinate]))
                     plots.book(f"{prefix}/SBT/{wall}/n_hits_vs_entry_z", (plots.axes["z"], np.arange(-0.5, 101.5)))
-            if step:
-                for name in ("distance_xy_cm", "distance_z_cm", "distance_3d_cm"):
-                    plots.book(f"step{step}/truth_DIS/{name}", (np.linspace(0, 15000, 301),))
-                    plots.book(f"step{step}/truth_DIS/{name.removesuffix('_cm')}_zoom_cm", (np.linspace(0, 100, 201),))
-                plots.book(f"step{step}/truth_DIS/in_decay_volume", (np.arange(-0.5, 2.5),))
+            for name in ("distance_xy_cm", "distance_z_cm", "distance_3d_cm"):
+                plots.book(f"step{step}/truth_DIS/{name}", (np.linspace(0, 15000, 301),))
+                plots.book(f"step{step}/truth_DIS/{name.removesuffix('_cm')}_zoom_cm", (np.linspace(0, 100, 201),))
+            plots.book(f"step{step}/truth_DIS/in_decay_volume", (np.arange(-0.5, 2.5),))
 
     def book_counts(self, material):
         if material in self.materials:
@@ -778,6 +949,11 @@ class ReplayDiagnostics:
         self.stage_weights = {}
         self.muon_weight = float(event.MCTrack[0].GetWeight())
         self.material = str(event.muDIS_material)
+        charges = [particle_charge(int(track.GetPdgCode()), pdg) for track in event.MCTrack][1:]
+        self.particle_counts = {
+            "charged": sum(charge != 0 for charge in charges),
+            "neutral": sum(charge == 0 for charge in charges),
+        }
         self.book_counts(self.material)
         self.daughters = {
             i
@@ -823,6 +999,17 @@ class ReplayDiagnostics:
         }
 
     def stage(self, step, weight, tracks=()):
+        for charge, count in self.particle_counts.items():
+            self.plots.one(f"step{step}/particles/n_{charge}", count, -0.5, 1000.5, weight, 1001)
+        # Include all veto points, even those with an absent/invalid MCTrack ID.
+        for hit in self.event.vetoPoint:
+            for axis in ("x", "y"):
+                self.plots.fill(
+                    f"step{step}/tagger/all/SBT/{axis}_vs_z",
+                    (float(hit.GetZ()), float(getattr(hit, f"Get{axis.upper()}")())),
+                    (self.plots.axes["z"], self.plots.axes[axis]),
+                    weight,
+                )
         daughters = self.daughters if step == 0 else self.daughters.intersection(t.track_id for t in tracks)
         categories = {i: self.categories(i) for i in (0, *sorted(daughters))}
         for window in UBT_WINDOWS:
@@ -971,20 +1158,33 @@ class ReplayDiagnostics:
         ]
 
 
-def replay(event, plots, geometry, pdg, factor, counts, material_counts=None, pair_counts=None, diagnostics=None):
+def replay(
+    event, plots, geometry, pdg, factor, counts, material_counts=None, pair_counts=None, diagnostics=None, records=None
+):
     if diagnostics is None:
         diagnostics = ReplayDiagnostics(plots)
-    _replay(event, plots, geometry, pdg, factor, counts, material_counts, pair_counts, diagnostics)
+    material = str(event.muDIS_material)
+    if not material or Path(material).name != material or material in (".", ".."):
+        raise ValueError(f"Invalid material label: {material!r}")
+    plots.material = material
+    try:
+        _replay(event, plots, geometry, pdg, factor, counts, material_counts, pair_counts, diagnostics, records)
+    finally:
+        plots.material = None
     # _replay returns early when an event fails a cut; flush those events too.
     diagnostics.finish_event()
+    if records is not None:
+        records.finish_event()
 
 
-def _replay(event, plots, geometry, pdg, factor, counts, material_counts, pair_counts, diagnostics):
+def _replay(event, plots, geometry, pdg, factor, counts, material_counts, pair_counts, diagnostics, records=None):
     if not len(event.MCTrack):
         raise ValueError("Replay event has no initial MCTrack[0]")
     muon_weight = float(event.MCTrack[0].GetWeight())
-    base_weight = shared_weight([], muon_weight) * factor
+    shared_weight([], muon_weight)  # Validate the incoming-muon weight.
     diagnostics.start_event(event, pdg, geometry, factor)
+    if records is not None:
+        records.start_event(event, geometry, pdg, factor)
 
     def event_weight(weights):
         return shared_weight(weights, muon_weight, event=True) * factor
@@ -995,84 +1195,59 @@ def _replay(event, plots, geometry, pdg, factor, counts, material_counts, pair_c
             cutflow[step][1] += weight
             cutflow[step][2] += weight * weight
         diagnostics.stage(step, weight, tracks)
+        if records is not None:
+            records.stage(step, weight)
 
     def pair_passed(step, tracks, weight, vertex=None):
         truth = diagnostics.pair_truth(step, tracks, weight, vertex)
         if pair_counts is not None:
             pair_counts.add(str(event.muDIS_material), step, tracks, muon_weight, weight, truth)
+        if records is not None:
+            records.pair(step, tracks, vertex)
 
     def surviving_tracks(vertices):
         return [track for vertex in vertices for track in vertex.tracks]
 
-    passed(0, base_weight)
     tracks, momenta = selected_tracks(event, pdg)
-    plots.one("step0/n_tracks_all_detectors", len(momenta), -0.5, 20.5, base_weight, 21)
-    for p, track_weight in momenta:
-        plots.one("step0/track_p_GeV", p, 0, 100, track_weight * factor)
-    plots.one("step0/n_tracks_p_gt_1", len(tracks), -0.5, 20.5, base_weight, 21)
-    if len(tracks) < 2:
-        return
-    # Validate the common DIS factor, even when no vertex can be fitted.
     shared_weight((track.weight for track in tracks), muon_weight)
-    pair_weights = [shared_weight((a.weight, b.weight), muon_weight) for a, b in combinations(tracks, 2)]
-    stage1_weight = event_weight(pair_weights)
-    passed(1, stage1_weight, tracks)
     candidates = []
-    for (a, b), pair_weight in zip(combinations(tracks, 2), pair_weights):
-        weight = pair_weight * factor
-        plots.one("step1/opposite_sign", int(a.charge * b.charge < 0), -0.5, 1.5, weight, 2)
+    for a, b in combinations(tracks, 2):
         vertex = make_vertex(a, b)
-        pair_passed(1, (a, b), weight, vertex)
-        if vertex is None:
+        if vertex is None or not vertex.opposite or vertex.doca >= 5.0:
             continue
-        vertex.weight = pair_weight
+        if geometry.clearance(vertex.position) < 0:
+            continue
+        vertex.weight = shared_weight((a.weight, b.weight), muon_weight)
         vertex.tracks = (a, b)
-        plots.one("step1/doca_cm", vertex.doca, 0, 10, weight)
-        if vertex.opposite:
-            plots.one("step1/opposite_sign_doca_cm", vertex.doca, 0, 10, weight)
-        if vertex.opposite and vertex.doca < 1.0:
-            pair_passed(2, vertex.tracks, weight, vertex)
-            candidates.append(vertex)
-    plots.one("step1/n_good_pairs", len(candidates), -0.5, 20.5, stage1_weight, 21)
+        candidates.append(vertex)
     if not candidates:
-        return
-    passed(2, event_weight(v.weight for v in candidates), surviving_tracks(candidates))
-    contained = []
-    for vertex in candidates:
-        weight = vertex.weight * factor
-        plots.vertex("step2/vertices", vertex.position, weight)
-        clearance = geometry.clearance(vertex.position)
-        plots.one("step2/helium_clearance_cm", clearance, -2, 300, weight)
-        if clearance >= 5.0:
-            pair_passed(3, vertex.tracks, weight, vertex)
-            contained.append(vertex)
-    if not contained:
-        return
-    passed(3, event_weight(v.weight for v in contained), surviving_tracks(contained))
-    loose = []
-    for vertex in contained:
-        weight = vertex.weight * factor
-        ip = target_ip(vertex)
-        plots.one("step3/target_ip_cm", ip, 0, 500, weight)
-        if ip < 250.0:
-            pair_passed(4, vertex.tracks, weight, vertex)
-            loose.append(vertex)
-    if not loose:
-        return
-    passed(4, event_weight(v.weight for v in loose), surviving_tracks(loose))
-    tight = []
-    for vertex in loose:
-        weight = vertex.weight * factor
-        ip = target_ip(vertex)
-        plots.one("step4/target_ip_cm", ip, 0, 250, weight)
-        plots.one("step4/target_ip_zoom_cm", ip, 0, 20, weight)
-        if ip < 10.0:
-            pair_passed(5, vertex.tracks, weight, vertex)
-            tight.append(vertex)
-    if tight:
-        passed(5, event_weight(v.weight for v in tight), surviving_tracks(tight))
-        for vertex in tight:
-            plots.vertex("step5/vertices", vertex.position, vertex.weight * factor)
+        raise ValueError("Replay input does not pass replayFilter selection; run replayFilter.py first")
+
+    for step in range(len(STEPS)):
+        weight = event_weight(v.weight for v in candidates)
+        passed(step, weight, surviving_tracks(candidates))
+        plots.one(f"step{step}/n_pairs", len(candidates), -0.5, 20.5, weight, 21)
+        for vertex in candidates:
+            pair_weight = vertex.weight * factor
+            pair_passed(step, vertex.tracks, pair_weight, vertex)
+            plots.vertex(f"step{step}/vertices", vertex.position, pair_weight)
+            plots.one(f"step{step}/doca_cm", vertex.doca, 0, 5, pair_weight)
+            plots.one(f"step{step}/helium_clearance_cm", geometry.clearance(vertex.position), 0, 300, pair_weight)
+            ip = target_ip(vertex)
+            plots.one(f"step{step}/target_ip_cm", ip, 0, 500, pair_weight)
+            plots.one(f"step{step}/target_ip_zoom_cm", ip, 0, 20, pair_weight)
+        if step == 0:
+            plots.one("step0/n_tracks_all_detectors", len(momenta), -0.5, 20.5, weight, 21)
+            plots.one("step0/n_tracks_p_gt_1", len(tracks), -0.5, 20.5, weight, 21)
+            for momentum, track_weight in momenta:
+                plots.one("step0/track_p_GeV", momentum, 0, 100, track_weight * factor)
+            candidates = [v for v in candidates if v.doca < 1.0 and geometry.clearance(v.position) >= 5.0]
+        elif step == 1:
+            candidates = [v for v in candidates if target_ip(v) < 250.0]
+        elif step == 2:
+            candidates = [v for v in candidates if target_ip(v) < 10.0]
+        if not candidates:
+            break
 
 
 def run(config):
@@ -1121,8 +1296,8 @@ def _run(config, output_streams):
         raise ValueError(f"first_entry {first} exceeds the {total} available entries")
     n = total - first if limit == -1 else min(limit, total - first)
     plots = Plots(config.get("plot_axes", {}))
-    # Book even empty stages/materials so every requested output is present.
-    prefixes = ["step2/vertices", "step5/vertices"] if is_replay else MATERIALS
+    # Book aggregate templates, including empty stages. Material copies are lazy.
+    prefixes = [f"step{step}/vertices" for step in range(len(STEPS))] if is_replay else MATERIALS
     for prefix in prefixes:
         for vertical, horizontal in [("x", "z"), ("y", "z"), ("y", "x")]:
             plots.book(f"{prefix}/{vertical}_vs_{horizontal}", (plots.axes[horizontal], plots.axes[vertical]))
@@ -1131,36 +1306,26 @@ def _run(config, output_streams):
             ("step0/n_tracks_all_detectors", -0.5, 20.5, 21),
             ("step0/track_p_GeV", 0, 100, 100),
             ("step0/n_tracks_p_gt_1", -0.5, 20.5, 21),
-            ("step1/opposite_sign", -0.5, 1.5, 2),
-            ("step1/doca_cm", 0, 10, 100),
-            ("step1/opposite_sign_doca_cm", 0, 10, 100),
-            ("step1/n_good_pairs", -0.5, 20.5, 21),
-            ("step2/helium_clearance_cm", -2, 300, 100),
-            ("step3/target_ip_cm", 0, 500, 100),
-            ("step4/target_ip_cm", 0, 250, 100),
-            ("step4/target_ip_zoom_cm", 0, 20, 100),
         ]:
             plots.book(name, (np.linspace(low, high, bins + 1),))
+        for step in range(len(STEPS)):
+            for name, low, high, bins in [
+                ("n_pairs", -0.5, 20.5, 21),
+                ("doca_cm", 0, 5, 100),
+                ("helium_clearance_cm", 0, 300, 100),
+                ("target_ip_cm", 0, 500, 100),
+                ("target_ip_zoom_cm", 0, 20, 100),
+            ]:
+                plots.book(f"step{step}/{name}", (np.linspace(low, high, bins + 1),))
     geometry = Geometry(ROOT, config.get("geometry_file"))
     counts = [[0, 0.0, 0.0] for _ in STEPS]
     replay_counts = {mat: [[0, 0.0, 0.0] for _ in STEPS] for mat in MATERIALS}
-    pair_writer = None
+    pair_counts = PairCutflow()
+    diagnostics = records = None
     if is_replay:
-        pair_stream = output_streams.enter_context((output / "pairs.csv").open("w", newline=""))
-        detail_fields = [*PairCutflow.detail_fields, *(["scaled_weight"] if scale is not None else [])]
-        pair_writer = csv.DictWriter(pair_stream, fieldnames=detail_fields)
-        pair_writer.writeheader()
-    pair_counts = PairCutflow(pair_writer, scale)
-    diagnostics = None
-    if is_replay:
-        track_stream = output_streams.enter_context((output / "tagger_tracks.csv").open("w", newline=""))
-        track_fields = [
-            *ReplayDiagnostics.detail_fields,
-            *(ReplayDiagnostics.scaled_detail_fields if scale is not None else []),
-        ]
-        track_writer = csv.DictWriter(track_stream, fieldnames=track_fields)
-        track_writer.writeheader()
-        diagnostics = ReplayDiagnostics(plots, track_writer, scale)
+        event_stream = output_streams.enter_context((output / "events.jsonl").open("w"))
+        records = ReplayRecords(event_stream, scale)
+        diagnostics = ReplayDiagnostics(plots)
     material_counts = {mat: [0, 0.0, 0.0] for mat in MATERIALS}
     previous_tree = -1
     source_ranges = []
@@ -1202,9 +1367,19 @@ def _run(config, output_streams):
             material = str(chain.muDIS_material)
             pair_counts.source = (source_ranges[-1]["path"], source_ranges[-1]["file_uuid"], local_entry)
             diagnostics.source = pair_counts.source
+            records.source = pair_counts.source
             cutflow = replay_counts.setdefault(material, [[0, 0.0, 0.0] for _ in STEPS])
             replay(
-                chain, plots, geometry, ROOT.TDatabasePDG.Instance(), factor, counts, cutflow, pair_counts, diagnostics
+                chain,
+                plots,
+                geometry,
+                ROOT.TDatabasePDG.Instance(),
+                factor,
+                counts,
+                cutflow,
+                pair_counts,
+                diagnostics,
+                records,
             )
         else:
             for mat in MATERIALS:
@@ -1293,10 +1468,31 @@ def _run(config, output_streams):
                 "weight_definition": (
                     "track fW; pairs count the common muon/DIS factor once; "
                     "event OR uses muon fW if any soft-soft pair survives, otherwise DIS fW; "
-                    "step0 uses muon fW; all multiplied by weight_factor"
+                    "all stages including filtered baseline use the surviving-pair OR; all multiplied by weight_factor"
                     if is_replay
                     else "wDIS * weight_factor"
                 ),
+                "event_record_schema": {
+                    "stages": list(STEPS),
+                    "leading_pair": "smallest DOCA among built vertices at the furthest passed stage; "
+                    "ties ordered by MCTrack IDs",
+                    "particle_count_default": "all stored MCTracks except MCTrack[0], including descendants",
+                    "hit_columns": [
+                        "track_id",
+                        "x_cm",
+                        "y_cm",
+                        "z_cm",
+                        "time_ns",
+                        "detector_id",
+                        "px_GeV",
+                        "py_GeV",
+                        "pz_GeV",
+                        "energy_loss_GeV",
+                    ],
+                    "missing_path_length": "null; zero means an available branch with zero path length",
+                }
+                if is_replay
+                else None,
             },
             stream,
             indent=2,

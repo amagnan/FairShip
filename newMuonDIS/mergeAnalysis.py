@@ -11,10 +11,12 @@ from pathlib import Path
 
 from analyseEvents import (
     OUTPUT_VERSION,
+    STEPS,
     TYPES,
     PairCutflow,
     Plots,
     ReplayDiagnostics,
+    ReplayRecords,
     combine_normalization,
     normalization_scale,
     pair_composition_rows,
@@ -185,7 +187,79 @@ def merge_tagger_tracks(inputs, output, scale):
                     writer.writerow(row)
 
 
-def merge(inputs, output, *, save_plots=True, skip_tagger_tracks=False):
+def merge_events(inputs, output, scale, manifests, expected):
+    """Stream unique event records, checking provenance and event-stage totals."""
+    counts = {}
+    with (output / "events.jsonl").open("w") as destination:
+        for directory, manifest in zip(inputs, manifests):
+            ranges = {}
+            for source in manifest["source_ranges"]:
+                key = (source["path"], source["file_uuid"])
+                ranges.setdefault(key, []).append((source["start"], source["stop"]))
+            previous = {}
+            processed = 0
+            with (directory / "events.jsonl").open() as stream:
+                for line in stream:
+                    record = json.loads(line)
+                    key = (record["source_file"], record["file_uuid"])
+                    entry = record["source_entry"]
+                    interval = next(
+                        ((start, stop) for start, stop in ranges.get(key, []) if start <= entry < stop), None
+                    )
+                    if type(entry) is not int or interval is None:
+                        raise ValueError(f"Event outside declared source ranges: {directory}, {entry}")
+                    # A merged input can concatenate disjoint source ranges in
+                    # any order. Entries remain ordered within each range.
+                    range_key = (key, interval)
+                    if entry <= previous.get(range_key, -1):
+                        raise ValueError(f"Duplicate or unordered event: {directory}, {entry}")
+                    previous[range_key] = entry
+                    flags, weights = record["passed_steps"], record["stage_weights"]
+                    if (
+                        len(flags) != len(STEPS)
+                        or len(weights) != len(STEPS)
+                        or any(type(flag) is not bool for flag in flags)
+                        or not flags[0]
+                        or any(flags[i] and not flags[i - 1] for i in range(1, len(flags)))
+                    ):
+                        raise ValueError(f"Invalid event stages: {directory}, {entry}")
+                    for step, (flag, weight) in enumerate(zip(flags, weights)):
+                        if (flag and (weight is None or not math.isfinite(weight))) or (
+                            not flag and weight is not None
+                        ):
+                            raise ValueError(f"Invalid event stage weight: {directory}, {entry}")
+                        if flag:
+                            for material in ("ALL", record["material"]):
+                                index = (material, step)
+                                counts[index] = counts.get(index, 0) + 1
+                    tracks = record["tracks"]
+                    if [track["track_id"] for track in tracks] != list(range(len(tracks))):
+                        raise ValueError(f"Invalid event track IDs: {directory}, {entry}")
+                    pair = record["leading_pair"]
+                    if pair is not None:
+                        ids = pair["track_ids"]
+                        step = pair["step"]
+                        if (
+                            len(ids) != 2
+                            or ids[0] >= ids[1]
+                            or not all(0 <= i < len(tracks) for i in ids)
+                            or not 0 <= step < len(STEPS)
+                            or not flags[step]
+                        ):
+                            raise ValueError(f"Invalid leading pair: {directory}, {entry}")
+                    ReplayRecords.rescale(record, scale)
+                    destination.write(json.dumps(record, allow_nan=False, separators=(",", ":")) + "\n")
+                    processed += 1
+            if processed != manifest["entries_processed"]:
+                raise ValueError(f"Event records do not match entries_processed: {directory}")
+    expected_counts = {(row["material"], int(row["step"])): row["events"] for row in expected if row["events"]}
+    if counts != expected_counts:
+        raise ValueError("Event records do not match the event cutflow")
+
+
+def merge(inputs, output, *, save_plots=True, skip_event_records=False, skip_tagger_tracks=False):
+    if skip_tagger_tracks:
+        raise ValueError("Output version 6 uses events.jsonl; use --skip-event-records instead of --skip-tagger-tracks")
     inputs = [Path(directory).expanduser().resolve() for directory in inputs]
     output = Path(output).expanduser().resolve()
     if not inputs:
@@ -202,8 +276,8 @@ def merge(inputs, output, *, save_plots=True, skip_tagger_tracks=False):
             raise ValueError(
                 f"Missing or unsupported output version in {directory}; rerun the analysis with archive output"
             )
-        if "tagger_tracks.csv" in manifest.get("omitted_files", []) and not skip_tagger_tracks:
-            raise ValueError(f"Tagger tracks were omitted from {directory}; use --skip-tagger-tracks")
+        if "events.jsonl" in manifest.get("omitted_files", []) and not skip_event_records:
+            raise ValueError(f"Event records were omitted from {directory}; use --skip-event-records")
         manifests.append(manifest)
     reference = manifests[0]
     signature = reference["analysis_signature"]
@@ -242,7 +316,7 @@ def merge(inputs, output, *, save_plots=True, skip_tagger_tracks=False):
         for filename, keys, integers, floats in tables
     ]
 
-    # Metadata and summaries are validated first; individual pairs are checked
+    # Metadata and summaries are validated first; event records are checked
     # while streaming, before the completion manifest is written.
     output.mkdir(parents=True, exist_ok=True)
     for filename, rows, fields in merged_tables:
@@ -253,9 +327,9 @@ def merge(inputs, output, *, save_plots=True, skip_tagger_tracks=False):
         pair_rows = next(rows for filename, rows, _ in merged_tables if filename == "pair_cutflow.csv")
         compositions = pair_composition_rows(pair_rows)
         write_table(output / "pair_composition_cutflow.csv", scaled_rows(compositions, scale))
-        merge_pairs(inputs, output, scale, compositions)
-        if not skip_tagger_tracks:
-            merge_tagger_tracks(inputs, output, scale)
+        if not skip_event_records:
+            event_rows = next(rows for filename, rows, _ in merged_tables if filename == "cutflow.csv")
+            merge_events(inputs, output, scale, manifests, event_rows)
     save_normalization(output, normalization, scale)
     plots.save_archive(output / "histograms.npz")
     if save_plots:
@@ -281,9 +355,10 @@ def merge(inputs, output, *, save_plots=True, skip_tagger_tracks=False):
         "entries_processed": sum(item["entries_processed"] for item in manifests),
         "weight_definition": reference["weight_definition"],
         "merged_from": [str(directory) for directory in inputs],
+        "event_record_schema": reference.get("event_record_schema"),
     }
-    if skip_tagger_tracks and signature["type"].startswith("disreplay"):
-        manifest["omitted_files"] = ["tagger_tracks.csv"]
+    if skip_event_records and signature["type"].startswith("disreplay"):
+        manifest["omitted_files"] = ["events.jsonl"]
     with (output / "run.json").open("w") as stream:
         json.dump(manifest, stream, indent=2)
     print(f"Merged {len(inputs)} outputs, {manifest['entries_processed']} entries: {output}", flush=True)
@@ -295,12 +370,13 @@ def main():
     parser.add_argument("-o", "--output-dir", required=True, type=Path, help="New or empty output directory")
     parser.add_argument("--no-plots", action="store_true", help="Save merged data without rendering plots")
     parser.add_argument(
-        "--skip-tagger-tracks", action="store_true",
-        help="Omit tagger_tracks.csv; merge all histograms, cutflows and pair tables",
+        "--skip-event-records",
+        action="store_true",
+        help="Omit events.jsonl; merge histograms and aggregate cutflows only",
     )
     args = parser.parse_args()
     try:
-        merge(args.inputs, args.output_dir, save_plots=not args.no_plots, skip_tagger_tracks=args.skip_tagger_tracks)
+        merge(args.inputs, args.output_dir, save_plots=not args.no_plots, skip_event_records=args.skip_event_records)
     except (OSError, ValueError, KeyError) as error:
         parser.exit(2, f"Merge failed: {error}\n")
 
