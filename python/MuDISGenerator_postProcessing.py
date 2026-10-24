@@ -76,11 +76,20 @@ def _copy_metadata(source, destination, skip=()):
         if name in skip:
             continue
         obj = source.Get(name)
+        object_class = ROOT.TClass.GetClass(source.GetKey(name).GetClassName())
+        if not object_class:
+            raise OSError(f"Cannot resolve output metadata class for {name}")
         destination.cd()
-        if obj.InheritsFrom("TDirectory"):
+        # TString and other dictionary-backed values need not derive from
+        # TObject, so dispatch using the persisted class rather than obj methods.
+        if not object_class.InheritsFrom("TObject"):
+            if destination.WriteObjectAny(obj, object_class, name) <= 0:
+                raise OSError(f"Cannot copy output metadata {name}")
+            continue
+        if object_class.InheritsFrom("TDirectory"):
             _copy_metadata(obj, destination.mkdir(name, obj.GetTitle()))
             continue
-        if obj.InheritsFrom("TTree"):
+        if object_class.InheritsFrom("TTree"):
             obj = obj.CloneTree(-1, "fast")
         if obj.Write(name, ROOT.TObject.kSingleKey) <= 0:
             raise OSError(f"Cannot copy output metadata {name}")
