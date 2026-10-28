@@ -8,8 +8,13 @@
 #pragma link off all functions;
 
 #pragma link C++ class SHiP::Detector<CaloScoringPlanePoint>-;
+#pragma link C++ class SHiP::ScoringPlane<CaloScoringPlanePoint>-;
 #pragma link C++ class CaloScoringPlane-;
 #pragma link C++ class CaloScoringPlanePoint+;
 #pragma link C++ class std::vector<CaloScoringPlanePoint>+;
+#pragma link C++ class CaloScoringPlaneHit+;
+#pragma link C++ class std::vector<CaloScoringPlaneHit>+;
+#pragma link C++ class CaloScoringPlanePID-;
+#pragma link C++ enum CaloScoringPlanePID::Species;
 
 #endif

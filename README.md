@@ -57,6 +57,9 @@ even if you already know Git, as it explains how development is done on GitHub.
 `FAIRSHIP` and `GEOMPATH` (among others) to `PIXI_PROJECT_ROOT`, so the pixi
 project root **must** be the FairShip clone itself — it contains the required
 `geometry/` and `files/` directories.
+When neither `DISPLAY` nor `WAYLAND_DISPLAY` is set (ssh, containers, batch
+jobs), it also sets `QT_QPA_PLATFORM=offscreen`, as Geant4's Qt interface
+otherwise aborts the run. A value you set yourself is kept.
 
 ### Build from source (recommended)
 
@@ -83,7 +86,7 @@ project root **must** be the FairShip clone itself — it contains the required
 ### Using the pre-built package
 
 Pre-built FairShip packages are available from the
-[ship](https://prefix.dev/channels/ship) channel. Because `activate.sh`
+[ship-experiment/stable](https://prefix.dev/channels/@ship-experiment/stable) channel. Because `activate.sh`
 expects `geometry/`, `files/`, and other data directories at
 `PIXI_PROJECT_ROOT`, the simplest approach is to add `fairship` directly to
 the clone:
@@ -189,11 +192,11 @@ for reproducing reproducible, stateless environments for debugging, HTCondor
 and cluster use, or when a strict separation between `FairShip` and the host is
 desirable.
 
-1. Build an docker image from the provided `Dockerfile`:
+1. Build a Docker image from the provided `Containerfile`:
     ```bash
     git clone https://github.com/ShipSoft/FairShip.git
     cd FairShip
-    docker build -t fairship .
+    docker build -f Containerfile -t fairship .
     ```
 2. Run the `FairShip` docker image:
     ```bash
@@ -253,8 +256,10 @@ is now in maintenance mode.
     ls /cvmfs/ship.cern.ch
     ```
 3. Source the chosen release (see the
-   [cvmfs_release](https://github.com/ShipSoft/cvmfs_release) repo for the
-   list):
+   [shipdist releases](https://github.com/ShipSoft/shipdist/releases) and its
+   [CHANGELOG](https://github.com/ShipSoft/shipdist/blob/main/CHANGELOG.md) for
+   the list; releases up to 25.11 are listed in the archived
+   [cvmfs_release](https://github.com/ShipSoft/cvmfs_release) repo):
     ```bash
     source /cvmfs/ship.cern.ch/$SHIP_RELEASE/setUp.sh
     ```
@@ -262,7 +267,9 @@ is now in maintenance mode.
     ```bash
     aliBuild build FairShip --always-prefer-system --config-dir $SHIPDIST --defaults release
     ```
-    For legacy branches, swap `--defaults release` for `--defaults fairship-2018`.
+    For legacy branches (`SHiP-2018`, `muflux`), use `--defaults fairship-2018`
+    with a shipdist checkout at the `SHiP-BDF-2020` tag. The `fairship-2018`
+    defaults were removed from shipdist `main` in 2022.
 5. Load the environment:
     ```bash
     alienv enter FairShip/latest

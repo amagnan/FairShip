@@ -158,6 +158,18 @@ pg_parser.add_argument(
     "--Dy", dest="Dy", type=float, help="size of the full uniform spread of PG ypos: (Vy - Dy/2, Vy + Dy/2)"
 )
 pg_parser.add_argument(
+    "--Dz",
+    dest="Dz",
+    type=float,
+    default=0,
+    help="size of the full uniform spread of PG zpos: (Vz - Dz/2, Vz + Dz/2), with --smearMode uniform3d",
+)
+pg_parser.add_argument(
+    "--commonVertex",
+    action="store_true",
+    help="give all particles of an event the same vertex (with --multiplePG, drawn once per event)",
+)
+pg_parser.add_argument(
     "--momentumModel", dest="momentumModel", default=0, type=int, help="Select a model to generate the momentum with"
 )
 pg_parser.add_argument(
@@ -229,7 +241,24 @@ parser.add_argument(
     help="Only transport muons for a fast muon only background estimate",
     action="store_true",
 )
-parser.add_argument("--phiRandom", help="only relevant for muon background generator, random phi", action="store_true")
+parser.add_argument(
+    "--MuonBackFromOrigin",
+    dest="muonBackFromOrigin",
+    help="MuonBack with run_fixedTarget input: start the scored tracks at their production vertex instead of where "
+    "they entered the scoring plane. Biased, as the path to the plane is simulated twice; only for validation",
+    action="store_true",
+)
+parser.add_argument(
+    "--MuonBackAllowNoAbsorberField",
+    dest="muonBackAllowNoAbsorberField",
+    help="MuonBack: accept run_fixedTarget input that was simulated without the hadron absorber field",
+    action="store_true",
+)
+parser.add_argument(
+    "--phiRandom",
+    help="only relevant for muon background generator, random phi (not with run_fixedTarget input)",
+    action="store_true",
+)
 parser.add_argument(
     "--SmearBeam", dest="SmearBeam", help="Standard deviation of beam smearing [cm]", default=0.8, type=float
 )
@@ -790,14 +819,15 @@ if options.command == "PG":
     if options.bothCharges:
         myPgun.SetBothCharges(True, options.chargeFraction)
     if options.multiplePG:
-        # multiple PG sources in the x-y plane; z is always the same!
-        myPgun.SetVertexModel(
-            options.smearMode,
-            [options.Vx * u.cm, options.Dx * u.cm, options.Vy * u.cm, options.Dy * u.cm, options.Vz * u.cm],
-        )
+        # multiple PG sources in the x-y plane, or in a volume with uniform3d
+        vertex_pars = [options.Vx * u.cm, options.Dx * u.cm, options.Vy * u.cm, options.Dy * u.cm, options.Vz * u.cm]
+        if options.smearMode == "uniform3d":
+            vertex_pars.append(options.Dz * u.cm)
+        myPgun.SetVertexModel(options.smearMode, vertex_pars)
     else:
         # point source
         myPgun.SetVertexModel(options.smearMode, [options.Vx * u.cm, 0.0, options.Vy * u.cm, 0.0, options.Vz * u.cm])
+    myPgun.SetCommonVertex(options.commonVertex)
     if options.momentumModel > 0:
         myPgun.SetMomentumModel(options.momentumModel, options.modelPar)
     if options.histoFile:
@@ -926,10 +956,36 @@ if options.muonback:
         print("INFO: Processing a file from the old production - setting target z offset to 70.845m")
         primGen.SetTarget(ship_geo.target.z0 + 70.845 * u.m, 0.0)
     #
+    # run_fixedTarget output (cbmsim) rather than a legacy pythia8-Geant4 ntuple
+    fromStage1 = ut.checkForBranch(inputFile, "MCTrack")
+    startAtPlane = fromStage1 and not options.muonBackFromOrigin
+    if startAtPlane:
+        # The scored tracks continue from the scoring plane, so the first stage must have
+        # simulated the absorber with its field, and it already smeared and painted the beam.
+        if options.phiRandom:
+            raise ValueError(
+                "--phiRandom is not supported with run_fixedTarget input: the hadron absorber field breaks the "
+                "symmetry. Use --MuonBackFromOrigin to reproduce the old behaviour."
+            )
+        if options.SmearBeam != parser.get_default("SmearBeam") or options.PaintBeam != parser.get_default("PaintBeam"):
+            print("WARNING: --SmearBeam/--PaintBeam ignored, run_fixedTarget already applied the beam profile")
+        noSummary, noField = ut.stage1AbsorberFieldOff(inputFile)
+        if noSummary:
+            print(f"WARNING: no FileSummary, cannot check the hadron absorber field of: {', '.join(noSummary)}")
+        if noField:
+            message = (
+                "run_fixedTarget input simulated without the hadron absorber field (--no-AddMuonShieldField), but "
+                f"the tracks now continue from the scoring plane: {', '.join(noField)}"
+            )
+            if not options.muonBackAllowNoAbsorberField:
+                raise ValueError(message + ". Pass --MuonBackAllowNoAbsorberField to accept it.")
+            print("WARNING: " + message)
     MuonBackgen = ROOT.MuonBackGenerator()
-    # MuonBackgen.FollowAllParticles() # will follow all particles after hadron absorber, not only muons
+    # MuonBackgen.FollowAllParticles() # also start non-muons that crossed the scoring plane
     if not MuonBackgen.Init(inputFile, options.firstEvent):
         raise RuntimeError(f"Failed to initialize MuonBackGenerator from input: {inputFile}")
+    if options.muonBackFromOrigin:
+        MuonBackgen.SetStartFromOrigin()
     MuonBackgen.SetPaintRadius(options.PaintBeam * u.cm)
     MuonBackgen.SetSmearBeam(options.SmearBeam * u.cm)
     MuonBackgen.SetPhiRandomize(options.phiRandom)
@@ -941,16 +997,24 @@ if options.muonback:
         MuonBackgen.GetNevents() if options.nEvents == -1 else min(options.nEvents, MuonBackgen.GetNevents())
     )
     MCTracksWithHitsOnly = True  # otherwise, output file becomes too big
-    print(
-        "Process ",
-        options.nEvents,
-        " from input file, with 𝜎 = ",
-        options.PaintBeam,
-        ", with smear radius r = ",
-        options.SmearBeam * u.cm,
-        "with MCTracksWithHitsOnly",
-        MCTracksWithHitsOnly,
-    )
+    if startAtPlane:
+        print(
+            "Process ",
+            options.nEvents,
+            " from input file, starting at the scoring plane, with MCTracksWithHitsOnly",
+            MCTracksWithHitsOnly,
+        )
+    else:
+        print(
+            "Process ",
+            options.nEvents,
+            " from input file, with 𝜎 = ",
+            options.PaintBeam,
+            ", with smear radius r = ",
+            options.SmearBeam * u.cm,
+            "with MCTracksWithHitsOnly",
+            MCTracksWithHitsOnly,
+        )
     if options.followMuon:
         options.fastMuon = True
         modules["Veto"].SetFollowMuon()
@@ -1135,9 +1199,9 @@ if options.muonback:
         if "Point" in name:
             pointContainers.append(name)
 
-    # The scoring plane records every crossing with no energy threshold, so on its own it
+    # The scoring planes record every crossing with no energy threshold, so on their own they
     # must not make an event non-empty.
-    pointContainers = [n for n in pointContainers if n != "CaloScoringPlanePoint"]
+    pointContainers = [n for n in pointContainers if n not in ("CaloScoringPlanePoint", "UpstreamTaggerScoringPoint")]
 
     # Filter out empty events (events with no hits in any Point container)
     for event in t:
@@ -1167,6 +1231,7 @@ if options.muonback:
         "CaloScoringPlanePoint",
         "MCEventHeader",
         "UpstreamTaggerPoint",
+        "UpstreamTaggerScoringPoint",
         "MTCdetPoint",
         "SiliconTargetPoint",
         "sGeoTracks",
@@ -1281,6 +1346,11 @@ def mergeFileSummary(inFiles: list[str] | str) -> dict:
                 key_names = [_k.GetName() for _k in _of.GetListOfKeys()]
                 if "FileSummary" in key_names:
                     fsr = json.loads(str(_of.Get("FileSummary")))
+                    # Only merged productions have these; the summary of a
+                    # raw run_fixedTarget.py output records its arguments.
+                    if not all(k in fsr for k in ("PoT", "EnergyCut", "prodSite")):
+                        print(f"[WARNING] No PoT, EnergyCut or prodSite in the FileSummary of {_f}")
+                        continue
                     mergedFSR["PoT"] += fsr["PoT"]
                     energyCuts.append(fsr["EnergyCut"])
                     prodSites.append(fsr["prodSite"])

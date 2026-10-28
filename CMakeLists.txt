@@ -128,8 +128,15 @@ include(ShipMacros)
 find_package2(PUBLIC Pythia8 REQUIRED)
 find_package2(PUBLIC EvtGen REQUIRED)
 # (GENERATORS REQUIRED)
+# alienv exports XERCESC_ROOT, which CMake < 4 ignores in favour of a system
+# XercesC too old for Geant4 11.4
+if(NOT DEFINED XercesC_ROOT AND DEFINED ENV{XERCESC_ROOT})
+    set(XercesC_ROOT "$ENV{XERCESC_ROOT}")
+endif()
 find_package2(PUBLIC Geant4)
 find_package2(PUBLIC GEANT4DATA)
+# Geant4VMC exports VGM targets in its link interface without looking for VGM
+find_package2(PUBLIC VGM)
 find_package2(PUBLIC Geant4VMC)
 find_package2(PUBLIC fmt)
 find_package2(PUBLIC FairRoot REQUIRED)
@@ -139,6 +146,10 @@ find_package(genfit2 REQUIRED)
 
 # TPythia6 was removed from ROOT in 6.32, use external EGPythia6 package
 find_package(ROOTEGPythia6 REQUIRED)
+
+# ACTS is optional; without it the ACTS track fitter (ShipReco.py --trackFitter
+# acts) is not built.
+find_package(Acts 48 CONFIG COMPONENTS Core)
 
 # set a variable which should be used in all CMakeLists.txt Defines all basic
 # include directories from fairbase
@@ -207,6 +218,9 @@ add_subdirectory(veto)
 add_subdirectory(TimeDet)
 add_subdirectory(UpstreamTagger)
 add_subdirectory(strawtubes)
+if(Acts_FOUND)
+    add_subdirectory(ActsTracking)
+endif()
 add_subdirectory(shipgen)
 add_subdirectory(field)
 add_subdirectory(newMuonDIS)
