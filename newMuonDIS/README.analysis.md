@@ -49,70 +49,119 @@ Tr1 momentum. All distances are in cm and momenta in GeV/c.
 An event passes a stage when any pair survives; the leading pair does not
 control selection. The **leading pair** is the pair with the smallest DOCA
 at the furthest stage reached by the event. Ties are resolved by ascending
-MCTrack IDs. It is stored once as two IDs plus the stage number.
+MCTrack IDs. The best pair is stored independently at each passed stage, so changes in pair choice are retained.
+Only this best pair is saved per stage, not an individual record for every
+passing pair. All passing pairs contribute to pair cutflows and general pair
+histograms. The saved tracks retain their Tr1 states and stage participation
+masks, but those masks do not encode which tracks were paired together.
 
 Geometry defaults to the matching `geo_` file beside each `sim_` file and is
 updated when the TChain changes files. Set `geometry_file` for an explicit
 shared geometry, e.g. when selected files are stored separately from geometry.
 
-## One detailed record per event
+## One ROOT tree entry per event
 
-Output version **6** writes `events.jsonl`: one JSON object per input replay
-event, streamed as it completes, including events failing stages 1–3. It replaces
-`pairs.csv` and `tagger_tracks.csv`; neither detailed CSV is produced.
+Output version **7** writes `events.root`, containing the `DIS` TTree, with one
+entry per filtered replay event (including events failing stages 1–3).
+Branches are typed scalars, strings and vectors; there is no JSON event payload.
+Integers retain track/PDG IDs; double precision retains momenta, positions and
+weights. ZLIB level 1 compression and buffered baskets bound writer memory.
+The small completion/normalization manifest remains `run.json`.
 
-| Field | Content |
+| Branches | Content |
 | --- | --- |
-| `source_file`, `file_uuid`, `source_entry` | Source identity and local ROOT tree entry |
-| `material`, `geometry_file`, `replay_identity` | DIS material, geometry reference and available `muDIS_muEntry` / `muDIS_disIndex` |
-| `passed_steps` | Four event-level Boolean flags in stage order |
-| `stage_weights` | Four processed event weights; `null` for failed/unreached stages |
-| `particle_counts` | Charged/neutral counts for the populations below |
-| `leading_pair` | `track_ids` and `step`, selected by smallest DOCA at the furthest stage |
-| `tracks` | One record for **every stored MCTrack**, in original index order |
-| `hits.UBT`, `hits.SBT` | All upstream-tagger and veto points, once per event |
-| `muon_path_length_cm` | Available total and per-material input-muon path lengths, otherwise `null` |
+| `source_file`, `file_uuid`, `source_entry` | Original file identity and local tree entry |
+| `material`, `geometry_file`, `muDIS_muEntry`, `muDIS_disIndex` | Material, geometry reference and replay identity (missing IDs are -1) |
+| `passed_steps`, `stage_weights` | Four stage flags and event weights; unreached weights are NaN |
+| `n_charged`, `n_neutral` | Initial DIS product multiplicities |
+| `selected_track_1`, `selected_track_2` | Four best-pair MCTrack IDs, ordered ascending; -1 for unreached stages |
+| `p1_GeV`, `p2_GeV` | Four best-pair momentum magnitudes, measured at Tr1 |
+| `doca_cm`, `target_ip_cm`, `vertex_{x,y,z}_cm` | Best-pair reconstruction at each stage |
+| `common_ancestor_id`, `common_ancestor_pdg` | Nearest shared ancestor for each best pair; absent is -1/0 |
+| `track_*` | All stored MCTracks, indexed by original MCTrack ID |
+| `UBT_*`, `SBT_*` | All tagger hits, once per event |
+| `muon_path_length_*` | Available input-muon path lengths, otherwise NaN |
+| `clearance_*`, `wall_*` | Geometry-query results needed to reproduce the diagnostics |
 
-The primary particle population is **all stored MCTracks except MCTrack[0]**,
-including Geant4 descendants. Counts are not detector-acceptance counts, and
-they do not deduplicate different generations of a shower. The named populations
-are `excluding_input_muon`, `all`, `direct_daughters` (mother ID 0, including
-injected soft tracks), and `excluding_input_muon_and_leading_pair`.
+Initial DIS products have mother ID 0 and raw weight different from the incoming
+muon's weight, following `NewMuDISGenerator` and the existing Soft/DIS classification
+(relative weight tolerance 1e-6). This excludes injected soft tracks, companion
+muons and Geant4 shower/decay descendants. Counts include charged and neutral
+initial products regardless of detector acceptance. They do not count every
+generation of a shower. If the generator assigns identical muon and DIS weights,
+the existing weight-based origin convention cannot distinguish them.
 
-Each track saves its original index, signed PDG ID, mother index, charge in
-units of e, Soft/DIS label, raw `mc_weight`, processed `weight`, start position
-and momentum, straw-station coverage, timing-hit presence, smallest-z Tr1
-position and momentum (or `null` if absent), and the detector/momentum
-`selected` flag. Both low-momentum tracks and tracks missing detectors remain
-in the record. The Soft/DIS label uses the same comparison with the incoming
-muon's raw weight as the existing analysis; it is not a replacement for ancestry.
+Shared ancestry follows mother IDs, not weights. It includes a selected track
+when that track is the other's ancestor, but excludes incoming muon 0 (which is
+otherwise common to unrelated DIS products). The nearest shared ancestor
+minimizes the sum of parent-link distances; ties use the smaller MCTrack ID.
+The signed PDG ID identifies the particle species, while the ancestor ID
+identifies the particular MCTrack. Invalid cyclic/out-of-range ancestry fails.
 
-Each hit is
-`[track_id, x_cm, y_cm, z_cm, time_ns, detector_id, px_GeV, py_GeV, pz_GeV, energy_loss_GeV]`.
-All hits are kept, including neutral-particle hits, tracks outside the leading
-pair, and invalid/unassociated track IDs. There is no stage duplication or
-histogram-range truncation in these lists. The column order is also recorded
-in `run.json` under `event_record_schema`.
+`track_pdg_id`, `track_mother_id`, `track_charge_e`, `track_soft`, `track_mc_weight`
+and `track_weight` describe each track. Position/momentum components are
+`track_{start_position_cm,start_momentum_GeV,tr1_position_cm,tr1_momentum_GeV}_{x,y,z}`.
+Missing Tr1 states use NaN. `track_station_mask` has bit N for straw station N,
+`track_has_timing_hit` and `track_selected` retain detector selection, and
+`track_stage_mask` has bit N when the track participates in any surviving pair
+at stage N. Thus selected daughter momenta can be read directly by masking the
+track vectors, with no stage duplication. Low-momentum and unselected tracks
+remain available too.
 
-Any pair's vertex, DOCA, IP and weight can be recomputed from the saved Tr1
-states and weights. Ancestry and start positions retain DIS-truth associations.
-Helium containment and clearance still require the referenced geometry file.
-SBT wall assignments and alternative tagger windows can likewise be recovered
-from the saved hit coordinates/IDs and geometry. This record is an analysis
-summary, not a replacement for the complete ROOT simulation file.
+Hit columns are `track_id`, `x_cm`, `y_cm`, `z_cm`, `time_ns`, `detector_id`,
+`px_GeV`, `py_GeV`, `pz_GeV`, `energy_loss_GeV`, each prefixed by `UBT_` or `SBT_`.
+Neutral-particle hits and invalid/unassociated track IDs remain in the tree.
+There is no histogram-range truncation of the saved data.
+
+The geometry cache retains exactly the helium-clearance and SBT-wall queries
+used during extraction. The separate summary command reuses those results;
+it needs neither the simulation nor geometry files and loads no FairShip
+library. Changing the geometric selection to require additional queries needs
+re-extraction. The summary is not a replacement for the complete simulation.
+
+## Extract, merge, then summarize
+
+For replay productions, defer histogram filling, large histogram archives and
+plot rendering until after merging:
+
+```sh
+pixi cvmfs python -u newMuonDIS/analyseEvents.py replay.yaml \
+    --tree-only --output-dir analysis/job_0
+# Run other disjoint file/entry ranges into analysis/job_1, etc.
+pixi cvmfs python -u newMuonDIS/mergeAnalysis.py analysis/job_* \
+    --output-dir analysis/combined
+pixi cvmfs python -u newMuonDIS/summarizeAnalysis.py analysis/combined \
+    --output-dir analysis/summary --no-plots
+```
+
+Use a YAML with `type: disreplay_gen` or `disreplay_filter` and filtered inputs.
+`tree_only: true` is the equivalent YAML option; it is invalid for gen/filter
+vertex analysis. Without that option the existing combined extraction and
+histogram workflow is retained, with ROOT replacing the JSON event file.
+
+The summary command writes the existing tables and histogram archive. Omit
+`--no-plots` to render PDF/PNG plots as well. It leaves the large tree in the
+input directory and marks `events.root` omitted in the summary manifest. To
+merge summary directories, use `--skip-event-records`. Tree-only and combined
+histogram outputs cannot be mixed in one merge. Use the same analysis code
+for extraction and summary; selection-code mismatches are rejected.
+
+Read individual branches with ROOT/RDataFrame, or use the Python iterator
+`analysisTree.read_records(path)` to reconstruct the dictionary view of an
+event. The latter is for inspection; merging does not decode this view.
 
 ## Input-muon path lengths
 
 Read `muon_path_length` and `muon_path_length_<material>` when those branches
 exist in the current input tree. Zero is a measured zero path length;
-`null` means unavailable. Missing values are never inferred from weights or
+`NaN` means unavailable. Missing values are never inferred from weights or
 from the straight-line reconstructed track. Per-material keys are MS, UBT,
 SBTsens, SBTfr, SSTsens, SSTfr, HE, AIR, HeBalloon and REST; `total` is the
 upstream total excluding REST.
 
 These branches currently exist in prepared `MuonDIS` files but are **not
 propagated by NewMuDISGenerator into its standard replay output**. Such replay
-files therefore produce null values. The analysis does not look up external
+files therefore produce NaN values. The analysis does not look up external
 prepared files, whose identity cannot be safely inferred from a replay entry
 number alone. `replayFilter.py` preserves the branches if an input has them.
 The MS branch represents the preparation's restricted sampling path (last
@@ -130,8 +179,17 @@ histograms mean zero entries; merging handles disjoint material populations.
 At every stage, pair plots contain vertex projections, DOCA, clearance, IP and
 zoomed IP, and truth-DIS transverse/longitudinal/3D distances plus truth
 containment. Pair multiplicity counts one entry per event. Particle histograms
-`particles/n_charged` and `particles/n_neutral` count all stored tracks except
-the incoming muon, with the stage event weight.
+`particles/n_charged` and `particles/n_neutral` count only initial DIS products,
+with the stage event weight.
+
+`selected_pair/{p1_GeV,p2_GeV}`
+contains one entry per passed event/stage, weighted by the stage event weight.
+The pair is chosen by minimum DOCA at that stage, with MCTrack-ID tie breaking.
+`daughters/p_GeV` contains each non-input-muon track participating in any
+surviving pair once per stage, weighted by its processed track weight. These
+plots also have the material-separated copies described above. The daughter
+momentum sample includes selected descendants and soft tracks; initial-DIS
+multiplicity and the direct-daughter tagger sample have narrower definitions.
 
 `tagger/all/SBT/{x,y}_vs_z` includes **all SBT hits**, weighted by the stage's
 event weight, independent of pair membership or valid track association.
@@ -168,19 +226,29 @@ uses the common DIS weight. The factor is applied once. Weighted cutflows can
 therefore change when the last Soft-Soft pair fails, while raw event counts
 remain nested. Original unselected preparation normalization remains intact.
 
-If target normalization is enabled, records also contain `scaled_stage_weights`
-and each track has `scaled_weight`. The merger recalculates these from the
-combined preparation denominator, rather than summing job-specific scale factors.
+The event tree stores processed weights before target-normalization scaling.
+Multiply them by `normalization_scale` in `run.json` when that value is not null.
+The merger recomputes this factor from the combined preparation denominator;
+no per-event or per-track scaled branches need to be rewritten. Tables and
+rendered plots retain their existing scaled outputs.
 
 ```sh
 pixi cvmfs python -u newMuonDIS/mergeAnalysis.py analysis/job_* \
     --output-dir analysis/combined --no-plots
 ```
 
-Merging streams event records, verifies ordered unique source entries against
-the manifests, checks event stage counts against cutflow totals, merges material
-histograms and preserves the event schema. Use `--skip-event-records` to keep
-only histograms and aggregate tables; `run.json` records that omission. Merging
-such a reduced result again requires the same explicit option.
-`--skip-tagger-tracks` is replaced by `--skip-event-records` in version 6.
-Version-5 outputs must be regenerated and cannot be mixed with version 6.
+Merging validates source ranges and scans only the small provenance/stage
+branches to reject duplicate, unordered or out-of-range entries and malformed
+stage weights. For combined outputs it checks stage counts against cutflow
+rows. It checks tree schemas and entry counts even for empty trees, then uses
+ROOT's fast `TFileMerger` to copy compressed baskets without decoding/re-encoding
+the track/hit payload. See [ROOT's fast tree-copy documentation](https://root.cern.ch/doc/master/classTTree.html).
+Material histograms and aggregate tables are merged when present.
+
+Use `--skip-event-records` to retain only histograms and aggregate tables;
+`run.json` records the omission. A further merge of a reduced result requires
+the same explicit option. This option is invalid for tree-only inputs.
+Version-5/6 outputs must be regenerated: version 7 changes the multiplicity
+meaning and adds per-stage pair information, so old JSON outputs cannot be
+mixed with the new trees. No speedup is assumed from JSON compression alone;
+the key change is avoiding Python decoding/re-encoding during tree merging.

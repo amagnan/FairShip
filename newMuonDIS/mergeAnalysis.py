@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: LGPL-3.0-or-later
 # SPDX-FileCopyrightText: Copyright CERN for the benefit of the SHiP Collaboration
-"""Merge analyseEvents output directories without reading ROOT files."""
+"""Merge analysis outputs, copying compressed event-tree baskets without decoding the payload."""
 
 import argparse
 import csv
@@ -16,7 +16,6 @@ from analyseEvents import (
     PairCutflow,
     Plots,
     ReplayDiagnostics,
-    ReplayRecords,
     combine_normalization,
     normalization_scale,
     pair_composition_rows,
@@ -24,6 +23,7 @@ from analyseEvents import (
     scaled_rows,
     write_table,
 )
+from analysisTree import TREE_NAME, validate_tree
 
 
 def check_sources(manifests):
@@ -187,79 +187,83 @@ def merge_tagger_tracks(inputs, output, scale):
                     writer.writerow(row)
 
 
-def merge_events(inputs, output, scale, manifests, expected):
-    """Stream unique event records, checking provenance and event-stage totals."""
+def merge_events(inputs, output, scale, manifests, expected=None):
+    """Validate small provenance branches, then copy all compressed baskets in C++."""
+    import ROOT
+
     counts = {}
-    with (output / "events.jsonl").open("w") as destination:
-        for directory, manifest in zip(inputs, manifests):
+    for directory, manifest in zip(inputs, manifests):
+        path = directory / "events.root"
+        if not path.is_file():
+            raise FileNotFoundError(path)
+        file = ROOT.TFile.Open(str(path))
+        if not file or file.IsZombie():
+            raise ValueError(f"Cannot open {path}")
+        try:
+            tree = file.Get(TREE_NAME)
+            if not tree or tree.GetEntries() != manifest["entries_processed"]:
+                raise ValueError(f"Event tree does not match entries_processed: {directory}")
+            validate_tree(tree, path)
             ranges = {}
             for source in manifest["source_ranges"]:
                 key = (source["path"], source["file_uuid"])
                 ranges.setdefault(key, []).append((source["start"], source["stop"]))
             previous = {}
-            processed = 0
-            with (directory / "events.jsonl").open() as stream:
-                for line in stream:
-                    record = json.loads(line)
-                    key = (record["source_file"], record["file_uuid"])
-                    entry = record["source_entry"]
-                    interval = next(
-                        ((start, stop) for start, stop in ranges.get(key, []) if start <= entry < stop), None
-                    )
-                    if type(entry) is not int or interval is None:
-                        raise ValueError(f"Event outside declared source ranges: {directory}, {entry}")
-                    # A merged input can concatenate disjoint source ranges in
-                    # any order. Entries remain ordered within each range.
-                    range_key = (key, interval)
-                    if entry <= previous.get(range_key, -1):
-                        raise ValueError(f"Duplicate or unordered event: {directory}, {entry}")
-                    previous[range_key] = entry
-                    flags, weights = record["passed_steps"], record["stage_weights"]
-                    if (
-                        len(flags) != len(STEPS)
-                        or len(weights) != len(STEPS)
-                        or any(type(flag) is not bool for flag in flags)
-                        or not flags[0]
-                        or any(flags[i] and not flags[i - 1] for i in range(1, len(flags)))
-                    ):
-                        raise ValueError(f"Invalid event stages: {directory}, {entry}")
-                    for step, (flag, weight) in enumerate(zip(flags, weights)):
-                        if (flag and (weight is None or not math.isfinite(weight))) or (
-                            not flag and weight is not None
-                        ):
-                            raise ValueError(f"Invalid event stage weight: {directory}, {entry}")
-                        if flag:
-                            for material in ("ALL", record["material"]):
-                                index = (material, step)
-                                counts[index] = counts.get(index, 0) + 1
-                    tracks = record["tracks"]
-                    if [track["track_id"] for track in tracks] != list(range(len(tracks))):
-                        raise ValueError(f"Invalid event track IDs: {directory}, {entry}")
-                    pair = record["leading_pair"]
-                    if pair is not None:
-                        ids = pair["track_ids"]
-                        step = pair["step"]
-                        if (
-                            len(ids) != 2
-                            or ids[0] >= ids[1]
-                            or not all(0 <= i < len(tracks) for i in ids)
-                            or not 0 <= step < len(STEPS)
-                            or not flags[step]
-                        ):
-                            raise ValueError(f"Invalid leading pair: {directory}, {entry}")
-                    ReplayRecords.rescale(record, scale)
-                    destination.write(json.dumps(record, allow_nan=False, separators=(",", ":")) + "\n")
-                    processed += 1
-            if processed != manifest["entries_processed"]:
-                raise ValueError(f"Event records do not match entries_processed: {directory}")
-    expected_counts = {(row["material"], int(row["step"])): row["events"] for row in expected if row["events"]}
-    if counts != expected_counts:
-        raise ValueError("Event records do not match the event cutflow")
+            tree.SetBranchStatus("*", 0)
+            for name in ("source_file", "file_uuid", "source_entry", "material", "passed_steps", "stage_weights"):
+                tree.SetBranchStatus(name, 1)
+            for entry in range(tree.GetEntries()):
+                if tree.GetEntry(entry) <= 0:
+                    raise ValueError(f"Cannot read provenance: {path}, {entry}")
+                key = (str(tree.source_file), str(tree.file_uuid))
+                source_entry = int(tree.source_entry)
+                interval = next(
+                    ((start, stop) for start, stop in ranges.get(key, []) if start <= source_entry < stop), None
+                )
+                if interval is None:
+                    raise ValueError(f"Event outside declared source ranges: {directory}, {source_entry}")
+                range_key = (key, interval)
+                if source_entry <= previous.get(range_key, -1):
+                    raise ValueError(f"Duplicate or unordered event: {directory}, {source_entry}")
+                previous[range_key] = source_entry
+                flags, weights = list(tree.passed_steps), list(tree.stage_weights)
+                if (
+                    len(flags) != len(STEPS)
+                    or len(weights) != len(STEPS)
+                    or not flags[0]
+                    or any(flag not in (0, 1) for flag in flags)
+                    or any(flags[i] and not flags[i - 1] for i in range(1, len(flags)))
+                ):
+                    raise ValueError(f"Invalid event stages: {directory}, {source_entry}")
+                for step, (flag, weight) in enumerate(zip(flags, weights)):
+                    if (flag and not math.isfinite(weight)) or (not flag and not math.isnan(weight)):
+                        raise ValueError(f"Invalid event stage weight: {directory}, {source_entry}")
+                    if flag:
+                        for material in ("ALL", str(tree.material)):
+                            index = (material, step)
+                            counts[index] = counts.get(index, 0) + 1
+        finally:
+            file.Close()
+    if expected is not None:
+        expected_counts = {(row["material"], int(row["step"])): row["events"] for row in expected if row["events"]}
+        if counts != expected_counts:
+            raise ValueError("Event records do not match the event cutflow")
+    merger = ROOT.TFileMerger(False)
+    merger.SetFastMethod(True)
+    if not merger.OutputFile(str(output / "events.root"), "RECREATE", 101):
+        raise OSError("Cannot create merged event tree")
+    for directory in inputs:
+        if not merger.AddFile(str(directory / "events.root")):
+            raise OSError(f"Cannot add event tree: {directory}")
+    print("Copying compressed DIS tree baskets", flush=True)
+    if not merger.Merge():
+        raise OSError("ROOT event-tree merge failed")
+    # Weights deliberately remain unscaled; the combined scale belongs to run.json.
 
 
 def merge(inputs, output, *, save_plots=True, skip_event_records=False, skip_tagger_tracks=False):
     if skip_tagger_tracks:
-        raise ValueError("Output version 6 uses events.jsonl; use --skip-event-records instead of --skip-tagger-tracks")
+        raise ValueError("Output version 7 uses events.root; use --skip-event-records instead of --skip-tagger-tracks")
     inputs = [Path(directory).expanduser().resolve() for directory in inputs]
     output = Path(output).expanduser().resolve()
     if not inputs:
@@ -276,11 +280,16 @@ def merge(inputs, output, *, save_plots=True, skip_event_records=False, skip_tag
             raise ValueError(
                 f"Missing or unsupported output version in {directory}; rerun the analysis with archive output"
             )
-        if "events.jsonl" in manifest.get("omitted_files", []) and not skip_event_records:
+        if "events.root" in manifest.get("omitted_files", []) and not skip_event_records:
             raise ValueError(f"Event records were omitted from {directory}; use --skip-event-records")
         manifests.append(manifest)
     reference = manifests[0]
     signature = reference["analysis_signature"]
+    tree_only = reference.get("tree_only", False)
+    if any(manifest.get("tree_only", False) != tree_only for manifest in manifests):
+        raise ValueError("Cannot mix tree-only and histogram outputs; summarize them first")
+    if tree_only and skip_event_records:
+        raise ValueError("Cannot omit event records from a tree-only merge")
     if signature["type"] not in TYPES:
         raise ValueError(f"Unsupported analysis type: {signature['type']}")
     for directory, manifest in zip(inputs, manifests):
@@ -293,28 +302,30 @@ def merge(inputs, output, *, save_plots=True, skip_event_records=False, skip_tag
     normalization = combine_normalization([manifest["normalization"] for manifest in manifests])
     normalization["weight_factor"] = signature["weight_factor"]
     scale = normalization_scale(signature, normalization)
-    plots = Plots.load_archive(inputs[0] / "histograms.npz")
-    for directory in inputs[1:]:
-        plots.merge(Plots.load_archive(directory / "histograms.npz"))
+    merged_tables = []
+    if not tree_only:
+        plots = Plots.load_archive(inputs[0] / "histograms.npz")
+        for directory in inputs[1:]:
+            plots.merge(Plots.load_archive(directory / "histograms.npz"))
 
-    weights = ("sum_weights", "sum_weights_squared")
-    if signature["type"].startswith("disreplay"):
-        tables = [
-            (
-                "cutflow.csv",
-                ("material", "step", "selection"),
-                ("events", "pairs", "pairs_DIS_DIS", "pairs_DIS_Soft", "pairs_Soft_Soft"),
-                weights,
-            ),
-            ("pair_cutflow.csv", PairCutflow.fields[:8], ("pairs",), weights),
-            ("tagger_cutflow.csv", ReplayDiagnostics.fields[:6], ("events",), weights),
+        weights = ("sum_weights", "sum_weights_squared")
+        if signature["type"].startswith("disreplay"):
+            tables = [
+                (
+                    "cutflow.csv",
+                    ("material", "step", "selection"),
+                    ("events", "pairs", "pairs_DIS_DIS", "pairs_DIS_Soft", "pairs_Soft_Soft"),
+                    weights,
+                ),
+                ("pair_cutflow.csv", PairCutflow.fields[:8], ("pairs",), weights),
+                ("tagger_cutflow.csv", ReplayDiagnostics.fields[:6], ("events",), weights),
+            ]
+        else:
+            tables = [("vertex_counts.csv", ("material",), ("vertices",), weights)]
+        merged_tables = [
+            (filename, *merge_table(inputs, filename, keys, integers, floats, scaled=scale is not None))
+            for filename, keys, integers, floats in tables
         ]
-    else:
-        tables = [("vertex_counts.csv", ("material",), ("vertices",), weights)]
-    merged_tables = [
-        (filename, *merge_table(inputs, filename, keys, integers, floats, scaled=scale is not None))
-        for filename, keys, integers, floats in tables
-    ]
 
     # Metadata and summaries are validated first; event records are checked
     # while streaming, before the completion manifest is written.
@@ -323,7 +334,9 @@ def merge(inputs, output, *, save_plots=True, skip_event_records=False, skip_tag
         if scale is not None:
             fields += ["scaled_sum_weights", "scaled_sum_weights_squared"]
         write_table(output / filename, scaled_rows(rows, scale), fields)
-    if signature["type"].startswith("disreplay"):
+    if tree_only:
+        merge_events(inputs, output, scale, manifests)
+    elif signature["type"].startswith("disreplay"):
         pair_rows = next(rows for filename, rows, _ in merged_tables if filename == "pair_cutflow.csv")
         compositions = pair_composition_rows(pair_rows)
         write_table(output / "pair_composition_cutflow.csv", scaled_rows(compositions, scale))
@@ -331,20 +344,22 @@ def merge(inputs, output, *, save_plots=True, skip_event_records=False, skip_tag
             event_rows = next(rows for filename, rows, _ in merged_tables if filename == "cutflow.csv")
             merge_events(inputs, output, scale, manifests, event_rows)
     save_normalization(output, normalization, scale)
-    plots.save_archive(output / "histograms.npz")
-    if save_plots:
-        print("Rendering merged plots", flush=True)
-        plots.save(output, scale)
-    else:
-        plots.save_flows(output, scale)
+    if not tree_only:
+        plots.save_archive(output / "histograms.npz")
+        if save_plots:
+            print("Rendering merged plots", flush=True)
+            plots.save(output, scale)
+        else:
+            plots.save_flows(output, scale)
     config = {
         key: reference["config"][key]
         for key in ("type", "weight_factor", "plot_axes", "geometry_file", "target_sum_weights", "failed_job_factor")
         if key in reference["config"]
     }
-    config.update(output_dir=str(output), save_plots=save_plots)
+    config.update(output_dir=str(output), save_plots=save_plots, tree_only=tree_only)
     manifest = {
         "output_version": OUTPUT_VERSION,
+        "tree_only": tree_only,
         "analysis_signature": signature,
         "config": config,
         "files": sorted({source["path"] for source in sources}),
@@ -358,7 +373,7 @@ def merge(inputs, output, *, save_plots=True, skip_event_records=False, skip_tag
         "event_record_schema": reference.get("event_record_schema"),
     }
     if skip_event_records and signature["type"].startswith("disreplay"):
-        manifest["omitted_files"] = ["events.jsonl"]
+        manifest["omitted_files"] = ["events.root"]
     with (output / "run.json").open("w") as stream:
         json.dump(manifest, stream, indent=2)
     print(f"Merged {len(inputs)} outputs, {manifest['entries_processed']} entries: {output}", flush=True)
@@ -372,7 +387,7 @@ def main():
     parser.add_argument(
         "--skip-event-records",
         action="store_true",
-        help="Omit events.jsonl; merge histograms and aggregate cutflows only",
+        help="Omit events.root; merge histograms and aggregate cutflows only",
     )
     args = parser.parse_args()
     try:

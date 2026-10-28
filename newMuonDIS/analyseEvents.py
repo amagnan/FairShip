@@ -15,11 +15,14 @@ from pathlib import Path
 
 import numpy as np
 import yaml
+from analysisTree import CachedGeometry, NullPlots, TreeWriter
 
 MATERIALS = ("MS", "UBT", "SBTsens", "SBTfr", "SSTsens", "SSTfr", "HE", "AIR", "HeBalloon", "REST")
 TYPES = ("disgen", "disfilter", "disreplay_gen", "disreplay_filter")
-OUTPUT_VERSION = 6
-ANALYSIS_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+OUTPUT_VERSION = 7
+ANALYSIS_SHA256 = hashlib.sha256(
+    Path(__file__).read_bytes() + Path(__file__).with_name("analysisTree.py").read_bytes()
+).hexdigest()
 STEPS = (
     "filtered input: Tr1-4 + TD, p > 1 GeV/c; opposite sign, backward vertex, DOCA < 5 cm, inside decay helium",
     "DOCA < 1 cm and helium wall clearance >= 5 cm",
@@ -27,6 +30,10 @@ STEPS = (
     "target-plane IP < 10 cm",
 )
 UBT_WINDOWS = {"full": None, "400x600": (400, 600), "360x300": (360, 300), "140x310": (140, 310)}
+PAIR_MOMENTUM_HISTOGRAMS = (
+    ("p1_GeV", 0, 100),
+    ("p2_GeV", 0, 100),
+)
 HIT_CATEGORIES = ("neither", "UBT_only", "SBT_only", "both")
 SBT_WALLS = {"top": (1, 1), "bottom": (1, -1), "left": (0, -1), "right": (0, 1)}
 
@@ -291,7 +298,7 @@ def selected_tracks(event, pdg):
         code = int(event.MCTrack[index].GetPdgCode())
         charge = particle_charge(code, pdg)
         tracks.append(Track(position, momentum, charge, weight, code, index))
-    return tracks, momenta
+    return sorted(tracks, key=lambda track: track.track_id), momenta
 
 
 class Geometry:
@@ -738,6 +745,45 @@ def particle_counts(tracks, excluded=()):
     return {"charged": charged, "neutral": len(charges) - charged}
 
 
+def initial_dis_products(event):
+    """Generator-injected DIS products, excluding soft primaries and showers."""
+    muon_weight = float(event.MCTrack[0].GetWeight())
+    return [
+        i
+        for i, track in enumerate(event.MCTrack)
+        if i and track.GetMotherId() == 0 and not is_soft(float(track.GetWeight()), muon_weight)
+    ]
+
+
+def selected_pair_info(event, tracks, vertex):
+    """Order by MCTrack ID; find the nearest shared ancestor beyond input muon 0."""
+    tracks = sorted(tracks, key=lambda track: track.track_id)
+
+    def ancestry(index):
+        chain = []
+        while index > 0:
+            if index >= len(event.MCTrack) or index in chain:
+                raise ValueError("Invalid MCTrack ancestry")
+            chain.append(index)
+            index = int(event.MCTrack[index].GetMotherId())
+        return chain
+
+    first, second = (ancestry(track.track_id) for track in tracks)
+    common = set(first).intersection(second)
+    ancestor = min(common, key=lambda i: (first.index(i) + second.index(i), i)) if common else -1
+    p1, p2 = (float(np.linalg.norm(track.momentum)) for track in tracks)
+    return {
+        "track_ids": [track.track_id for track in tracks],
+        "p1_GeV": p1,
+        "p2_GeV": p2,
+        "doca_cm": vertex.doca,
+        "vertex_cm": vertex.position.tolist(),
+        "target_ip_cm": target_ip(vertex),
+        "common_ancestor_id": ancestor,
+        "common_ancestor_pdg": int(event.MCTrack[ancestor].GetPdgCode()) if ancestor >= 0 else 0,
+    }
+
+
 class ReplayRecords:
     """Stream one self-contained record per event; never expand pairs by stage."""
 
@@ -758,6 +804,7 @@ class ReplayRecords:
     def start_event(self, event, geometry, pdg, factor):
         if self.source is None:
             raise ValueError("Event records require source identity")
+        self.event, self.geometry = event, geometry
         stations, first, timing = detector_track_states(event)
         muon_weight = float(event.MCTrack[0].GetWeight())
         tracks = []
@@ -786,6 +833,7 @@ class ReplayRecords:
                         and index in timing
                         and np.linalg.norm(state[1]) > 1.0
                     ),
+                    "stage_mask": 0,
                 }
             )
         hits = {}
@@ -828,26 +876,34 @@ class ReplayRecords:
             "passed_steps": [False] * len(STEPS),
             "stage_weights": [None] * len(STEPS),
             "particle_counts": {
+                "initial_DIS": particle_counts([tracks[i] for i in initial_dis_products(event)]),
                 "excluding_input_muon": particle_counts(tracks, excluded={0}),
                 "all": particle_counts(tracks),
                 "direct_daughters": particle_counts([track for track in tracks if track["mother_id"] == 0]),
             },
             "leading_pair": None,
+            "selected_pairs": [None] * len(STEPS),
             "tracks": tracks,
             "hits": hits,
             "muon_path_length_cm": lengths,
         }
         self.leading_rank = None
+        self.stage_ranks = {}
 
-    def stage(self, step, weight):
+    def stage(self, step, weight, tracks=()):
         self.record["passed_steps"][step] = True
         self.record["stage_weights"][step] = weight
+        for track in tracks:
+            self.record["tracks"][track.track_id]["stage_mask"] |= 1 << step
 
     def pair(self, step, tracks, vertex):
         if vertex is None:
             return
         indices = sorted(track.track_id for track in tracks)
         rank = (-step, vertex.doca, *indices)
+        if step not in self.stage_ranks or rank < self.stage_ranks[step]:
+            self.stage_ranks[step] = rank
+            self.record["selected_pairs"][step] = selected_pair_info(self.event, tracks, vertex)
         if self.leading_rank is None or rank < self.leading_rank:
             self.leading_rank = rank
             self.record["leading_pair"] = {"track_ids": indices, "step": step}
@@ -868,8 +924,13 @@ class ReplayRecords:
         record["particle_counts"]["excluding_input_muon_and_leading_pair"] = particle_counts(
             record["tracks"], excluded={0, *(pair["track_ids"] if pair else [])}
         )
-        self.rescale(record, self.scale)
-        self.stream.write(json.dumps(record, allow_nan=False, separators=(",", ":")) + "\n")
+        record["geometry_cache"] = self.geometry.export()
+        if hasattr(self.stream, "write_record"):
+            self.stream.write_record(record)
+        else:
+            # In-memory diagnostic clients can still inspect a record as JSON.
+            self.rescale(record, self.scale)
+            self.stream.write(json.dumps(record, allow_nan=False, separators=(",", ":")) + "\n")
         self.record = None
 
 
@@ -949,7 +1010,7 @@ class ReplayDiagnostics:
         self.stage_weights = {}
         self.muon_weight = float(event.MCTrack[0].GetWeight())
         self.material = str(event.muDIS_material)
-        charges = [particle_charge(int(track.GetPdgCode()), pdg) for track in event.MCTrack][1:]
+        charges = [particle_charge(int(event.MCTrack[i].GetPdgCode()), pdg) for i in initial_dis_products(event)]
         self.particle_counts = {
             "charged": sum(charge != 0 for charge in charges),
             "neutral": sum(charge == 0 for charge in charges),
@@ -1161,6 +1222,8 @@ class ReplayDiagnostics:
 def replay(
     event, plots, geometry, pdg, factor, counts, material_counts=None, pair_counts=None, diagnostics=None, records=None
 ):
+    if records is not None:
+        geometry = CachedGeometry(geometry)
     if diagnostics is None:
         diagnostics = ReplayDiagnostics(plots)
     material = str(event.muDIS_material)
@@ -1196,7 +1259,7 @@ def _replay(event, plots, geometry, pdg, factor, counts, material_counts, pair_c
             cutflow[step][2] += weight * weight
         diagnostics.stage(step, weight, tracks)
         if records is not None:
-            records.stage(step, weight)
+            records.stage(step, weight, tracks)
 
     def pair_passed(step, tracks, weight, vertex=None):
         truth = diagnostics.pair_truth(step, tracks, weight, vertex)
@@ -1226,6 +1289,15 @@ def _replay(event, plots, geometry, pdg, factor, counts, material_counts, pair_c
     for step in range(len(STEPS)):
         weight = event_weight(v.weight for v in candidates)
         passed(step, weight, surviving_tracks(candidates))
+        leading = min(candidates, key=lambda v: (v.doca, *sorted(t.track_id for t in v.tracks)))
+        info = selected_pair_info(event, leading.tracks, leading)
+        for name, low, high in PAIR_MOMENTUM_HISTOGRAMS:
+            plots.one(f"step{step}/selected_pair/{name}", info[name], low, high, weight)
+        daughters = {t.track_id: t for t in surviving_tracks(candidates) if t.track_id != 0}
+        for track in daughters.values():
+            plots.one(
+                f"step{step}/daughters/p_GeV", float(np.linalg.norm(track.momentum)), 0, 100, track.weight * factor
+            )
         plots.one(f"step{step}/n_pairs", len(candidates), -0.5, 20.5, weight, 21)
         for vertex in candidates:
             pair_weight = vertex.weight * factor
@@ -1248,6 +1320,64 @@ def _replay(event, plots, geometry, pdg, factor, counts, material_counts, pair_c
             candidates = [v for v in candidates if target_ip(v) < 10.0]
         if not candidates:
             break
+
+
+def book_plots(config, is_replay=True, tree_only=False):
+    plots = (NullPlots if tree_only else Plots)(config.get("plot_axes", {}))
+    # Book aggregate templates, including empty stages. Material copies are lazy.
+    prefixes = [f"step{step}/vertices" for step in range(len(STEPS))] if is_replay else MATERIALS
+    for prefix in prefixes:
+        for vertical, horizontal in [("x", "z"), ("y", "z"), ("y", "x")]:
+            plots.book(f"{prefix}/{vertical}_vs_{horizontal}", (plots.axes[horizontal], plots.axes[vertical]))
+    if is_replay:
+        for name, low, high, bins in [
+            ("step0/n_tracks_all_detectors", -0.5, 20.5, 21),
+            ("step0/track_p_GeV", 0, 100, 100),
+            ("step0/n_tracks_p_gt_1", -0.5, 20.5, 21),
+        ]:
+            plots.book(name, (np.linspace(low, high, bins + 1),))
+        for step in range(len(STEPS)):
+            for name, low, high, bins in [
+                ("n_pairs", -0.5, 20.5, 21),
+                ("doca_cm", 0, 5, 100),
+                ("helium_clearance_cm", 0, 300, 100),
+                ("target_ip_cm", 0, 500, 100),
+                ("target_ip_zoom_cm", 0, 20, 100),
+            ]:
+                plots.book(f"step{step}/{name}", (np.linspace(low, high, bins + 1),))
+    if is_replay:
+        for step in range(len(STEPS)):
+            for name, low, high in PAIR_MOMENTUM_HISTOGRAMS:
+                plots.book(f"step{step}/selected_pair/{name}", (np.linspace(low, high, 101),))
+            plots.book(f"step{step}/daughters/p_GeV", (np.linspace(0, 100, 101),))
+    return plots
+
+
+def replay_tables(output, counts, replay_counts, pair_counts, diagnostics, scale):
+    tagger_fields = [
+        *ReplayDiagnostics.fields,
+        *(["scaled_sum_weights", "scaled_sum_weights_squared"] if scale is not None else []),
+    ]
+    write_table(output / "tagger_cutflow.csv", scaled_rows(diagnostics.rows(), scale), tagger_fields)
+    rows = [
+        {
+            "material": material,
+            "step": i,
+            "selection": label,
+            "events": count[0],
+            "sum_weights": count[1],
+            "sum_weights_squared": count[2],
+            **pair_counts.summary(material, i),
+        }
+        for material, cutflow in [("ALL", counts), *replay_counts.items()]
+        for i, (label, count) in enumerate(zip(STEPS, cutflow))
+    ]
+    pair_fields = list(PairCutflow.fields)
+    if scale is not None:
+        pair_fields += ["scaled_sum_weights", "scaled_sum_weights_squared"]
+    write_table(output / "pair_cutflow.csv", scaled_rows(pair_counts.rows(), scale), pair_fields)
+    write_table(output / "pair_composition_cutflow.csv", scaled_rows(pair_composition_rows(pair_counts.rows()), scale))
+    return rows
 
 
 def run(config):
@@ -1283,6 +1413,9 @@ def _run(config, output_streams):
     if result < 0:
         raise RuntimeError("Cannot load libShipMuDIS.so")
     is_replay = kind.startswith("disreplay")
+    tree_only = config.get("tree_only", False)
+    if not isinstance(tree_only, bool) or (tree_only and not is_replay):
+        raise ValueError("tree_only must be a boolean and is supported only for replay")
     tree_name = "cbmsim" if is_replay else "MuonDIS"
     normalization, files = read_normalization(ROOT, files, tree_name)
     normalization["weight_factor"] = factor
@@ -1295,36 +1428,16 @@ def _run(config, output_streams):
     if first > total:
         raise ValueError(f"first_entry {first} exceeds the {total} available entries")
     n = total - first if limit == -1 else min(limit, total - first)
-    plots = Plots(config.get("plot_axes", {}))
-    # Book aggregate templates, including empty stages. Material copies are lazy.
-    prefixes = [f"step{step}/vertices" for step in range(len(STEPS))] if is_replay else MATERIALS
-    for prefix in prefixes:
-        for vertical, horizontal in [("x", "z"), ("y", "z"), ("y", "x")]:
-            plots.book(f"{prefix}/{vertical}_vs_{horizontal}", (plots.axes[horizontal], plots.axes[vertical]))
-    if is_replay:
-        for name, low, high, bins in [
-            ("step0/n_tracks_all_detectors", -0.5, 20.5, 21),
-            ("step0/track_p_GeV", 0, 100, 100),
-            ("step0/n_tracks_p_gt_1", -0.5, 20.5, 21),
-        ]:
-            plots.book(name, (np.linspace(low, high, bins + 1),))
-        for step in range(len(STEPS)):
-            for name, low, high, bins in [
-                ("n_pairs", -0.5, 20.5, 21),
-                ("doca_cm", 0, 5, 100),
-                ("helium_clearance_cm", 0, 300, 100),
-                ("target_ip_cm", 0, 500, 100),
-                ("target_ip_zoom_cm", 0, 20, 100),
-            ]:
-                plots.book(f"step{step}/{name}", (np.linspace(low, high, bins + 1),))
+    plots = book_plots(config, is_replay, tree_only)
     geometry = Geometry(ROOT, config.get("geometry_file"))
     counts = [[0, 0.0, 0.0] for _ in STEPS]
     replay_counts = {mat: [[0, 0.0, 0.0] for _ in STEPS] for mat in MATERIALS}
     pair_counts = PairCutflow()
     diagnostics = records = None
     if is_replay:
-        event_stream = output_streams.enter_context((output / "events.jsonl").open("w"))
-        records = ReplayRecords(event_stream, scale)
+        event_stream = TreeWriter(ROOT, output / "events.root")
+        output_streams.callback(event_stream.close)
+        records = ReplayRecords(event_stream)
         diagnostics = ReplayDiagnostics(plots)
     material_counts = {mat: [0, 0.0, 0.0] for mat in MATERIALS}
     previous_tree = -1
@@ -1400,50 +1513,29 @@ def _run(config, output_streams):
             print(f"Processed {entry - first + 1}/{n}", flush=True)
     output_streams.close()
     if is_replay:
-        tagger_fields = [
-            *ReplayDiagnostics.fields,
-            *(["scaled_sum_weights", "scaled_sum_weights_squared"] if scale is not None else []),
-        ]
-        write_table(output / "tagger_cutflow.csv", scaled_rows(diagnostics.rows(), scale), tagger_fields)
-        rows = [
-            {
-                "material": material,
-                "step": i,
-                "selection": label,
-                "events": count[0],
-                "sum_weights": count[1],
-                "sum_weights_squared": count[2],
-                **pair_counts.summary(material, i),
-            }
-            for material, cutflow in [("ALL", counts), *replay_counts.items()]
-            for i, (label, count) in enumerate(zip(STEPS, cutflow))
-        ]
-        pair_fields = list(PairCutflow.fields)
-        if scale is not None:
-            pair_fields += ["scaled_sum_weights", "scaled_sum_weights_squared"]
-        write_table(output / "pair_cutflow.csv", scaled_rows(pair_counts.rows(), scale), pair_fields)
-        write_table(
-            output / "pair_composition_cutflow.csv", scaled_rows(pair_composition_rows(pair_counts.rows()), scale)
-        )
+        rows = replay_tables(output, counts, replay_counts, pair_counts, diagnostics, scale) if not tree_only else []
     else:
         rows = [
             {"material": mat, "vertices": count[0], "sum_weights": count[1], "sum_weights_squared": count[2]}
             for mat, count in material_counts.items()
         ]
     rows = scaled_rows(rows, scale)
-    write_table(output / ("cutflow.csv" if is_replay else "vertex_counts.csv"), rows)
+    if not tree_only:
+        write_table(output / ("cutflow.csv" if is_replay else "vertex_counts.csv"), rows)
     save_normalization(output, normalization, scale)
-    plots.save_archive(output / "histograms.npz")
-    if save_plots:
+    if not tree_only:
+        plots.save_archive(output / "histograms.npz")
+    if save_plots and not tree_only:
         print("Rendering plots", flush=True)
         plots.save(output, scale)
-    else:
+    elif not tree_only:
         plots.save_flows(output, scale)
     # Write the completion manifest last, after every requested output succeeds.
     with (output / "run.json").open("w") as stream:
         json.dump(
             {
                 "output_version": OUTPUT_VERSION,
+                "tree_only": tree_only,
                 "analysis_signature": {
                     "sha256": ANALYSIS_SHA256,
                     "type": kind,
@@ -1476,7 +1568,11 @@ def _run(config, output_streams):
                     "stages": list(STEPS),
                     "leading_pair": "smallest DOCA among built vertices at the furthest passed stage; "
                     "ties ordered by MCTrack IDs",
-                    "particle_count_default": "all stored MCTracks except MCTrack[0], including descendants",
+                    "particle_count_default": "initial DIS products: mother ID 0 and weight different from input muon",
+                    "tree": "events.root:DIS; typed branches, one entry per event",
+                    "selected_pairs": "smallest DOCA at each passed stage, ties by MCTrack IDs",
+                    "common_ancestor": "nearest shared ancestor, including a selected parent; excludes input muon 0; -1/0 ID/PDG when absent",
+                    "scaled_weights": "multiply saved weights by normalization_scale from run.json",
                     "hit_columns": [
                         "track_id",
                         "x_cm",
@@ -1489,7 +1585,7 @@ def _run(config, output_streams):
                         "pz_GeV",
                         "energy_loss_GeV",
                     ],
-                    "missing_path_length": "null; zero means an available branch with zero path length",
+                    "missing_path_length": "NaN; zero means an available branch with zero path length",
                 }
                 if is_replay
                 else None,
@@ -1509,6 +1605,9 @@ def main():
     parser.add_argument("--n-events", type=int, help="Number of entries, or -1 for all remaining")
     parser.add_argument("--output-dir", help="Unique, empty output directory for this job")
     parser.add_argument("--no-plots", action="store_true", help="Save tables and histograms without rendering")
+    parser.add_argument(
+        "--tree-only", action="store_true", help="Extract replay event tree; defer histograms and tables"
+    )
     args = parser.parse_args()
     with args.config.open() as stream:
         config = yaml.safe_load(stream)
@@ -1519,6 +1618,8 @@ def main():
             config[key] = getattr(args, key)
     if args.no_plots:
         config["save_plots"] = False
+    if args.tree_only:
+        config["tree_only"] = True
     run(config)
 
 
