@@ -25,7 +25,7 @@ ANALYSIS_SHA256 = hashlib.sha256(
 ).hexdigest()
 STEPS = (
     "filtered input: Tr1-4 + TD, p > 1 GeV/c; opposite sign, backward vertex, DOCA < 5 cm, inside decay helium",
-    "DOCA < 1 cm and helium wall clearance >= 5 cm",
+    "DOCA < 1 cm, helium wall clearance >= 5 cm and entrance window clearance >= 20 cm",
     "target-plane IP < 250 cm",
     "target-plane IP < 10 cm",
 )
@@ -368,6 +368,16 @@ class Geometry:
         # ROOT navigator safety is the distance to the nearest boundary in
         # any direction, including endcaps and any daughter-volume surfaces.
         return float(self.manager.GetCurrentNavigator().Safety())
+
+    def entrance_clearance(self, position):
+        """Distance from the flat upstream helium face, in cm."""
+        if self.clearance(position) < 0:
+            return -1.0
+        navigator = self.manager.GetCurrentNavigator()
+        shape = navigator.GetCurrentNode().GetVolume().GetShape()
+        local = np.empty(3, dtype=np.float64)
+        navigator.MasterToLocal(np.asarray(position, dtype=np.float64), local)
+        return float(local[2] - shape.GetOrigin()[2] + shape.GetDZ())
 
     def sbt_wall(self, position, detector_id=None):
         """Identify the actual scintillator cell, including tapered corner cells.
@@ -1313,7 +1323,13 @@ def _replay(event, plots, geometry, pdg, factor, counts, material_counts, pair_c
             plots.one("step0/n_tracks_p_gt_1", len(tracks), -0.5, 20.5, weight, 21)
             for momentum, track_weight in momenta:
                 plots.one("step0/track_p_GeV", momentum, 0, 100, track_weight * factor)
-            candidates = [v for v in candidates if v.doca < 1.0 and geometry.clearance(v.position) >= 5.0]
+            candidates = [
+                v
+                for v in candidates
+                if v.doca < 1.0
+                and geometry.clearance(v.position) >= 5.0
+                and geometry.entrance_clearance(v.position) >= 20.0
+            ]
         elif step == 1:
             candidates = [v for v in candidates if target_ip(v) < 250.0]
         elif step == 2:

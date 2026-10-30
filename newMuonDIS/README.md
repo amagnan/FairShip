@@ -336,7 +336,8 @@ without histogram archives and source-range metadata must be regenerated.
 ## Replay event records and pair summaries
 
 Replay analysis now requires `replayFilter.py` output. Its four stages are the
-filtered baseline, DOCA < 1 cm with helium clearance >= 5 cm, IP < 250 cm, and
+filtered baseline, DOCA < 1 cm with helium clearance >= 5 cm and entrance-window
+clearance >= 20 cm, IP < 250 cm, and
 IP < 10 cm. See [README.analysis.md](README.analysis.md) for the version-6 schema.
 
 `events.jsonl` stores one record per input event: event-level stage flags and

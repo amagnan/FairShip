@@ -3,7 +3,7 @@ production_path: /eos/experiment/ship/user/ammagnan/MuonDIS/TRY2026/261009/
 type: disgen  # disgen, disfilter, disreplay_gen, disreplay_filter
 # Replay types now require replayFilter.py output (DOCA < 5 cm, vertex inside helium).
 # Keep sim_*_disreplay_gen/filter.root names in a separate selected production directory.
-# Four analysis stages: filtered input; DOCA < 1 cm + clearance >= 5 cm; IP < 250; IP < 10.
+# Four analysis stages: filtered input; DOCA < 1 cm + wall >= 5 cm + entrance window >= 20 cm; IP < 250; IP < 10.
 # Detailed replay output: events.root, DIS tree (one event, all tracks and UBT/SBT hits).
 # For replay jobs, set tree_only: true (or --tree-only) and use summarizeAnalysis.py after merging.
 tree_only: false

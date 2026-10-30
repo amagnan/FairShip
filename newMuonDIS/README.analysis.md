@@ -34,7 +34,7 @@ The original six-stage numbering has been replaced:
 | Stage | Cumulative requirement |
 | --- | --- |
 | 0 | Filtered input: at least two tracks with Tr1–4 + TD hits and p > 1 GeV/c; at least one opposite-sign backward pair with DOCA < 5 cm and reconstructed vertex inside decay helium |
-| 1 | At least one of those pairs also has DOCA < 1 cm and helium clearance >= 5 cm |
+| 1 | At least one of those pairs also has DOCA < 1 cm, helium clearance >= 5 cm and entrance-window clearance >= 20 cm |
 | 2 | At least one surviving pair has target-plane IP < 250 cm |
 | 3 | At least one surviving pair has target-plane IP < 10 cm |
 
@@ -43,6 +43,8 @@ Hits are associated by MCTrack index. Straw stations are decoded as
 smallest-z Tr1 hit. Pairs use the same backward straight-line closest-approach
 calculation as the filter. Containment requires material `helium` under
 `DecayVolume`; ROOT navigator safety supplies clearance, including endcaps.
+The entrance-window clearance is measured from the flat upstream helium face,
+independently of the 5 cm clearance to other boundaries.
 IP is the transverse distance from the target axis at z=0, using the summed
 Tr1 momentum. All distances are in cm and momenta in GeV/c.
 
@@ -81,7 +83,7 @@ The small completion/normalization manifest remains `run.json`.
 | `track_*` | All stored MCTracks, indexed by original MCTrack ID |
 | `UBT_*`, `SBT_*` | All tagger hits, once per event |
 | `muon_path_length_*` | Available input-muon path lengths, otherwise NaN |
-| `clearance_*`, `wall_*` | Geometry-query results needed to reproduce the diagnostics |
+| `clearance_*`, `entrance_clearance_*`, `wall_*` | Geometry-query results needed to reproduce the diagnostics |
 
 Initial DIS products have mother ID 0 and raw weight different from the incoming
 muon's weight, following `NewMuDISGenerator` and the existing Soft/DIS classification
@@ -113,7 +115,7 @@ Hit columns are `track_id`, `x_cm`, `y_cm`, `z_cm`, `time_ns`, `detector_id`,
 Neutral-particle hits and invalid/unassociated track IDs remain in the tree.
 There is no histogram-range truncation of the saved data.
 
-The geometry cache retains exactly the helium-clearance and SBT-wall queries
+The geometry cache retains exactly the helium-clearance, entrance-clearance and SBT-wall queries
 used during extraction. The separate summary command reuses those results;
 it needs neither the simulation nor geometry files and loads no FairShip
 library. Changing the geometric selection to require additional queries needs
@@ -252,3 +254,7 @@ Version-5/6 outputs must be regenerated: version 7 changes the multiplicity
 meaning and adds per-stage pair information, so old JSON outputs cannot be
 mixed with the new trees. No speedup is assumed from JSON compression alone;
 the key change is avoiding Python decoding/re-encoding during tree merging.
+
+The 20 cm entrance-window selection adds `entrance_clearance_*` cache branches.
+Regenerate analysis outputs made with the earlier selection before merging or
+summarizing them with this code.
