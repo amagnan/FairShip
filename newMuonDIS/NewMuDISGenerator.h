@@ -69,6 +69,8 @@ class NewMuDISGenerator : public SHiP::Generator {
   Double_t fPythiaP =
       -1.;  // momentum of the muon used to generate the DIS event
   std::vector<Int_t> fNGenerated;  // initial count of generated DIS events
+  Double_t fMuonPathLength = -1.;  // input muon's total path length in cm
+  std::array<Double_t, ShipMuDIS::nMats> fMuonPathLengthByMat;
   int fnmuDis;             // counter of DIS event per input muon per material
   std::size_t fnmuDisDau;  // daughter offset per input muon per material
 };

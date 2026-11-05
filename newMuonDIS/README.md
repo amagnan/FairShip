@@ -93,6 +93,8 @@ generator must outlive the output tree. Each simulated `cbmsim` event contains:
 | `muDIS_disIndex` | `Int_t` | Zero-based DIS index within that muon's current material in the input tree (`fnmuDis` before advancement). |
 | `muDIS_xsec` | `Double_t` | Always `-1` until the input cross sections are reliable. |
 | `muDIS_pPythia` | `Double_t` | Beam momentum from `muon_pPythia_<material>`, in GeV/c. |
+| `muon_path_length` | `Double_t` | Input muon's total path length in cm, excluding `REST`, copied to each replayed interaction. |
+| `muon_path_length_<MatType>` | `Double_t` | Input muon's path length in cm for each material, including `REST`; suffixes follow `MatTypeStr`. |
 | `muDIS_nGenerated` | `std::vector<Int_t>` | Actual counts before filtering from `muon_nDISGenerated_<material>`, in `MatTypeStr` order: MS, UBT, SBTsens, SBTfr, SSTsens, SSTfr, HE, AIR, HeBalloon, REST. `-1` means not crossed; `0` means crossed but no interactions generated. |
 
 `GetMaterial()` still exposes the enum value after a successful `ReadEvent()`.
@@ -213,6 +215,8 @@ lengths are in cm and exclude transverse POCA jumps. The MS length uses only
 the last 20 cm in accumulated z (or the full MS path if shorter), converted
 to trajectory length, matching the vertex sampling and DIS weight interval.
 The full REST length is saved separately in `muon_path_length_REST`.
+Aluminium volumes named `part` directly inside `CornerRib_*` assemblies are
+included in `SBTfr`; the parent name distinguishes them from unrelated parts.
 
 The end-of-run `Muon path totals` lines accumulate these same lengths,
 once per output muon, independently of the number of DIS interactions.

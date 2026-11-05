@@ -10,6 +10,7 @@
 #include <functional>
 #include <limits>
 #include <stdexcept>
+#include <tuple>
 #include <utility>
 
 #include "TGeoBBox.h"
@@ -419,7 +420,8 @@ TVector3 MuGeoProcessor::GetVertex(const TVector3& r1, const TVector3& p1,
 
 void MuGeoProcessor::CheckAllVolumes() {
   std::map<std::string, double> lMap;
-  std::map<std::pair<std::string, std::string>, double> volumeMaterials;
+  std::map<std::tuple<std::string, std::string, std::string>, double>
+      volumeMaterials;
   if (!gGeoManager) {
     LOG(error) << "gGeoManager does not exist!";
     return;
@@ -453,7 +455,10 @@ void MuGeoProcessor::CheckAllVolumes() {
                 currentnode->GetVolume()->GetMedium()->GetMaterial();
             std::string material = geoMaterial->GetName();
             std::string volName = currentnode->GetVolume()->GetName();
-            volumeMaterials.emplace(std::make_pair(volName, material),
+            const auto* mother = gGeoManager->GetMother();
+            const std::string parent =
+                mother ? mother->GetVolume()->GetName() : "";
+            volumeMaterials.emplace(std::make_tuple(volName, material, parent),
                                     geoMaterial->GetDensity());
             // if (volName.find("Tr2") != volName.npos) break;
             volName.append("_");
@@ -486,10 +491,10 @@ void MuGeoProcessor::CheckAllVolumes() {
   std::map<std::string, std::ostringstream> categoryOutput;
   MuonPath path;
   for (const auto& entry : volumeMaterials) {
-    const auto& volName = entry.first.first;
-    const auto& material = entry.first.second;
-    categoryOutput[path.GetLabel(volName, material)]
+    const auto& [volName, material, parent] = entry.first;
+    categoryOutput[path.GetLabel(volName, material, parent)]
         << "  volume=" << volName << ", material=" << material
+        << ", parent=" << parent
         << ", density=" << entry.second << " g/cm^3\n";
   }
   std::ostringstream summary;
@@ -544,6 +549,8 @@ bool MuGeoProcessor::Trace(const Measurement& measurement, double startZ,
     const auto* material = volume->GetMaterial();
     if (!material) break;
     const std::string name = volume->GetName();
+    const auto* mother = gGeoManager->GetMother();
+    const std::string parent = mother ? mother->GetVolume()->GetName() : "";
     const bool shield = fShieldVolumes.count(volume) != 0;
     double limit = remaining;
     if (backward && shield)
@@ -553,7 +560,7 @@ bool MuGeoProcessor::Trace(const Measurement& measurement, double startZ,
     if (!std::isfinite(step) || step < 0.) break;
     if (step > 0.) {
       MuonPath path;
-      path.AddVolume(name, material->GetName(), material->GetDensity());
+      path.AddVolume(name, material->GetName(), material->GetDensity(), parent);
       // Only magnets inside MuonShieldArea belong to the shield category.
       if (path.GetLabel() == "MS" && !shield) path.SetLabel("REST");
       path.SetVertexInfo(measurement.position, measurement.momentum,

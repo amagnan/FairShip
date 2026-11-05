@@ -266,6 +266,8 @@ Bool_t NewMuDISGenerator::ReadEvent(FairPrimaryGenerator* cpg) {
     fDISIndex = fnmuDis;
     // DISxsec is not reliable yet; retain the -1 placeholder.
     fPythiaP = lBr->pPythia;
+    fMuonPathLength = finEv.pathLength;
+    fMuonPathLengthByMat = finEv.pathLengthByMat;
     for (unsigned material = 0; material < nMats; ++material) {
       fNGenerated[material] = finEv.br[material].nDISevtsGenerated;
     }
@@ -299,19 +301,36 @@ Bool_t NewMuDISGenerator::RegisterOutputBranches(TTree* tree) {
     return kFALSE;
   }
   for (const auto* name : {"muDIS_material", "muDIS_muEntry", "muDIS_disIndex",
-                           "muDIS_xsec", "muDIS_pPythia", "muDIS_nGenerated"}) {
+                           "muDIS_xsec", "muDIS_pPythia", "muDIS_nGenerated",
+                           "muon_path_length"}) {
+    if (tree->GetBranch(name)) {
+      LOG(error) << "NewMuDISGenerator: output branch already exists: " << name;
+      return kFALSE;
+    }
+  }
+  for (const auto& label : MatTypeStr) {
+    const TString name = "muon_path_length_" + label;
     if (tree->GetBranch(name)) {
       LOG(error) << "NewMuDISGenerator: output branch already exists: " << name;
       return kFALSE;
     }
   }
   fNormalization.Attach(tree);
-  return tree->Branch("muDIS_material", &fMaterialLabel) &&
-         tree->Branch("muDIS_muEntry", &fMuonEntry, "muDIS_muEntry/I") &&
-         tree->Branch("muDIS_disIndex", &fDISIndex, "muDIS_disIndex/I") &&
-         tree->Branch("muDIS_xsec", &fDISXsec, "muDIS_xsec/D") &&
-         tree->Branch("muDIS_pPythia", &fPythiaP, "muDIS_pPythia/D") &&
-         tree->Branch("muDIS_nGenerated", &fNGenerated);
+  const bool ok = tree->Branch("muDIS_material", &fMaterialLabel) &&
+                  tree->Branch("muDIS_muEntry", &fMuonEntry, "muDIS_muEntry/I") &&
+                  tree->Branch("muDIS_disIndex", &fDISIndex, "muDIS_disIndex/I") &&
+                  tree->Branch("muDIS_xsec", &fDISXsec, "muDIS_xsec/D") &&
+                  tree->Branch("muDIS_pPythia", &fPythiaP, "muDIS_pPythia/D") &&
+                  tree->Branch("muDIS_nGenerated", &fNGenerated) &&
+                  tree->Branch("muon_path_length", &fMuonPathLength,
+                               "muon_path_length/D");
+  if (!ok) return kFALSE;
+  for (unsigned material = 0; material < nMats; ++material) {
+    const TString name = "muon_path_length_" + MatTypeStr[material];
+    if (!tree->Branch(name, &fMuonPathLengthByMat[material], name + "/D"))
+      return kFALSE;
+  }
+  return kTRUE;
 }
 
 void NewMuDISGenerator::ResetOutputBranches() {
@@ -322,6 +341,8 @@ void NewMuDISGenerator::ResetOutputBranches() {
   fDISXsec = -1.;
   fPythiaP = -1.;
   fNGenerated.assign(nMats, -1);
+  fMuonPathLength = -1.;
+  fMuonPathLengthByMat.fill(-1.);
 }
 
 bool NewMuDISGenerator::ValidateEntry(Long64_t entry) const {

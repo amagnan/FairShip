@@ -37,8 +37,8 @@ class MuonPath {
   ~MuonPath() {};
 
   inline void AddVolume(const std::string& aVol, const std::string& aMat,
-                        const double& aD) {
-    flabel = GetLabel(aVol, aMat);
+                        const double& aD, const std::string& aParent = "") {
+    flabel = GetLabel(aVol, aMat, aParent);
     fvolName.push_back(aVol);
     fmaterial.push_back(aMat);
     fdensity = aD;
@@ -131,7 +131,8 @@ class MuonPath {
 
   void SetVertexInfo(const TVector3& vecpos, const TVector3& vecp,
                      const double& time);
-  std::string GetLabel(const std::string& aVol, const std::string& aMat) const;
+  std::string GetLabel(const std::string& aVol, const std::string& aMat,
+                       const std::string& aParent = "") const;
   void Print();
   double GetZ(const double& aZ, unsigned& idx) const;
   double GetZAtLength(double length, unsigned& idx) const;

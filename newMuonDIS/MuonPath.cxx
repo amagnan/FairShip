@@ -93,7 +93,8 @@ double MuonPath::GetZ(const double& aZ, unsigned& idx) const {
 }
 
 std::string MuonPath::GetLabel(const std::string& aVol,
-                               const std::string& aMat) const {
+                               const std::string& aMat,
+                               const std::string& aParent) const {
   //@FIXME AMM-avoid hardcoding, pass by config ?
   std::string label = "REST";
   if (aVol.find("Magn") != aVol.npos)
@@ -120,7 +121,9 @@ std::string MuonPath::GetLabel(const std::string& aVol,
             aVol.find("Tr4_frame") != aVol.npos))
     label = "SSTfr";
   else if ((aVol.find("Veto") != aVol.npos ||
-            aVol.find("vLongitRib") != aVol.npos))
+            aVol.find("vLongitRib") != aVol.npos ||
+            (aVol == "part" && aMat == "Aluminium" &&
+             aParent.find("CornerRib_") == 0)))
     label = "SBTfr";
   else if (aVol.find("LiSc") != aVol.npos)
     label = "SBTsens";
