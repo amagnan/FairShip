@@ -24,6 +24,7 @@ from analyseEvents import (
     write_table,
 )
 from analysisTree import TREE_NAME, validate_tree
+from renderAnalysis import render_archive
 
 
 def check_sources(manifests):
@@ -263,7 +264,7 @@ def merge_events(inputs, output, scale, manifests, expected=None):
 
 def merge(inputs, output, *, save_plots=True, skip_event_records=False, skip_tagger_tracks=False):
     if skip_tagger_tracks:
-        raise ValueError("Output version 7 uses events.root; use --skip-event-records instead of --skip-tagger-tracks")
+        raise ValueError("Event records use events.root; use --skip-event-records instead of --skip-tagger-tracks")
     inputs = [Path(directory).expanduser().resolve() for directory in inputs]
     output = Path(output).expanduser().resolve()
     if not inputs:
@@ -348,12 +349,20 @@ def merge(inputs, output, *, save_plots=True, skip_event_records=False, skip_tag
         plots.save_archive(output / "histograms.npz")
         if save_plots:
             print("Rendering merged plots", flush=True)
-            plots.save(output, scale)
+            render_archive(output / "histograms.npz", output, scale)
         else:
             plots.save_flows(output, scale)
     config = {
         key: reference["config"][key]
-        for key in ("type", "weight_factor", "plot_axes", "geometry_file", "target_sum_weights", "failed_job_factor")
+        for key in (
+            "type",
+            "weight_factor",
+            "cross_section",
+            "plot_axes",
+            "geometry_file",
+            "target_sum_weights",
+            "failed_job_factor",
+        )
         if key in reference["config"]
     }
     config.update(output_dir=str(output), save_plots=save_plots, tree_only=tree_only)

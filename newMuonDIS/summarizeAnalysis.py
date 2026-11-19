@@ -23,6 +23,7 @@ from analyseEvents import (
     write_table,
 )
 from analysisTree import CachedGeometry, event_view, read_records
+from renderAnalysis import render_archive
 
 
 class SavedGeometry(CachedGeometry):
@@ -64,7 +65,7 @@ def summarize(source, output, *, save_plots=True):
     if manifest.get("output_version") != OUTPUT_VERSION or not manifest["analysis_signature"]["type"].startswith(
         "disreplay"
     ):
-        raise ValueError("Expected version-7 replay event tree")
+        raise ValueError(f"Expected version-{OUTPUT_VERSION} replay event tree")
     if manifest["analysis_signature"]["sha256"] != ANALYSIS_SHA256:
         raise ValueError("Analysis code differs from extraction; re-extract with the current selection")
     if "events.root" in manifest.get("omitted_files", []):
@@ -85,7 +86,18 @@ def summarize(source, output, *, save_plots=True):
         geometry = SavedGeometry(cache=record["geometry_cache"])
         pairs.source = diagnostics.source = (record["source_file"], record["file_uuid"], record["source_entry"])
         cutflow = material_counts.setdefault(record["material"], [[0, 0.0, 0.0] for _ in STEPS])
-        replay(event, plots, geometry, pdg, factor, counts, cutflow, pairs, diagnostics)
+        replay(
+            event,
+            plots,
+            geometry,
+            pdg,
+            factor,
+            counts,
+            cutflow,
+            pairs,
+            diagnostics,
+            cross_section=manifest["analysis_signature"].get("cross_section", "constant"),
+        )
         processed += 1
         if processed % 1000 == 0:
             print(f"Summarized {processed}/{manifest['entries_processed']} events", flush=True)
@@ -98,7 +110,7 @@ def summarize(source, output, *, save_plots=True):
     plots.save_archive(output / "histograms.npz")
     if save_plots:
         print("Rendering plots", flush=True)
-        plots.save(output, scale)
+        render_archive(output / "histograms.npz", output, scale)
     else:
         plots.save_flows(output, scale)
     # Keep the large tree in the source directory; these are derived outputs.

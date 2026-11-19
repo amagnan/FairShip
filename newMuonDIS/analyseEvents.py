@@ -19,7 +19,9 @@ from analysisTree import CachedGeometry, NullPlots, TreeWriter
 
 MATERIALS = ("MS", "UBT", "SBTsens", "SBTfr", "SSTsens", "SSTfr", "HE", "AIR", "HeBalloon", "REST")
 TYPES = ("disgen", "disfilter", "disreplay_gen", "disreplay_filter")
-OUTPUT_VERSION = 7
+OUTPUT_VERSION = 8
+# Avogadro constant times mb -> cm^2, for the stored density integral in g/cm^2.
+MB_TO_INTERACTION = 6.02214076e-4
 ANALYSIS_SHA256 = hashlib.sha256(
     Path(__file__).read_bytes() + Path(__file__).with_name("analysisTree.py").read_bytes()
 ).hexdigest()
@@ -49,6 +51,27 @@ def particle_charge(code, pdg):
 
 def is_soft(weight, muon_weight):
     return math.isclose(weight, muon_weight, rel_tol=1.0e-6, abs_tol=0.0)
+
+
+def analytical_cross_section(momentum):
+    """DIS cross section in mb for the Pythia beam momentum in GeV/c."""
+    momentum = float(momentum)
+    if not math.isfinite(momentum) or momentum <= 0:
+        raise ValueError(f"Cross section requires finite positive Pythia momentum, got {momentum}")
+    return 0.0000599 + 0.0002839 * math.log(momentum / 2.0) ** 2
+
+
+def cross_section_mode(config):
+    # Existing configs retain their combined constant factor until explicitly migrated.
+    mode = config.get("cross_section", "constant")
+    if mode not in ("constant", "analytical"):
+        raise ValueError("cross_section must be constant or analytical")
+    return mode
+
+
+def processed_weight(weight, muon_weight, factor, dis_factor=1.0):
+    # Classify using raw weights: a corrected DIS weight can equal a soft weight.
+    return weight * factor * (1.0 if is_soft(weight, muon_weight) else dis_factor)
 
 
 def combine_normalization(inputs):
@@ -816,7 +839,7 @@ class ReplayRecords:
             return None
         return getattr(event, name, None)
 
-    def start_event(self, event, geometry, pdg, factor):
+    def start_event(self, event, geometry, pdg, factor, dis_factor=1.0):
         if self.source is None:
             raise ValueError("Event records require source identity")
         self.event, self.geometry = event, geometry
@@ -835,7 +858,7 @@ class ReplayRecords:
                     "charge_e": particle_charge(code, pdg) / 3.0,
                     "origin": "Soft" if is_soft(weight, muon_weight) else "DIS",
                     "mc_weight": weight,
-                    "weight": weight * factor,
+                    "weight": processed_weight(weight, muon_weight, factor, dis_factor),
                     "start_position_cm": [float(getattr(mc, f"GetStart{axis}")()) for axis in "XYZ"],
                     "start_momentum_GeV": [float(getattr(mc, f"GetP{axis}")()) for axis in "xyz"],
                     "straw_stations": sorted(stations.get(index, ())),
@@ -889,6 +912,8 @@ class ReplayRecords:
             "material": str(event.muDIS_material),
             "geometry_file": str(geometry.path) if getattr(geometry, "path", None) else None,
             "replay_identity": identity,
+            "muDIS_pPythia": None,
+            "muDIS_xsec": None,
             "passed_steps": [False] * len(STEPS),
             "stage_weights": [None] * len(STEPS),
             "particle_counts": {
@@ -1021,8 +1046,9 @@ class ReplayDiagnostics:
                             continue
                         self.counts.setdefault((material, step, sample, window, category), [0, 0.0, 0.0])
 
-    def start_event(self, event, pdg, geometry, factor):
+    def start_event(self, event, pdg, geometry, factor, dis_factor=1.0):
         self.event, self.geometry, self.factor = event, geometry, factor
+        self.dis_factor = dis_factor
         self.stage_weights = {}
         self.muon_weight = float(event.MCTrack[0].GetWeight())
         self.material = str(event.muDIS_material)
@@ -1108,7 +1134,11 @@ class ReplayDiagnostics:
         for index in categories:
             sample = "muon" if index == 0 else "daughter"
             track = self.event.MCTrack[index]
-            track_weight = weight if index == 0 else float(track.GetWeight()) * self.factor
+            track_weight = (
+                weight
+                if index == 0
+                else processed_weight(float(track.GetWeight()), self.muon_weight, self.factor, self.dis_factor)
+            )
             if not math.isfinite(track_weight):
                 raise ValueError(f"Nonfinite diagnostic weight for track {index}")
             if self.writer is not None:
@@ -1161,7 +1191,7 @@ class ReplayDiagnostics:
                         "muon" if index == 0 else "daughter",
                         index,
                         int(track.GetPdgCode()),
-                        float(track.GetWeight()) * self.factor,
+                        processed_weight(float(track.GetWeight()), self.muon_weight, self.factor, self.dis_factor),
                         json.dumps(self.categories(index)),
                         json.dumps(self.hits[index]["UBT"]),
                         json.dumps(self.hits[index]["SBT"]),
@@ -1236,7 +1266,18 @@ class ReplayDiagnostics:
 
 
 def replay(
-    event, plots, geometry, pdg, factor, counts, material_counts=None, pair_counts=None, diagnostics=None, records=None
+    event,
+    plots,
+    geometry,
+    pdg,
+    factor,
+    counts,
+    material_counts=None,
+    pair_counts=None,
+    diagnostics=None,
+    records=None,
+    *,
+    cross_section="constant",
 ):
     if records is not None:
         geometry = CachedGeometry(geometry)
@@ -1247,7 +1288,19 @@ def replay(
         raise ValueError(f"Invalid material label: {material!r}")
     plots.material = material
     try:
-        _replay(event, plots, geometry, pdg, factor, counts, material_counts, pair_counts, diagnostics, records)
+        _replay(
+            event,
+            plots,
+            geometry,
+            pdg,
+            factor,
+            counts,
+            material_counts,
+            pair_counts,
+            diagnostics,
+            records,
+            cross_section,
+        )
     finally:
         plots.material = None
     # _replay returns early when an event fails a cut; flush those events too.
@@ -1256,17 +1309,44 @@ def replay(
         records.finish_event()
 
 
-def _replay(event, plots, geometry, pdg, factor, counts, material_counts, pair_counts, diagnostics, records=None):
+def _replay(
+    event,
+    plots,
+    geometry,
+    pdg,
+    factor,
+    counts,
+    material_counts,
+    pair_counts,
+    diagnostics,
+    records=None,
+    cross_section="constant",
+):
     if not len(event.MCTrack):
         raise ValueError("Replay event has no initial MCTrack[0]")
     muon_weight = float(event.MCTrack[0].GetWeight())
     shared_weight([], muon_weight)  # Validate the incoming-muon weight.
-    diagnostics.start_event(event, pdg, geometry, factor)
+    momentum = sigma = None
+    dis_factor = 1.0
+    if cross_section == "analytical":
+        momentum = ReplayRecords.optional_branch(event, "muDIS_pPythia")
+        if momentum is None:
+            raise ValueError("Analytical cross section requires muDIS_pPythia in replay input")
+        momentum = float(momentum)
+        sigma = analytical_cross_section(momentum)
+        dis_factor = sigma * MB_TO_INTERACTION
+    elif cross_section != "constant":
+        raise ValueError(f"Unknown cross_section: {cross_section}")
+    diagnostics.start_event(event, pdg, geometry, factor, dis_factor)
     if records is not None:
-        records.start_event(event, geometry, pdg, factor)
+        records.start_event(event, geometry, pdg, factor, dis_factor)
+        records.record.update(muDIS_pPythia=momentum, muDIS_xsec=sigma)
+
+    def weight_of(weight):
+        return processed_weight(weight, muon_weight, factor, dis_factor)
 
     def event_weight(weights):
-        return shared_weight(weights, muon_weight, event=True) * factor
+        return weight_of(shared_weight(weights, muon_weight, event=True))
 
     def passed(step, weight, tracks=()):
         for cutflow in (counts,) if material_counts is None else (counts, material_counts):
@@ -1312,11 +1392,11 @@ def _replay(event, plots, geometry, pdg, factor, counts, material_counts, pair_c
         daughters = {t.track_id: t for t in surviving_tracks(candidates) if t.track_id != 0}
         for track in daughters.values():
             plots.one(
-                f"step{step}/daughters/p_GeV", float(np.linalg.norm(track.momentum)), 0, 100, track.weight * factor
+                f"step{step}/daughters/p_GeV", float(np.linalg.norm(track.momentum)), 0, 100, weight_of(track.weight)
             )
         plots.one(f"step{step}/n_pairs", len(candidates), -0.5, 20.5, weight, 21)
         for vertex in candidates:
-            pair_weight = vertex.weight * factor
+            pair_weight = weight_of(vertex.weight)
             pair_passed(step, vertex.tracks, pair_weight, vertex)
             plots.vertex(f"step{step}/vertices", vertex.position, pair_weight)
             plots.one(f"step{step}/doca_cm", vertex.doca, 0, 5, pair_weight)
@@ -1328,7 +1408,7 @@ def _replay(event, plots, geometry, pdg, factor, counts, material_counts, pair_c
             plots.one("step0/n_tracks_all_detectors", len(momenta), -0.5, 20.5, weight, 21)
             plots.one("step0/n_tracks_p_gt_1", len(tracks), -0.5, 20.5, weight, 21)
             for momentum, track_weight in momenta:
-                plots.one("step0/track_p_GeV", momentum, 0, 100, track_weight * factor)
+                plots.one("step0/track_p_GeV", momentum, 0, 100, weight_of(track_weight))
             candidates = [
                 v
                 for v in candidates
@@ -1409,6 +1489,7 @@ def run(config):
 
 def _run(config, output_streams):
     kind = config["type"]
+    cross_section = cross_section_mode(config)
     files = discover(config["production_path"], kind)
     limit = config.get("n_events", -1)
     if isinstance(limit, bool) or not isinstance(limit, int) or limit < -1:
@@ -1515,13 +1596,22 @@ def _run(config, output_streams):
                 pair_counts,
                 diagnostics,
                 records,
+                cross_section=cross_section,
             )
         else:
             for mat in MATERIALS:
                 xyz = [getattr(chain, f"mudis_DISv{axis}_{mat}") for axis in "xyz"]
                 if len({len(values) for values in xyz}) != 1:
                     raise ValueError(f"Inconsistent vertex arrays at entry {entry}, {mat}")
+                if not len(xyz[0]):
+                    continue  # Unused materials have the -1 Pythia momentum sentinel.
                 weight = float(getattr(chain, f"muon_wDIS_{mat}")) * factor
+                if cross_section == "analytical":
+                    name = f"muon_pPythia_{mat}"
+                    momentum = ReplayRecords.optional_branch(chain, name)
+                    if momentum is None:
+                        raise ValueError(f"Analytical cross section requires {name}")
+                    weight *= analytical_cross_section(momentum) * MB_TO_INTERACTION
                 if not math.isfinite(weight):
                     raise ValueError(f"Nonfinite wDIS at entry {entry}, {mat}")
                 for position in zip(*xyz):
@@ -1562,6 +1652,7 @@ def _run(config, output_streams):
                     "sha256": ANALYSIS_SHA256,
                     "type": kind,
                     "weight_factor": factor,
+                    "cross_section": cross_section,
                     "target_sum_weights": float(config["target_sum_weights"])
                     if config.get("target_sum_weights") is not None
                     else None,
@@ -1580,11 +1671,18 @@ def _run(config, output_streams):
                 "entries_available": total,
                 "entries_processed": n,
                 "weight_definition": (
-                    "track fW; pairs count the common muon/DIS factor once; "
-                    "event OR uses muon fW if any soft-soft pair survives, otherwise DIS fW; "
-                    "all stages including filtered baseline use the surviving-pair OR; all multiplied by weight_factor"
-                    if is_replay
-                    else "wDIS * weight_factor"
+                    (
+                        "DIS weights include sigma(pPythia) [mb] * 6.02214076e-4; soft weights do not; "
+                        if cross_section == "analytical"
+                        else ""
+                    )
+                    + (
+                        "track fW; pairs count the common muon/DIS factor once; "
+                        "event OR uses muon fW if any soft-soft pair survives, otherwise DIS fW; "
+                        "all stages including filtered baseline use the surviving-pair OR; all multiplied by weight_factor"
+                        if is_replay
+                        else "wDIS * weight_factor"
+                    )
                 ),
                 "event_record_schema": {
                     "stages": list(STEPS),

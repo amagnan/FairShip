@@ -32,6 +32,7 @@ WALLS = (None, "top", "bottom", "left", "right")
 # S: std::string, L: Long64_t, D: double, vi/vd: vector<int/double>.
 SCHEMA = dict.fromkeys(("source_file", "file_uuid", "material", "geometry_file"), "S")
 SCHEMA.update(dict.fromkeys(("source_entry", "muDIS_muEntry", "muDIS_disIndex", "n_charged", "n_neutral"), "L"))
+SCHEMA.update(muDIS_pPythia="D", muDIS_xsec="D")
 SCHEMA.update(
     passed_steps="vi",
     stage_weights="vd",
@@ -60,6 +61,8 @@ def nullable(value):
 
 def flatten(record):
     values = {name: record[name] or "" for name in ("source_file", "file_uuid", "material", "geometry_file")}
+    for name in ("muDIS_pPythia", "muDIS_xsec"):
+        values[name] = nullable(record[name])
     values["source_entry"] = record["source_entry"]
     for name in ("muDIS_muEntry", "muDIS_disIndex"):
         value = record["replay_identity"][name]
@@ -103,6 +106,8 @@ def flatten(record):
 def unflatten(values):
     """Reconstruct the small Python view used by the existing selection/diagnostics."""
     record = {name: values[name] for name in ("source_file", "file_uuid", "source_entry", "material", "geometry_file")}
+    for name in ("muDIS_pPythia", "muDIS_xsec"):
+        record[name] = None if math.isnan(values[name]) else values[name]
     record["geometry_file"] = record["geometry_file"] or None
     record["replay_identity"] = {
         name: None if values[name] < 0 else values[name] for name in ("muDIS_muEntry", "muDIS_disIndex")
@@ -347,5 +352,10 @@ def event_view(record):
         )
         branches[branch] = [getters(dict(zip(names, hit))) for hit in record["hits"][detector]]
     return SimpleNamespace(
-        MCTrack=tracks, strawtubesPoint=straws, TimeDetPoint=timing, muDIS_material=record["material"], **branches
+        MCTrack=tracks,
+        strawtubesPoint=straws,
+        TimeDetPoint=timing,
+        muDIS_material=record["material"],
+        muDIS_pPythia=record["muDIS_pPythia"],
+        **branches,
     )

@@ -20,9 +20,11 @@ new or empty directories. `run.json` is written last to mark successful completi
 
 ## Prepared vertices
 
-Generation/filter analysis is unchanged: read `mudis_DISvx/y/z_<material>` and
+Generation/filter analysis reads `mudis_DISvx/y/z_<material>` and
 `muon_wDIS_<material>`. Each vertex fills x-versus-z, y-versus-z and y-versus-x
-histograms once, with weight `wDIS * weight_factor`. `vertex_counts.csv` records
+histograms once, with weight `wDIS * weight_factor`, additionally multiplied by
+the analytical interaction factor below when enabled. Its momentum comes from
+`muon_pPythia_<material>`. Empty material samples are skipped. `vertex_counts.csv` records
 counts, sums of weights and sums of squared weights per material.
 
 ## Replay input and four-stage selection
@@ -75,6 +77,7 @@ The small completion/normalization manifest remains `run.json`.
 | `source_file`, `file_uuid`, `source_entry` | Original file identity and local tree entry |
 | `material`, `geometry_file`, `muDIS_muEntry`, `muDIS_disIndex` | Material, geometry reference and replay identity (missing IDs are -1) |
 | `passed_steps`, `stage_weights` | Four stage flags and event weights; unreached weights are NaN |
+| `muDIS_pPythia`, `muDIS_xsec` | Pythia beam momentum in GeV/c and analytical cross section in mb; NaN in legacy constant mode |
 | `n_charged`, `n_neutral` | Initial DIS product multiplicities |
 | `selected_track_1`, `selected_track_2` | Four best-pair MCTrack IDs, ordered ascending; -1 for unreached stages |
 | `p1_GeV`, `p2_GeV` | Four best-pair momentum magnitudes, measured at the first Tr1/Tr2 hit |
@@ -220,12 +223,57 @@ Summary tables retain counts, sum of weights and sum of squared weights:
 per-bin sum of squared weights. `plot_axes` changes position ranges, not cuts.
 PDF/PNG rendering is optional; `--no-plots` still writes all data and tables.
 
+Merger and summary rendering reads the saved `histograms.npz`. PDF heatmaps are
+rasterized at 300 dpi; axes, labels and 1D curves remain vector graphics. PNG
+rendering and histogram contents are unchanged. Progress is printed every 25
+histograms.
+
+To render an existing summary without reading `events.root` or repeating analysis:
+
+```bash
+pixi cvmfs python -u newMuonDIS/renderAnalysis.py analysis/summary/histograms.npz \
+    --output-dir analysis/summary_rendered
+```
+
+The input may also be the summary directory. The renderer accepts version-7 and
+version-8 histogram archives and uses the adjacent `run.json` normalization scale
+for scaled plots. It does not require ROOT or the extraction's analysis-code
+signature. The output directory must be new or empty and distinct from the input;
+it receives `plots/` and `histogram_flows.csv`.
+
+For an archive without `run.json` (including an interrupted rendering), pass
+`--scale VALUE` to supply its normalization scale, or `--unscaled` to write only
+unweighted and weighted plots. `--scale` can also override the saved scale.
+
 ## Weights, normalization and merging
 
-Track weights are raw fW times `weight_factor`. Pair weights count the shared
+The example configuration replaces the old combined `weight_factor: 3.6e-6` with:
+
+```yaml
+cross_section: analytical
+weight_factor: 1.0
+```
+
+The Python analysis evaluates
+`sigma_mb = 0.0000599 + 0.0002839 * math.log(p / 2.0)**2`, with natural log
+and `p = muDIS_pPythia` in GeV/c for replay. This is the momentum actually used
+to initialize Pythia, not the incoming MCTrack momentum or a daughter's momentum.
+DIS weights become `raw_fW * sigma_mb * 6.02214076e-4 * weight_factor`.
+The conversion is Avogadro's constant times `1e-27 cm²/mb`, for the stored
+density/path integral in g/cm² and a cross section per nucleon.
+Soft tracks keep `raw_fW * weight_factor`; they do not acquire a DIS interaction
+probability. Do not retain `3.6e-6` in analytical mode: `weight_factor` is now
+only an additional multiplier. Existing configs that omit `cross_section`, or
+set it to `constant`, retain the previous weight-factor-only calculation.
+Missing, nonfinite or nonpositive Pythia momenta fail analytical analysis;
+there is no fallback to a different momentum or the production's `muDIS_xsec=-1`.
+
+Pair weights count the shared
 DIS/muon factor once. At **every stage, including stage 0**, the event weight
 uses the incoming muon's fW if any surviving pair is Soft-Soft; otherwise it
-uses the common DIS weight. The factor is applied once. Weighted cutflows can
+uses the common DIS weight, including the analytical interaction factor when enabled.
+Soft/DIS classification always uses original weights, before applying corrections.
+The factor is applied once. Weighted cutflows can
 therefore change when the last Soft-Soft pair fails, while raw event counts
 remain nested. Original unselected preparation normalization remains intact.
 
@@ -251,10 +299,12 @@ Material histograms and aggregate tables are merged when present.
 Use `--skip-event-records` to retain only histograms and aggregate tables;
 `run.json` records the omission. A further merge of a reduced result requires
 the same explicit option. This option is invalid for tree-only inputs.
-Version-5/6 outputs must be regenerated: version 7 changes the multiplicity
-meaning and adds per-stage pair information, so old JSON outputs cannot be
-mixed with the new trees. No speedup is assumed from JSON compression alone;
-the key change is avoiding Python decoding/re-encoding during tree merging.
+Version-7 and older analysis outputs must be regenerated: version 8 adds the
+analytical cross section and Pythia momentum branches. Production simulation
+files remain unchanged; no library rebuild or simulation rerun is needed.
+The analysis signature records the cross-section mode and rejects incompatible
+merges. Summaries recompute weights once from the saved raw track weights and
+Pythia momentum, preserving the original preparation normalization.
 
 The 20 cm entrance-window selection adds `entrance_clearance_*` cache branches.
 Regenerate analysis outputs made with the earlier selection before merging or
