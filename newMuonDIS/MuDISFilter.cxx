@@ -565,7 +565,7 @@ void MuDISFilter::ConfigureFilterGeometry(
     unsigned option, const MagneticTrackPropagator& propagator) {
   if (option == 1) {
     const std::array<const char*, 5> names = {"Tr1", "Tr2", "Tr3", "Tr4",
-                                              "TimingDetector"};
+                                              "Timing Detector"};
     std::array<double, 5> planes;
     std::array<std::array<double, 4>, 5> bounds;
     for (unsigned i = 0; i < names.size(); ++i) {
@@ -576,7 +576,7 @@ void MuDISFilter::ConfigureFilterGeometry(
     fStationXY = bounds;
   } else if (option == 2) {
     const double front = propagator.GetVolumeZRange("Tr1").first;
-    const double end = propagator.GetVolumeZRange("TimingDetector").second;
+    const double end = propagator.GetVolumeZRange("Timing Detector").second;
     if (front >= end)
       throw std::runtime_error(
           "Timing detector end must be downstream of the Tr1 front");
@@ -823,8 +823,8 @@ void MuDISFilter::SetDetectorAcceptance(ShipBFieldMap* field,
     throw std::invalid_argument("Detector z must be finite");
   fTr1Z = propagator->GetPlaneZ("Tr1");
   try {
-    fTimingDetectorZ = propagator->GetPlaneZ("TimingDetector");
-    fTimingDetectorXY = propagator->GetVolumeExitFaceXY("TimingDetector");
+    fTimingDetectorZ = propagator->GetPlaneZ("Timing Detector");
+    fTimingDetectorXY = propagator->GetVolumeExitFaceXY("Timing Detector");
   } catch (const std::runtime_error&) {
     fTimingDetectorZ = std::numeric_limits<double>::quiet_NaN();
   }

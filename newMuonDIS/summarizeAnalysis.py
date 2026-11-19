@@ -25,6 +25,36 @@ from analyseEvents import (
 from analysisTree import CachedGeometry, event_view, read_records
 
 
+class SavedGeometry(CachedGeometry):
+    """Read saved clearances despite roundoff when recomputing pair vertices."""
+
+    # Ten nanometres: an absolute bound, independent of the detector coordinates.
+    POSITION_TOLERANCE_CM = 1.0e-6
+
+    def _saved_clearance(self, position, values, name):
+        key = tuple(map(float, position))
+        if key in values:
+            return values[key]
+        matches = [
+            value
+            for saved, value in values.items()
+            if all(abs(a - b) <= self.POSITION_TOLERANCE_CM for a, b in zip(key, saved))
+        ]
+        # A truth point and a reconstructed vertex can coincide. Multiple nearby
+        # entries are safe only when they agree on the saved clearance exactly.
+        if matches and all(value == matches[0] for value in matches):
+            return matches[0]
+        if matches:
+            raise ValueError(f"Ambiguous saved {name} for {key}")
+        raise ValueError(f"Missing saved {name} for {key}")
+
+    def clearance(self, position):
+        return self._saved_clearance(position, self.clearances, "clearance")
+
+    def entrance_clearance(self, position):
+        return self._saved_clearance(position, self.entrance_clearances, "entrance clearance")
+
+
 def summarize(source, output, *, save_plots=True):
     source, output = Path(source).expanduser().resolve(), Path(output).expanduser().resolve()
     if output == source or (output.exists() and any(output.iterdir())):
@@ -52,7 +82,7 @@ def summarize(source, output, *, save_plots=True):
         event = event_view(record)
         charges = {track["pdg_id"]: track["charge_e"] * 3 for track in record["tracks"]}
         pdg = SimpleNamespace(GetParticle=lambda code, charges=charges: SimpleNamespace(Charge=lambda: charges[code]))
-        geometry = CachedGeometry(cache=record["geometry_cache"])
+        geometry = SavedGeometry(cache=record["geometry_cache"])
         pairs.source = diagnostics.source = (record["source_file"], record["file_uuid"], record["source_entry"])
         cutflow = material_counts.setdefault(record["material"], [[0, 0.0, 0.0] for _ in STEPS])
         replay(event, plots, geometry, pdg, factor, counts, cutflow, pairs, diagnostics)

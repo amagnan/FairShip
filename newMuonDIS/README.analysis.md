@@ -33,20 +33,20 @@ The original six-stage numbering has been replaced:
 
 | Stage | Cumulative requirement |
 | --- | --- |
-| 0 | Filtered input: at least two tracks with Tr1–4 + TD hits and p > 1 GeV/c; at least one opposite-sign backward pair with DOCA < 5 cm and reconstructed vertex inside decay helium |
+| 0 | Filtered input: at least two tracks with (Tr1 or Tr2) + (Tr3 or Tr4) + TD hits and p > 1 GeV/c; at least one opposite-sign backward pair with DOCA < 5 cm and reconstructed vertex inside decay helium |
 | 1 | At least one of those pairs also has DOCA < 1 cm, helium clearance >= 5 cm and entrance-window clearance >= 20 cm |
 | 2 | At least one surviving pair has target-plane IP < 250 cm |
 | 3 | At least one surviving pair has target-plane IP < 10 cm |
 
 Hits are associated by MCTrack index. Straw stations are decoded as
 `GetDetectorID() // 1000000`. Position and momentum are taken from the
-smallest-z Tr1 hit. Pairs use the same backward straight-line closest-approach
+smallest-z hit in Tr1 or Tr2 (Tr2 is used when Tr1 is absent). Pairs use the same backward straight-line closest-approach
 calculation as the filter. Containment requires material `helium` under
 `DecayVolume`; ROOT navigator safety supplies clearance, including endcaps.
 The entrance-window clearance is measured from the flat upstream helium face,
 independently of the 5 cm clearance to other boundaries.
 IP is the transverse distance from the target axis at z=0, using the summed
-Tr1 momentum. All distances are in cm and momenta in GeV/c.
+Tr1/Tr2 reference momentum. All distances are in cm and momenta in GeV/c.
 
 An event passes a stage when any pair survives; the leading pair does not
 control selection. The **leading pair** is the pair with the smallest DOCA
@@ -54,7 +54,7 @@ at the furthest stage reached by the event. Ties are resolved by ascending
 MCTrack IDs. The best pair is stored independently at each passed stage, so changes in pair choice are retained.
 Only this best pair is saved per stage, not an individual record for every
 passing pair. All passing pairs contribute to pair cutflows and general pair
-histograms. The saved tracks retain their Tr1 states and stage participation
+histograms. The saved tracks retain their Tr1/Tr2 reference states and stage participation
 masks, but those masks do not encode which tracks were paired together.
 
 Geometry defaults to the matching `geo_` file beside each `sim_` file and is
@@ -77,7 +77,7 @@ The small completion/normalization manifest remains `run.json`.
 | `passed_steps`, `stage_weights` | Four stage flags and event weights; unreached weights are NaN |
 | `n_charged`, `n_neutral` | Initial DIS product multiplicities |
 | `selected_track_1`, `selected_track_2` | Four best-pair MCTrack IDs, ordered ascending; -1 for unreached stages |
-| `p1_GeV`, `p2_GeV` | Four best-pair momentum magnitudes, measured at Tr1 |
+| `p1_GeV`, `p2_GeV` | Four best-pair momentum magnitudes, measured at the first Tr1/Tr2 hit |
 | `doca_cm`, `target_ip_cm`, `vertex_{x,y,z}_cm` | Best-pair reconstruction at each stage |
 | `common_ancestor_id`, `common_ancestor_pdg` | Nearest shared ancestor for each best pair; absent is -1/0 |
 | `track_*` | All stored MCTracks, indexed by original MCTrack ID |
@@ -103,7 +103,8 @@ identifies the particular MCTrack. Invalid cyclic/out-of-range ancestry fails.
 `track_pdg_id`, `track_mother_id`, `track_charge_e`, `track_soft`, `track_mc_weight`
 and `track_weight` describe each track. Position/momentum components are
 `track_{start_position_cm,start_momentum_GeV,tr1_position_cm,tr1_momentum_GeV}_{x,y,z}`.
-Missing Tr1 states use NaN. `track_station_mask` has bit N for straw station N,
+The historical `tr1_*` names store the smallest-z Tr1/Tr2 state;
+if neither station has a hit, the state uses NaN. `track_station_mask` has bit N for straw station N,
 `track_has_timing_hit` and `track_selected` retain detector selection, and
 `track_stage_mask` has bit N when the track participates in any surviving pair
 at stage N. Thus selected daughter momenta can be read directly by masking the

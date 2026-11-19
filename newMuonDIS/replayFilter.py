@@ -74,7 +74,7 @@ def filter_file(root, input_file, output_file, geometry_file=None, start_event=0
             "events_processed": stop - start_event,
             "events_two_tracks": 0,
             "events_selected": 0,
-            "selection": "Tr1-4 + TD, p > 1 GeV/c; at least one opposite-sign pair with "
+            "selection": "(Tr1 or Tr2) + (Tr3 or Tr4) + TD, p > 1 GeV/c; at least one opposite-sign pair with "
             "backward vertex, DOCA < 5 cm, inside decay helium; no clearance or IP cut",
         }
         print(f"Processing entries [{start_event}, {stop}) of {total}: {input_path}", flush=True)

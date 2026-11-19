@@ -24,7 +24,7 @@ ANALYSIS_SHA256 = hashlib.sha256(
     Path(__file__).read_bytes() + Path(__file__).with_name("analysisTree.py").read_bytes()
 ).hexdigest()
 STEPS = (
-    "filtered input: Tr1-4 + TD, p > 1 GeV/c; opposite sign, backward vertex, DOCA < 5 cm, inside decay helium",
+    "filtered input: (Tr1 or Tr2) + (Tr3 or Tr4) + TD, p > 1 GeV/c; opposite sign, backward vertex, DOCA < 5 cm, inside decay helium",
     "DOCA < 1 cm, helium wall clearance >= 5 cm and entrance window clearance >= 20 cm",
     "target-plane IP < 250 cm",
     "target-plane IP < 10 cm",
@@ -235,7 +235,7 @@ def make_vertex(a, b):
     """Closest points of two lines; accept only backward extrapolations.
 
     Parallel lines have no unique vertex and are rejected. The vertex is the
-    midpoint of the closest points, with the sum of momenta measured at Tr1.
+    midpoint of the closest points, with the sum of momenta measured at the first Tr1/Tr2 hit.
     """
     u = a.momentum / np.linalg.norm(a.momentum)
     v = b.momentum / np.linalg.norm(b.momentum)
@@ -261,7 +261,7 @@ def target_ip(vertex):
 
 
 def detector_track_states(event):
-    """Associate detector coverage and the smallest-z Tr1 state by MCTrack ID."""
+    """Associate detector coverage and the smallest-z Tr1/Tr2 state by MCTrack ID."""
     stations, first = {}, {}
     count = len(event.MCTrack)
     for hit in event.strawtubesPoint:
@@ -269,7 +269,7 @@ def detector_track_states(event):
         if not 0 <= index < count or station not in (1, 2, 3, 4):
             continue
         stations.setdefault(index, set()).add(station)
-        if station == 1 and (index not in first or hit.GetZ() < first[index][0][2]):
+        if station in (1, 2) and (index not in first or hit.GetZ() < first[index][0][2]):
             first[index] = (
                 np.array([hit.GetX(), hit.GetY(), hit.GetZ()]),
                 np.array([hit.GetPx(), hit.GetPy(), hit.GetPz()]),
@@ -278,16 +278,21 @@ def detector_track_states(event):
     return stations, first, timing
 
 
+def has_tracking_pairs(stations):
+    """Require at least one station before and after the spectrometer magnet."""
+    return bool(stations & {1, 2} and stations & {3, 4})
+
+
 def selected_tracks(event, pdg):
-    """Associate hits by MCTrack index; use the smallest-z Tr1 hit per track."""
+    """Associate hits by MCTrack index; use the smallest-z Tr1/Tr2 hit per track."""
     stations, first, timing = detector_track_states(event)
     tracks, momenta = [], []
     for index, seen in stations.items():
-        if seen != {1, 2, 3, 4} or index not in timing:
+        if not has_tracking_pairs(seen) or index not in timing:
             continue
         position, momentum = first[index]
         if not np.all(np.isfinite(position)) or not np.all(np.isfinite(momentum)):
-            raise ValueError("Nonfinite Tr1 measurement")
+            raise ValueError("Nonfinite Tr1/Tr2 measurement")
         p = float(np.linalg.norm(momentum))
         weight = float(event.MCTrack[index].GetWeight())
         if not math.isfinite(weight):
@@ -835,11 +840,12 @@ class ReplayRecords:
                     "start_momentum_GeV": [float(getattr(mc, f"GetP{axis}")()) for axis in "xyz"],
                     "straw_stations": sorted(stations.get(index, ())),
                     "has_timing_hit": index in timing,
+                    # Historical field names retain the first Tr1/Tr2 state.
                     "tr1_position_cm": state[0].tolist() if state else None,
                     "tr1_momentum_GeV": state[1].tolist() if state else None,
                     "selected": bool(
                         state is not None
-                        and stations[index] == {1, 2, 3, 4}
+                        and has_tracking_pairs(stations[index])
                         and index in timing
                         and np.linalg.norm(state[1]) > 1.0
                     ),

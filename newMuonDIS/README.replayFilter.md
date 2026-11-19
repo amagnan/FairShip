@@ -21,10 +21,10 @@ analysis discovery, and keep original and selected productions separate.
 
 The selection reuses the helpers in `analyseEvents.py`:
 
-1. Require at least two distinct MC tracks with hits in all four straw stations
+1. Require at least two distinct MC tracks with hits in `(Tr1 or Tr2)` and `(Tr3 or Tr4)`
    and the timing detector, each with momentum **strictly greater than 1 GeV/c**.
-   Position and momentum come from the smallest-z Tr1 hit. This is the analysis
-   original step1 requirement, now part of the filtered analysis baseline.
+   Position and momentum come from the smallest-z hit in Tr1 or Tr2.
+   Tr2 supplies the state when no Tr1 hit is present.
 2. Form unordered pairs of these tracks. Keep the event if at least one pair
    has opposite charges, a valid backward straight-line vertex, **DOCA < 5 cm**,
    and its reconstructed vertex inside helium under `DecayVolume`.
