@@ -61,6 +61,14 @@ class MuDISFilter {
   MuDISFilter(const MuDISFilter&) = delete;
   MuDISFilter& operator=(const MuDISFilter&) = delete;
 
+  // Configure before processing; defaults to every stored category.
+  void SetMaterials(const std::vector<std::string>& names) {
+    fMaterials.SetMaterials(names);
+  }
+  std::vector<std::string> GetMaterials() const {
+    return fMaterials.GetMaterials();
+  }
+
   // Generic filter on daughter particles
   using Filter = std::function<bool(const std::vector<DISparticle>&)>;
   void SetFilter(Filter filter) { fFilter = std::move(filter); }
@@ -135,8 +143,7 @@ class MuDISFilter {
                Histograms* filtered);
   static constexpr unsigned kMomentumBins = 4;
   static constexpr unsigned kPtBins = 5;
-  static constexpr unsigned kEfficiencyMaterials =
-      ShipMuDIS::nMats - 1;  // Exclude REST.
+  static constexpr unsigned kEfficiencyMaterials = ShipMuDIS::nMats;
   using EfficiencyMaps =
       std::array<std::array<std::array<TH2D*, kEfficiencyMaterials>, kPtBins>,
                  kMomentumBins>;
@@ -156,6 +163,7 @@ class MuDISFilter {
                                       double pt, double x, double y, double z,
                                       double weight, bool passed);
   unsigned fMinChargedDaughters = 2;
+  ShipMuDIS::MaterialSelection fMaterials;
   unsigned fFilterOption = 0;
   std::array<std::array<double, 4>, 5> fStationXY = {};
   std::array<double, 4> fTimingDetectorXY = {};

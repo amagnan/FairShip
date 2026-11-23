@@ -22,7 +22,7 @@ This folder contains the necessary processors to create DIS events from input mu
     - Helium "HE"
     - Air "AIR" from before and after UBT, after balloon, cavern, SST
     - the He balloon liner "HeBalloon"
-    - The rest "REST" anything not taken into account in the previous categories. No DIS events are made in REST.
+    - The rest "REST" anything not taken into account in the previous categories. DIS generation in REST is disabled by default.
     - to add material or change categories, edit top part of MuDISDefs.h file, and method GetLabel() in MuonPath.cxx
   - the weight wDIS does not include the cross section, this will be provided for analysis by an external tool. It is defined as (muon_initial_weight * density * length / number_of_DIS_events_per_input)
 - Replay: NewMuDISGenerator class, called from the main macro/run_simScript.py file with option NewMuDIS. The selected DIS muon is added first with `wantTracking=false`. Its soft daughters are added up to the DIS vertex, retaining the existing tracking cut at z < 12000 cm. Companion muons are added with their original weights, `wantTracking=true` and `motherId=0`. The postprocessor in python/MuDISGenerator_postProcessing.py restores only the DIS muon's hits before the DIS vertex, referencing `MCTrack[0]`.
@@ -41,6 +41,42 @@ python3 <relative_path_to_FairShip>/FairShip/newMuonDIS/prepareEvents.py -f <you
 python3 <path_to_FairShip>/newMuonDIS/filterEvents.py -f <your_output_root_file_name>.root -o selected.root -g <your_geometry_file.root>
 python3 <path_to_FairShip>/macro/run_simScript.py -f selected.root --tag <your_tag> --NewMuDIS --debug 1 -n 10
 ```
+
+Select the DIS material categories at runtime with `--materials` (alias
+`--dis-materials`), followed by space-separated, case-sensitive labels:
+
+```bash
+pixi cvmfs python -u newMuonDIS/prepareEvents.py -f input.root -o prepared.root -g geometry.root --materials MS HE HeBalloon
+pixi cvmfs python -u newMuonDIS/filterEvents.py -f prepared.root -o selected.root -g geometry.root --materials HE HeBalloon
+pixi cvmfs python -u macro/run_simScript.py --NewMuDIS -f selected.root --tag helium --materials HE
+```
+
+Valid labels are `MS UBT SBTsens SBTfr SSTsens SSTfr HE AIR HeBalloon REST`.
+These are the existing geometry categories, not arbitrary ROOT material names.
+Unknown, duplicate and empty selections are rejected. Input order does not
+change the canonical replay order. No recompilation is needed to select a subset.
+Adding a new category still requires updating the geometry classification and
+branch definitions.
+
+Without this option, preparation generates in all categories except `REST`;
+filtering and replay use all stored categories. `REST` can be explicitly selected
+for generation. Filtering retains only interactions in the requested categories
+that pass its cuts; replay counts and transports only requested categories.
+Analysis scripts already read the stored interactions, so no repeated selection
+is needed there.
+
+All category branches and path-length diagnostics remain present. Unselected
+categories have zero generated interactions in preparation (`nDISGenerated` is
+zero if crossed and -1 if unvisited, and `pPythia` stays -1). Filtering preserves
+the original generation counts, momentum and weights even for categories it
+removes. `muon_path_length` remains the sum over all non-REST categories,
+independent of the selection.
+
+C++/PyROOT callers use `SetMaterials({"HE", "HeBalloon"})` on `MuDISProcessor`,
+`MuDISFilter`, or `NewMuDISGenerator`; in Python pass a list instead of braces.
+Call it before processing (before `Init` for replay). `GetMaterials()` returns
+the active selection; the existing static `GetMaterialNames()` still returns
+the full branch/category registry.
 
 For this generator, `-i/--firstEvent` (or `NewMuDISGenerator::Init`'s
 `startEvent`) is a zero-based **muon entry** in the supplied `MuonDIS`
@@ -237,7 +273,8 @@ uses the restricted sampling interval, not the full shield trajectory.
 `HeBalloon` groups the helium balloon liner walls and both lids. In the veto
 geometry these are the skin of the `HeBalloon` volume around `decay_medium`;
 the helium gas remains in `HE`. The liner has its own DIS branches and filter
-histograms. `REST` remains the last category and is excluded from DIS generation.
+histograms. `REST` remains the last category and is excluded from DIS generation
+unless explicitly selected with `--materials`.
 
 ## DIS events settings
 
@@ -271,7 +308,7 @@ geometry scan (also available as `MuDISProcessor::CheckAllVolumes()`).
 
 - branches muon_* : input muon information. Size: number of entries processed.
 - branch `muon_nDISevt_<VOL>`: number of DIS interactions stored for each volume; after filtering, this is the number of surviving interactions.
-- branch `muon_nDISGenerated_<VOL>`: actual number of generated interactions before filtering, copied unchanged by the filter (including repeated filtering). `-1` means the muon never crossed the material; `0` means it crossed but no interactions were generated (including REST, where generation is disabled).
+- branch `muon_nDISGenerated_<VOL>`: actual number of generated interactions before filtering, copied unchanged by the filter (including repeated filtering). `-1` means the muon never crossed the material; `0` means it crossed but no interactions were generated (including unselected categories).
 - branch `muon_pPythia_<VOL>`: scalar beam momentum passed to Pythia6 in GeV/c, taken from the first path slice in that material. Set to `-1` when Pythia is not initialized for that material.
 - vector branches mudis_*: DIS events information for each material. The vector size is variable and is determined by the actual per-entry `muon_nDISevt_<VOL>` count.
 - branches mudis_DISproducts_* : all DIS daughters in each material <VOL>, with all DIS events stored together. Use `mudis_nDISdaughters_<VOL>` to determine the actual daughter ranges per DIS event.

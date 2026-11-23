@@ -97,6 +97,14 @@ def main():
     )
     parser.add_argument("-o", "--outputfile", required=True, help="New ROOT file (must not exist)")
     parser.add_argument(
+        "--materials",
+        "--dis-materials",
+        nargs="+",
+        metavar="CATEGORY",
+        help="DIS categories to retain (space-separated; default: all stored categories). "
+        "Choices: MS UBT SBTsens SBTfr SSTsens SSTfr HE AIR HeBalloon REST",
+    )
+    parser.add_argument(
         "-n",
         "--n_events",
         type=int,
@@ -269,8 +277,10 @@ def main():
     # Measure library initialization and filtering, excluding input discovery.
     wall_start = time.perf_counter()
     cpu_start = time.process_time()
+    print("Loading ShipMuDIS", flush=True)
     if ROOT.gSystem.Load("libShipMuDIS.so") < 0:
         raise RuntimeError("Cannot load libShipMuDIS.so")
+    print("ShipMuDIS loaded", flush=True)
     if args.debug == 0:
         ROOT.gErrorIgnoreLevel = ROOT.kWarning
     ROOT.gInterpreter.ProcessLine('#include "FairLogger.h"')
@@ -285,6 +295,12 @@ def main():
     else:
         ROOT.gInterpreter.ProcessLine('fair::Logger::SetConsoleSeverity("debug2");')
     selection = ROOT.MuDISFilter()
+    if args.materials is not None:
+        try:
+            selection.SetMaterials(args.materials)
+        except Exception as error:
+            parser.error(str(error))
+    logging.info("DIS material categories: %s", ", ".join(str(name) for name in selection.GetMaterials()))
     selection.init(args.n_events, args.start_event)
     selection.SetFilterOption(args.filter_option)
     selection.SetDetailedHistograms(args.detailed_histograms)

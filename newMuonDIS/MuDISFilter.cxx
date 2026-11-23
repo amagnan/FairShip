@@ -427,6 +427,7 @@ void MuDISFilter::process_file(const std::vector<std::string>& input,
       while (reader.Next()) {
         ++scanned;
         for (unsigned imat = 0; imat < nMats; ++imat) {
+          if (!fMaterials.Contains(imat)) continue;
           const auto* values = vz[imat]->Get();
           if (!values || vz[imat]->GetSetupStatus() < 0 ||
               vz[imat]->GetReadStatus() !=
@@ -975,6 +976,7 @@ void MuDISFilter::ProcessEvents() {
       out.wDIS = in.wDIS;
       out.nDISevtsGenerated = in.nDISevtsGenerated;
       out.pPythia = in.pPythia;
+      if (!fMaterials.Contains(imat)) continue;
       std::size_t offset = 0;
       for (int idis = 0; idis < in.nDISevts; ++idis) {
         const auto endOffset = offset + in.nDISdau->at(idis);

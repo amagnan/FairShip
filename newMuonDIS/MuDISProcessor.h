@@ -28,6 +28,13 @@ class MuDISProcessor {
             const int& aDIS, const int& aSeed, const double& aZmax,
             const double& aZmin = 2500);
   void initPythia6();
+  // Configure before processing; defaults to every category except REST.
+  void SetMaterials(const std::vector<std::string>& names) {
+    fMaterials.SetMaterials(names);
+  }
+  std::vector<std::string> GetMaterials() const {
+    return fMaterials.GetMaterials();
+  }
 
   void rotate(const TVector3& pvec, const double& theta, const double& phi,
               TVector3& newp);
@@ -61,6 +68,7 @@ class MuDISProcessor {
   void ProcessMuons();
 
  private:
+  ShipMuDIS::MaterialSelection fMaterials{false};
   TChain* ftree;
   ShipMuDIS::CBMSimBranches finEv;
 

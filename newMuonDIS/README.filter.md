@@ -165,7 +165,8 @@ selection in each material directory:
 
 Each material also retains `filter_counts`. The weighted XY efficiency
 numerators and denominators are retained for every p/pT/material bin.
-This is 360 histograms with the default material and kinematic bins.
+This is 400 histograms with the default material and kinematic bins, including
+`REST` for samples that explicitly enable generation there with `--materials`.
 `--detailed-histograms` (or `SetDetailedHistograms(true)` in C++) additionally
 books the older redundant projections, raw PDG and momentum-fraction plots,
 and the per-XY-cell z efficiency numerators/denominators. All files in a merge

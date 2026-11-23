@@ -36,6 +36,11 @@ class NewMuDISGenerator : public SHiP::Generator {
   Int_t GetNevents();  // DIS interactions in the selected input muon range
   // Material labels in replay order, exposed in a PyROOT-compatible container.
   static std::vector<std::string> GetMaterialNames();
+  // Configure before Init; defaults to every stored category.
+  void SetMaterials(const std::vector<std::string>& names);
+  std::vector<std::string> GetMaterials() const {
+    return fMaterials.GetMaterials();
+  }
   // Limit input muons from startEvent (-1: all, 0: none), also before Init.
   // GetNevents() is -1 if counting/validation fails.
   void SetNevents(int nMuons = -1);
@@ -46,6 +51,7 @@ class NewMuDISGenerator : public SHiP::Generator {
   Int_t GetMaterial() const { return fDISMaterial; }
 
  protected:
+  ShipMuDIS::MaterialSelection fMaterials;
   FairLogger* fLogger;
   TChain* fTree;
   int fNevents;

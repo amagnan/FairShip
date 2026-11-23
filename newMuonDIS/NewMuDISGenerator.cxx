@@ -47,6 +47,12 @@ Bool_t NewMuDISGenerator::Init(const char* fileName) {
   return Init(fileName, 0);
 }
 
+void NewMuDISGenerator::SetMaterials(const std::vector<std::string>& names) {
+  if (fTree)
+    throw std::logic_error("Set DIS materials before NewMuDISGenerator::Init");
+  fMaterials.SetMaterials(names);
+}
+
 Bool_t NewMuDISGenerator::Init(const std::vector<std::string>& fileNames) {
   return Init(fileNames, 0);
 }
@@ -160,7 +166,7 @@ Bool_t NewMuDISGenerator::ReadEvent(FairPrimaryGenerator* cpg) {
   // accessing by reference leads to sometimes vectors inside branch being reset
   MuonDISInBranches* lBr = &finEv.br[fMat];
   LOG(debug) << "Initial branch: " << lBr->Print(fn, MatTypeStr[fMat]).str();
-  int nDIS = lBr->nDISevts;
+  int nDIS = fMaterials.Contains(fMat) ? lBr->nDISevts : 0;
   LOG(debug) << " nDIS " << nDIS << " DISparticles size "
              << (*lBr->DISparticles).size() << " fMat " << fMat
              << " local evtNumber " << fn;
@@ -194,7 +200,7 @@ Bool_t NewMuDISGenerator::ReadEvent(FairPrimaryGenerator* cpg) {
     }
     lBr = &finEv.br[fMat];
     LOG(debug) << "Updating branch: " << lBr->Print(fn, MatTypeStr[fMat]).str();
-    nDIS = lBr->nDISevts;
+    nDIS = fMaterials.Contains(fMat) ? lBr->nDISevts : 0;
   }
 
   if (fnmu % 10 == 0 && fnmuDis == 0) {
@@ -385,7 +391,9 @@ void NewMuDISGenerator::SetNevents(int nMuons) {
     }
     fNormalization.Add(finEv.mcTrks->at(0).GetWeight());
     if (!ValidateEntry(iEv)) return;
-    for (const auto& br : finEv.br) {
+    for (unsigned material = 0; material < nMats; ++material) {
+      if (!fMaterials.Contains(material)) continue;
+      const auto& br = finEv.br[material];
       if (br.nDISevts > std::numeric_limits<int>::max() - total) {
         LOG(error) << "NewMuDISGenerator: DIS event count exceeds Int_t range";
         return;

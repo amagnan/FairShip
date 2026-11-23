@@ -8,6 +8,7 @@
 #include <array>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -46,6 +47,43 @@ enum MatType {
 inline const std::array<TString, nMats> MatTypeStr = {
     "MS",    "UBT", "SBTsens", "SBTfr",     "SSTsens",
     "SSTfr", "HE",  "AIR",     "HeBalloon", "REST"};
+
+// Runtime selection; category indices and the on-disk branch schema stay fixed.
+class MaterialSelection {
+ public:
+  explicit MaterialSelection(bool includeRest = true) {
+    fEnabled.fill(true);
+    fEnabled[REST] = includeRest;
+  }
+
+  void SetMaterials(const std::vector<std::string>& names) {
+    if (names.empty())
+      throw std::invalid_argument("DIS material selection must not be empty");
+    std::array<bool, nMats> enabled = {};
+    for (const auto& name : names) {
+      unsigned index = 0;
+      while (index < nMats && name != MatTypeStr[index].Data()) ++index;
+      if (index == nMats)
+        throw std::invalid_argument("Unknown DIS material category: " + name);
+      if (enabled[index])
+        throw std::invalid_argument("Duplicate DIS material category: " + name);
+      enabled[index] = true;
+    }
+    fEnabled = enabled;
+  }
+
+  std::vector<std::string> GetMaterials() const {
+    std::vector<std::string> names;
+    for (unsigned index = 0; index < nMats; ++index)
+      if (Contains(index)) names.emplace_back(MatTypeStr[index].Data());
+    return names;
+  }
+
+  bool Contains(unsigned index) const { return fEnabled.at(index); }
+
+ private:
+  std::array<bool, nMats> fEnabled;
+};
 
 struct MuonDISBranches {
   int nDISevts;  // per input muon per volume

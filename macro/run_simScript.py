@@ -289,6 +289,14 @@ parser.add_argument(
     action="store_true",
 )
 parser.add_argument("--RpvSusy", dest="RPVSUSY", help="Generate events based on RPV neutralino", action="store_true")
+parser.add_argument(
+    "--materials",
+    "--dis-materials",
+    nargs="+",
+    metavar="CATEGORY",
+    help="DIS categories to replay with --NewMuDIS (space-separated; default: all stored categories). "
+    "Choices: MS UBT SBTsens SBTfr SSTsens SSTfr HE AIR HeBalloon REST",
+)
 parser.add_argument("--FixedTarget", dest="fixedTarget", help="Enable fixed target simulation", action="store_true")
 parser.add_argument("--DarkPhoton", help="Generate dark photons", action="store_true")
 parser.add_argument("--SusyBench", dest="RPVSUSYbench", help="Generate HP Susy", type=int, default=2)
@@ -489,6 +497,8 @@ if options.nEvents is None and not options.newmudis:
 
 if options.mudis and options.newmudis:
     parser.error("--MuDIS and --NewMuDIS are mutually exclusive")
+if options.materials is not None and not options.newmudis:
+    parser.error("--materials requires --NewMuDIS")
 # Handle SND_design: allow 'all' (case-insensitive) or list of ints
 available_snd_designs = [1, 2]  # Extend this list as new designs are added
 if any(str(x).lower() == "all" for x in options.SND_design):
@@ -880,6 +890,11 @@ if options.mudis or options.newmudis:
     primGen.SetTarget(0.0, 0.0)
     if options.newmudis:
         DISgen = ROOT.NewMuDISGenerator()
+        if options.materials is not None:
+            try:
+                DISgen.SetMaterials(options.materials)
+            except Exception as error:
+                parser.error(str(error))
         # The default reads at most 100 input muons and replays at most 100 DIS events.
         DISgen.SetNevents(100 if options.nEvents is None else options.nEvents)
     else:

@@ -53,6 +53,14 @@ parser.add_argument("--check-all-volumes", action="store_true", help="Scan all g
 parser.add_argument("-z", "--z_max", type=float, default=20000)
 parser.add_argument("--z_min", type=float, default=2500, help="Minimum z in cm for diagnostics (default: 2500)")
 parser.add_argument("-d", "--nDIS", help="Number of DIS per muon to generate", required=False, default=1000, type=int)
+parser.add_argument(
+    "--materials",
+    "--dis-materials",
+    nargs="+",
+    metavar="CATEGORY",
+    help="DIS categories to generate (space-separated; default: all except REST). "
+    "Choices: MS UBT SBTsens SBTfr SSTsens SSTfr HE AIR HeBalloon REST",
+)
 parser.add_argument("-g", "--geoFile", dest="geoFile", help="ROOT geofile", required=True)
 parser.add_argument("--muon-shield-field-map", help="Shield field map (default: geometry shieldName)")
 parser.add_argument("--muon-shield-field-z", type=float, help="Shield map z offset in cm (default: geometry entrance)")
@@ -71,6 +79,12 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
+muDis = r.MuDISProcessor()
+if args.materials is not None:
+    try:
+        muDis.SetMaterials(args.materials)
+    except Exception as error:
+        parser.error(str(error))
 if not math.isfinite(args.poca_jump_threshold) or args.poca_jump_threshold < 0:
     parser.error("--poca-jump-threshold must be finite and nonnegative")
 
@@ -114,7 +128,7 @@ logging.info("Geometry successfully loaded.")
 # Check
 r.gGeoManager.Print()  # Read geometry
 
-muDis = r.MuDISProcessor()
+logging.info("DIS material categories: %s", ", ".join(str(name) for name in muDis.GetMaterials()))
 muDis.SetPythiaStdout(args.pythia_stdout)
 # Keep the maker alive: it owns the map borrowed by the path processor.
 field_maker = r.ShipFieldMaker()

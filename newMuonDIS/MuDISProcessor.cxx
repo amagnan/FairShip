@@ -633,9 +633,8 @@ void MuDISProcessor::ProcessMuons() {
     // length*density. That way, do only once the calculation of the path, and
     // plenty of DIS in each material. fill a branch with weight = path
     // length*density.
-    // Discarding REST: many muons go through CONCRETE,no need to record DIS
-    // there....
-    for (unsigned i(0); i < nMats - 1; ++i) {
+    for (unsigned i(0); i < nMats; ++i) {
+      if (!fMaterials.Contains(i)) continue;
       if (lPathMap.find(MatTypeStr[i].Data()) != lPathMap.end())
         generateDISevents(targetType, muW, MatTypeStr[i].Data(),
                           lPathMap.find(MatTypeStr[i].Data())->second,
