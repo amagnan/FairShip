@@ -7,30 +7,76 @@ import argparse
 import json
 import os
 import tempfile
+from array import array
 from itertools import combinations
 from pathlib import Path
 
-from analyseEvents import Geometry, make_vertex, selected_tracks
+from analyseEvents import Geometry, analytical_cross_section, make_vertex, selected_tracks
+
+
+def clone_filtered_tree(tree, cross_section="stored"):
+    """Clone the event schema, optionally replacing the scalar cross section."""
+    if cross_section not in ("stored", "analytical"):
+        raise ValueError("replayfilter cross_section must be stored or analytical")
+    tree.SetBranchStatus("*", True)
+    value = None
+    if cross_section == "analytical":
+        for name in ("muDIS_xsec", "muDIS_pPythia"):
+            branch = tree.GetBranch(name)
+            leaf = branch.GetLeaf(name) if branch else None
+            if (not leaf or leaf.GetTypeName() != "Double_t"
+                    or leaf.GetLenStatic() != 1 or leaf.GetLeafCount()):
+                raise ValueError(f"Analytical replayfilter requires scalar Double_t {name}")
+        tree.SetBranchStatus("muDIS_xsec", False)
+        value = array("d", [0.0])
+    selected = tree.CloneTree(0)
+    if not selected:
+        raise OSError("Cannot clone replay tree schema")
+    if value is not None:
+        selected.Branch("muDIS_xsec", value, "muDIS_xsec/D")
+    return selected, value
+
+
+def replace_cross_section(selected, event, value):
+    if value is not None:
+        value[0] = analytical_cross_section(event.muDIS_pPythia)
+        # TChain may copy input addresses to clones when switching files.
+        selected.GetBranch("muDIS_xsec").SetAddress(value)
 
 
 def selection_stage(event, geometry, pdg):
     """Return 0 (<2 selected tracks), 1 (no accepted pair), or 2 (keep event)."""
+    detail = selection_detail(event, geometry, pdg)
+    return 0 if detail == 0 else (2 if detail == 5 else 1)
+
+
+def selection_detail(event, geometry, pdg):
+    """Furthest sequential cut passed by any one pair (0 through 5)."""
     tracks, _ = selected_tracks(event, pdg)
     if len(tracks) < 2:
         return 0
+    stage = 1
     for first, second in combinations(tracks, 2):
         if first.charge * second.charge >= 0:
             continue
+        stage = max(stage, 2)
         vertex = make_vertex(first, second)
-        if vertex is not None and vertex.doca < 5.0 and geometry.clearance(vertex.position) >= 0:
-            return 2
-    return 1
+        if vertex is None:
+            continue
+        stage = max(stage, 3)
+        if not vertex.doca < 5.0:
+            continue
+        stage = max(stage, 4)
+        if geometry.clearance(vertex.position) >= 0:
+            return 5
+    return stage
 
 
-def filter_file(root, input_file, output_file, geometry_file=None, start_event=0, n_events=-1):
+def filter_file(root, input_file, output_file, geometry_file=None, start_event=0, n_events=-1,
+                diagnostics=False, cross_section="stored"):
     """Filter one file; the caller must have loaded libShipMuDIS.so once.
 
-    Keep the original tree schema, track indices, weights and normalization.
+    Keep track indices, weights and normalization; optionally replace muDIS_xsec.
     Other ROOT keys are copied unchanged; replayFilter records this skim's
     provenance and raw event counts. Publish only a successfully closed file.
     """
@@ -74,6 +120,7 @@ def filter_file(root, input_file, output_file, geometry_file=None, start_event=0
             "events_processed": stop - start_event,
             "events_two_tracks": 0,
             "events_selected": 0,
+            "cross_section": cross_section,
             "selection": "(Tr1 or Tr2) + (Tr3 or Tr4) + TD, p > 1 GeV/c; at least one opposite-sign pair with "
             "backward vertex, DOCA < 5 cm, inside decay helium; no clearance or IP cut",
         }
@@ -86,15 +133,24 @@ def filter_file(root, input_file, output_file, geometry_file=None, start_event=0
             with root.TFile.Open(str(temporary_path), "RECREATE") as destination:
                 destination.SetCompressionSettings(source.GetCompressionSettings())
                 destination.cd()
-                selected = tree.CloneTree(0)
+                selected, xsec_value = clone_filtered_tree(tree, cross_section)
                 if not selected:
                     raise OSError("Cannot clone cbmsim tree")
+                diagnostic = None
+                if diagnostics:
+                    from replayFilterDiagnostics import ReplayFilterDiagnostics
+
+                    diagnostic = ReplayFilterDiagnostics(root, summary)
                 for entry in range(start_event, stop):
                     if tree.GetEntry(entry) <= 0:
                         raise OSError(f"Cannot read cbmsim entry {entry}")
-                    stage = selection_stage(tree, geometry, pdg)
+                    detail = selection_detail(tree, geometry, pdg)
+                    stage = 0 if detail == 0 else (2 if detail == 5 else 1)
+                    if diagnostic is not None:
+                        diagnostic.fill(tree, entry, summary["events_selected"] if stage == 2 else -1, detail)
                     summary["events_two_tracks"] += int(stage >= 1)
                     if stage == 2:
+                        replace_cross_section(selected, tree, xsec_value)
                         if selected.Fill() < 0:
                             raise OSError(f"Cannot write cbmsim entry {entry}")
                         summary["events_selected"] += 1
@@ -107,7 +163,20 @@ def filter_file(root, input_file, output_file, geometry_file=None, start_event=0
                 destination.cd()
                 if selected.Write("cbmsim", root.TObject.kOverwrite) <= 0:
                     raise OSError("Cannot write filtered cbmsim tree")
-                _copy_metadata(source, destination, skip=("cbmsim", "replayFilter"))
+                _copy_metadata(
+                    source,
+                    destination,
+                    skip=(
+                        "cbmsim",
+                        "replayFilter",
+                        "replayFilterDiagnostics",
+                        "replayFilterMuons",
+                        "replayFilterPlots",
+                    ),
+                )
+                if diagnostic is not None:
+                    destination.cd()
+                    diagnostic.write(destination)
                 previous = source.Get("replayFilter")
                 if previous:
                     summary["previous_filter"] = json.loads(str(previous.GetTitle()))
@@ -141,6 +210,13 @@ def main():
     parser.add_argument("-g", "--geoFile", help="Geometry ROOT file (default: matching geo_ file beside input)")
     parser.add_argument("-s", "--start_event", type=int, default=0, help="First input entry (default: 0)")
     parser.add_argument("-n", "--n_events", type=int, default=-1, help="Input entries to process (-1: all remaining)")
+    parser.add_argument("--cross-section", choices=("stored", "analytical"), default="stored",
+                        help="Preserve muDIS_xsec or replace it with sigma(muDIS_pPythia) in mb")
+    parser.add_argument(
+        "--diagnostics",
+        action="store_true",
+        help="Save all-event muon/vertex/hit diagnostics and acceptance histograms",
+    )
     args = parser.parse_args()
     if args.start_event < 0 or args.n_events < -1:
         parser.error("Counts must be nonnegative, except -n -1 for all remaining entries")
@@ -153,7 +229,8 @@ def main():
     print(f"libShipMuDIS.so load result: {result}", flush=True)
     if result < 0:
         raise RuntimeError("Cannot load libShipMuDIS.so")
-    filter_file(ROOT, args.inputfile, args.outputfile, args.geoFile, args.start_event, args.n_events)
+    filter_file(ROOT, args.inputfile, args.outputfile, args.geoFile, args.start_event, args.n_events,
+                args.diagnostics, args.cross_section)
 
 
 if __name__ == "__main__":
