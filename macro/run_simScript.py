@@ -295,7 +295,7 @@ parser.add_argument(
     nargs="+",
     metavar="CATEGORY",
     help="DIS categories to replay with --NewMuDIS (space-separated; default: all stored categories). "
-    "Choices: MS UBT SBTsens SBTfr SSTsens SSTfr HE AIR HeBalloon REST",
+    "Choices: MS UBT SBTsens SBTfr SSTsens SSTfr HE AIR HeBalloon REST SBTss",
 )
 parser.add_argument("--FixedTarget", dest="fixedTarget", help="Enable fixed target simulation", action="store_true")
 parser.add_argument("--DarkPhoton", help="Generate dark photons", action="store_true")

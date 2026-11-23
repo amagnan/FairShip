@@ -97,7 +97,9 @@ std::string MuonPath::GetLabel(const std::string& aVol,
                                const std::string& aParent) const {
   //@FIXME AMM-avoid hardcoding, pass by config ?
   std::string label = "REST";
-  if (aVol.find("Magn") != aVol.npos)
+  if (aMat == "steel" && aParent.find("VetoSteel") != aParent.npos)
+    label = "SBTss";
+  else if (aVol.find("Magn") != aVol.npos)
     label = "MS";
   else if (aVol.find("UpstreamTaggerRegion_") == 0 &&
            aMat == "Scintillator")

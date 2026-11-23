@@ -10,7 +10,7 @@ import numpy as np
 
 TREE_NAME = "DIS"
 N_STEPS = 4
-MATERIALS = ("MS", "UBT", "SBTsens", "SBTfr", "SSTsens", "SSTfr", "HE", "AIR", "HeBalloon", "REST")
+MATERIALS = ("MS", "UBT", "SBTsens", "SBTfr", "SSTsens", "SSTfr", "HE", "AIR", "HeBalloon", "REST", "SBTss")
 PAIR_FLOATS = ("p1_GeV", "p2_GeV", "doca_cm", "target_ip_cm")
 TRACK_INTS = ("pdg_id", "mother_id", "has_timing_hit", "selected", "stage_mask")
 TRACK_FLOATS = ("charge_e", "mc_weight", "weight")

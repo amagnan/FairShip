@@ -13,10 +13,10 @@ import numpy as np
 
 
 def read_histograms(path):
-    """Read the common version-7/8 histogram schema, one histogram at a time."""
+    """Read the common version-7/8/9 histogram schema, one histogram at a time."""
     with np.load(path, allow_pickle=False) as archive:
         metadata = json.loads(str(archive["metadata"]))
-        if metadata["version"] not in (7, 8):
+        if metadata["version"] not in (7, 8, 9):
             raise ValueError(f"Unsupported histogram archive version: {path}")
         seen = set()
         for item in metadata["histograms"]:

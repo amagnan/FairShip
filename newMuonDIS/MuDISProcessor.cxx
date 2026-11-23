@@ -451,8 +451,9 @@ void MuDISProcessor::generateDISevents(const std::string& tType,
 void MuDISProcessor::ProcessMuons() {
   ShipMuDIS::Normalization normalization("prepareEvents");
   // Count before momentum/path cuts for the final diagnostics only.
+  Long64_t inputMuonEvents = 0;
+  Long64_t inputMuonSum = 0;
   Long64_t multiMuonEvents = 0;
-  Long64_t multiMuonSum = 0;
   LOG(info) << " * Start of event loop" << std::endl;
   fGeoProcessor.ResetDiagnostics();
 
@@ -481,6 +482,8 @@ void MuDISProcessor::ProcessMuons() {
   double skipMu_pminW = 0.;
   double skipMu_accW = 0.;
   double skipMu_pathW = 0.;
+  Long64_t skipMu_emptyDIS = 0;
+  double skipMu_emptyDISW = 0.;
 
   struct PathTotals {
     Long64_t muons = 0;
@@ -532,10 +535,9 @@ void MuDISProcessor::ProcessMuons() {
       skipEvt++;
       continue;
     }
-    if (nMu >= 2) {
-      ++multiMuonEvents;
-      multiMuonSum += nMu;
-    }
+    ++inputMuonEvents;
+    inputMuonSum += nMu;
+    if (nMu >= 2) ++multiMuonEvents;
     // Preserve the random stream for single-muon input events.
     const Int_t muIdx = muonIndices[nMu == 1 ? 0 : gRandom->Integer(nMu)];
 
@@ -633,12 +635,22 @@ void MuDISProcessor::ProcessMuons() {
     // length*density. That way, do only once the calculation of the path, and
     // plenty of DIS in each material. fill a branch with weight = path
     // length*density.
+    bool hasDIS = false;
     for (unsigned i(0); i < nMats; ++i) {
       if (!fMaterials.Contains(i)) continue;
       if (lPathMap.find(MatTypeStr[i].Data()) != lPathMap.end())
         generateDISevents(targetType, muW, MatTypeStr[i].Data(),
                           lPathMap.find(MatTypeStr[i].Data())->second,
                           foutEv.br[i]);
+      hasDIS = hasDIS || foutEv.br[i].nDISevts > 0;
+    }
+
+    // Keep path diagnostics inclusive, even when no selected material has DIS.
+    pathTotals.Add(muW, foutEv.pathLength);
+    if (!hasDIS) {
+      ++skipMu_emptyDIS;
+      skipMu_emptyDISW += muW;
+      continue;
     }
 
     // Keep companion muons with their original weights; replay transports them.
@@ -648,7 +660,6 @@ void MuDISProcessor::ProcessMuons() {
       foutEv.mcTrks.back().SetTrackID(foutEv.mcTrks.size() - 1);
     }
     fouttree->Fill();
-    pathTotals.Add(muW, foutEv.pathLength);
 
   }  // loop on events
 
@@ -659,12 +670,18 @@ void MuDISProcessor::ProcessMuons() {
             << "Counted: " << skipMu_acc
             << " muons with no recorded hits in UBT,UBT scoring planes,SBT,SST,TD.";
   normalization.Attach(fouttree);
-  LOG(info) << "Input muon multiplicity: " << multiMuonEvents
-            << " events with n_mu >= 2, sum(n_mu) = "
-            << multiMuonSum << ", average n_mu = "
-            << (multiMuonEvents > 0
-                    ? static_cast<double>(multiMuonSum) / multiMuonEvents
+  LOG(info) << std::setprecision(17)
+            << "Discarded muons with no DIS in selected materials: "
+            << skipMu_emptyDIS << ", sum(fW) = " << skipMu_emptyDISW;
+  LOG(info) << "Input muon multiplicity: " << inputMuonEvents
+            << " events with n_mu >= 1, sum(n_mu) = "
+            << inputMuonSum << ", average n_mu = "
+            << (inputMuonEvents > 0
+                    ? static_cast<double>(inputMuonSum) / inputMuonEvents
                     : 0.);
+  LOG(info) << "Companion muons (excluding the selected DIS muon): "
+            << inputMuonSum - inputMuonEvents << " in " << multiMuonEvents
+            << " events with n_mu >= 2";
   LOG(info) << "Weighted counts (sum MCTrack[0].fW): " << wplus << " mu+ and "
             << wminus << " mu- (after momentum cut)." << std::endl
             << "Skipped (sum MCTrack[0].fW): " << skipMu_pminW
@@ -675,7 +692,7 @@ void MuDISProcessor::ProcessMuons() {
   fGeoProcessor.PrintDiagnostics();
   // Print additive quantities so jobs can be combined before taking means.
   LOG(info) << std::setprecision(17)
-            << "Muon path totals (cm, excluding REST): output muons = "
+            << "Muon path totals (cm, excluding REST): muons with valid paths = "
             << pathTotals.muons << ", sum(fW) = " << pathTotals.weight
             << ", sum(L) = " << pathTotals.length
             << ", sum(fW*L) = " << pathTotals.weightedLength;

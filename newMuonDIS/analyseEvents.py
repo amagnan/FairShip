@@ -17,9 +17,9 @@ import numpy as np
 import yaml
 from analysisTree import CachedGeometry, NullPlots, TreeWriter
 
-MATERIALS = ("MS", "UBT", "SBTsens", "SBTfr", "SSTsens", "SSTfr", "HE", "AIR", "HeBalloon", "REST")
+MATERIALS = ("MS", "UBT", "SBTsens", "SBTfr", "SSTsens", "SSTfr", "HE", "AIR", "HeBalloon", "REST", "SBTss")
 TYPES = ("disgen", "disfilter", "disreplay_gen", "disreplay_filter")
-OUTPUT_VERSION = 8
+OUTPUT_VERSION = 9
 # Avogadro constant times mb -> cm^2, for the stored density integral in g/cm^2.
 MB_TO_INTERACTION = 6.02214076e-4
 ANALYSIS_SHA256 = hashlib.sha256(

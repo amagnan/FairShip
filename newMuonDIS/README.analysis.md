@@ -162,7 +162,7 @@ Read `muon_path_length` and `muon_path_length_<material>` when those branches
 exist in the current input tree. Zero is a measured zero path length;
 `NaN` means unavailable. Missing values are never inferred from weights or
 from the straight-line reconstructed track. Per-material keys are MS, UBT,
-SBTsens, SBTfr, SSTsens, SSTfr, HE, AIR, HeBalloon and REST; `total` is the
+SBTsens, SBTfr, SSTsens, SSTfr, HE, AIR, HeBalloon, REST and SBTss; `total` is the
 upstream total excluding REST.
 
 These branches currently exist in prepared `MuonDIS` files but are **not
@@ -235,8 +235,8 @@ pixi cvmfs python -u newMuonDIS/renderAnalysis.py analysis/summary/histograms.np
     --output-dir analysis/summary_rendered
 ```
 
-The input may also be the summary directory. The renderer accepts version-7 and
-version-8 histogram archives and uses the adjacent `run.json` normalization scale
+The input may also be the summary directory. The renderer accepts version-7,
+version-8 and version-9 histogram archives and uses the adjacent `run.json` normalization scale
 for scaled plots. It does not require ROOT or the extraction's analysis-code
 signature. The output directory must be new or empty and distinct from the input;
 it receives `plots/` and `histogram_flows.csv`.
@@ -308,9 +308,11 @@ Material histograms and aggregate tables are merged when present.
 Use `--skip-event-records` to retain only histograms and aggregate tables;
 `run.json` records the omission. A further merge of a reduced result requires
 the same explicit option. This option is invalid for tree-only inputs.
-Version-7 and older analysis outputs must be regenerated: version 8 adds the
-analytical cross section and Pythia momentum branches. Production simulation
-files remain unchanged; no library rebuild or simulation rerun is needed.
+Version-8 and older analysis outputs must be regenerated: version 9 adds the
+`SBTss` material category and its path-length branch. Version 8 added the
+analytical cross section and Pythia momentum branches. To include SBT support
+DIS, rebuild `ShipMuDIS` and regenerate prepared/filtered files with the new
+category before replay and analysis.
 The analysis signature records the cross-section mode and rejects incompatible
 merges. Summaries recompute weights once from the saved raw track weights and
 Pythia momentum, preserving the original preparation normalization.

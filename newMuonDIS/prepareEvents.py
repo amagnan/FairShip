@@ -59,7 +59,7 @@ parser.add_argument(
     nargs="+",
     metavar="CATEGORY",
     help="DIS categories to generate (space-separated; default: all except REST). "
-    "Choices: MS UBT SBTsens SBTfr SSTsens SSTfr HE AIR HeBalloon REST",
+    "Choices: MS UBT SBTsens SBTfr SSTsens SSTfr HE AIR HeBalloon REST SBTss",
 )
 parser.add_argument("-g", "--geoFile", dest="geoFile", help="ROOT geofile", required=True)
 parser.add_argument("--muon-shield-field-map", help="Shield field map (default: geometry shieldName)")

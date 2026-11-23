@@ -27,7 +27,7 @@
 #include "vetoPoint.h"
 
 namespace ShipMuDIS {
-static const unsigned nMats = 10;
+static const unsigned nMats = 11;
 // Last shield material in accumulated z (cm), excluding gaps.
 inline constexpr double kMuonShieldTailZ = 20.;
 
@@ -41,12 +41,13 @@ enum MatType {
   HE = 6,
   AIR = 7,
   HeBalloon = 8,
-  REST = 9
+  REST = 9,
+  SBTss = 10
 };
 
 inline const std::array<TString, nMats> MatTypeStr = {
     "MS",    "UBT", "SBTsens", "SBTfr",     "SSTsens",
-    "SSTfr", "HE",  "AIR",     "HeBalloon", "REST"};
+    "SSTfr", "HE",  "AIR",     "HeBalloon", "REST", "SBTss"};
 
 // Runtime selection; category indices and the on-disk branch schema stay fixed.
 class MaterialSelection {

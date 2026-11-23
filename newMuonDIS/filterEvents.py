@@ -102,7 +102,7 @@ def main():
         nargs="+",
         metavar="CATEGORY",
         help="DIS categories to retain (space-separated; default: all stored categories). "
-        "Choices: MS UBT SBTsens SBTfr SSTsens SSTfr HE AIR HeBalloon REST",
+        "Choices: MS UBT SBTsens SBTfr SSTsens SSTfr HE AIR HeBalloon REST SBTss",
     )
     parser.add_argument(
         "-n",
