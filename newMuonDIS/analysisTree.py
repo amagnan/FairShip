@@ -357,5 +357,6 @@ def event_view(record):
         TimeDetPoint=timing,
         muDIS_material=record["material"],
         muDIS_pPythia=record["muDIS_pPythia"],
+        muDIS_xsec=record["muDIS_xsec"],
         **branches,
     )

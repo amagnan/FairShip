@@ -247,6 +247,15 @@ unweighted and weighted plots. `--scale` can also override the saved scale.
 
 ## Weights, normalization and merging
 
+Replayfilter can write the analytical cross section into `cbmsim.muDIS_xsec`
+using `--cross-section analytical`. Analyse those outputs with
+`cross_section: stored` and `weight_factor: 1.0`. Stored mode reads the cross
+section in mb, rejects missing/nonfinite/nonpositive values (including the old
+`-1` placeholder), and applies the same conversion and DIS-only weighting
+described below. Raw MCTrack weights stay intact. Summary replay from
+`events.root` retains and uses this value without recomputing the formula.
+Stored mode is supported for replay input only.
+
 The example configuration replaces the old combined `weight_factor: 3.6e-6` with:
 
 ```yaml

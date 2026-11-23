@@ -11,6 +11,7 @@ n_events: 100000  # TChain entries (input muons for gen/filter; events for repla
 first_entry: 0  # Zero-based entry in the sorted input-file TChain; use disjoint ranges for jobs.
 save_plots: true  # Set false (or pass --no-plots) for split jobs; histogram archives are saved unless tree_only is true.
 cross_section: analytical  # sigma(pPythia) in mb, including the density-to-interaction conversion.
+# For replay filtered with --cross-section analytical, use stored to read muDIS_xsec.
 weight_factor: 1.0  # Additional multiplier; do not include the old constant cross section here.
 # Omit cross_section (or use constant) to retain the legacy weight_factor-only behavior.
 # Additional scaling uses the original, unselected prepareEvents sum of MCTrack[0].fW.

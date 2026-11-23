@@ -64,8 +64,8 @@ def analytical_cross_section(momentum):
 def cross_section_mode(config):
     # Existing configs retain their combined constant factor until explicitly migrated.
     mode = config.get("cross_section", "constant")
-    if mode not in ("constant", "analytical"):
-        raise ValueError("cross_section must be constant or analytical")
+    if mode not in ("constant", "analytical", "stored"):
+        raise ValueError("cross_section must be constant, analytical or stored")
     return mode
 
 
@@ -1335,6 +1335,13 @@ def _replay(
         momentum = float(momentum)
         sigma = analytical_cross_section(momentum)
         dis_factor = sigma * MB_TO_INTERACTION
+    elif cross_section == "stored":
+        momentum = ReplayRecords.optional_branch(event, "muDIS_pPythia")
+        sigma = ReplayRecords.optional_branch(event, "muDIS_xsec")
+        if sigma is None or not math.isfinite(float(sigma)) or float(sigma) <= 0:
+            raise ValueError("Stored cross section requires finite positive muDIS_xsec in mb")
+        sigma = float(sigma)
+        dis_factor = sigma * MB_TO_INTERACTION
     elif cross_section != "constant":
         raise ValueError(f"Unknown cross_section: {cross_section}")
     diagnostics.start_event(event, pdg, geometry, factor, dis_factor)
@@ -1490,6 +1497,8 @@ def run(config):
 def _run(config, output_streams):
     kind = config["type"]
     cross_section = cross_section_mode(config)
+    if cross_section == "stored" and not kind.startswith("disreplay"):
+        raise ValueError("Stored cross section requires replay input")
     files = discover(config["production_path"], kind)
     limit = config.get("n_events", -1)
     if isinstance(limit, bool) or not isinstance(limit, int) or limit < -1:
@@ -1674,6 +1683,8 @@ def _run(config, output_streams):
                     (
                         "DIS weights include sigma(pPythia) [mb] * 6.02214076e-4; soft weights do not; "
                         if cross_section == "analytical"
+                        else "DIS weights include stored muDIS_xsec [mb] * 6.02214076e-4; soft weights do not; "
+                        if cross_section == "stored"
                         else ""
                     )
                     + (
