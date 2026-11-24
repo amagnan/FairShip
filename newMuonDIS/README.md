@@ -43,6 +43,16 @@ python3 <path_to_FairShip>/newMuonDIS/filterEvents.py -f <your_output_root_file_
 python3 <path_to_FairShip>/macro/run_simScript.py -f selected.root --tag <your_tag> --NewMuDIS --debug 1 -n 10
 ```
 
+Add `--require-sbt-hit` to `prepareEvents.py` to require at least one recorded
+SBT (`vetoPoint`) hit belonging to the selected primary muon. This optional cut
+is disabled by default and runs before path calculation and DIS generation.
+No energy or timing threshold is applied. In events with multiple primary
+muons, the usual random selection is kept: the event is rejected if the selected
+muon has no SBT hit, even if a companion has one. Rejected muons still contribute
+to input normalization; the final summary reports the count and summed weight
+rejected by this cut after the momentum cut. C++/PyROOT callers can use
+`MuDISProcessor::SetRequireSBTHit(true)` (Python: `True`).
+
 Select the DIS material categories at runtime with `--materials` (alias
 `--dis-materials`), followed by space-separated, case-sensitive labels:
 

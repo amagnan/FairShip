@@ -50,6 +50,11 @@ parser.add_argument("--seed", type=int, help="Random seed for Pythia6 and ROOT (
 parser.add_argument("--pythia-stdout", action="store_true",
                     help="Send Pythia6 messages to stdout instead of fort.11 (use GFORTRAN_UNBUFFERED_ALL=1 for hang diagnostics)")
 parser.add_argument("--check-all-volumes", action="store_true", help="Scan all geometry volumes for diagnostics")
+parser.add_argument(
+    "--require-sbt-hit",
+    action="store_true",
+    help="Require at least one SBT hit belonging to the selected primary muon",
+)
 parser.add_argument("-z", "--z_max", type=float, default=20000)
 parser.add_argument("--z_min", type=float, default=2500, help="Minimum z in cm for diagnostics (default: 2500)")
 parser.add_argument("-d", "--nDIS", help="Number of DIS per muon to generate", required=False, default=1000, type=int)
@@ -80,6 +85,7 @@ parser.add_argument(
 
 args = parser.parse_args()
 muDis = r.MuDISProcessor()
+muDis.SetRequireSBTHit(args.require_sbt_hit)
 if args.materials is not None:
     try:
         muDis.SetMaterials(args.materials)

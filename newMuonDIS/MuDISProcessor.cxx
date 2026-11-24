@@ -481,6 +481,8 @@ void MuDISProcessor::ProcessMuons() {
   double wminus = 0.;
   double skipMu_pminW = 0.;
   double skipMu_accW = 0.;
+  Long64_t skipMu_sbt = 0;
+  double skipMu_sbtW = 0.;
   double skipMu_pathW = 0.;
   Long64_t skipMu_emptyDIS = 0;
   double skipMu_emptyDISW = 0.;
@@ -573,6 +575,13 @@ void MuDISProcessor::ProcessMuons() {
     fillSBTHits(muIdx);
     fillSSTHits(muIdx);
     fillTDHits(muIdx);
+
+    if (fRequireSBTHit && foutEv.sbtPt.empty()) {
+      LOG(debug) << iEvent << " skipped: selected muon has no SBT hit";
+      ++skipMu_sbt;
+      skipMu_sbtW += muW;
+      continue;
+    }
 
     // Count events with no hit in UBT, its scoring planes, SBT, SST or TD,
     // flying out of vessel acceptance never bouncing back... For those, very
@@ -670,6 +679,10 @@ void MuDISProcessor::ProcessMuons() {
             << "Counted: " << skipMu_acc
             << " muons with no recorded hits in UBT,UBT scoring planes,SBT,SST,TD.";
   normalization.Attach(fouttree);
+  if (fRequireSBTHit)
+    LOG(info) << std::setprecision(17)
+              << "Discarded muons with no SBT hit: " << skipMu_sbt
+              << ", sum(fW) = " << skipMu_sbtW;
   LOG(info) << std::setprecision(17)
             << "Discarded muons with no DIS in selected materials: "
             << skipMu_emptyDIS << ", sum(fW) = " << skipMu_emptyDISW;

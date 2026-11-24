@@ -60,6 +60,8 @@ class MuDISProcessor {
     fGeoProcessor.SetPocaJumpThreshold(threshold);
   }
   void SetPythiaStdout(bool enabled) { fPythiaOutputUnit = enabled ? 6 : 11; }
+  // Require a recorded SBT hit belonging to the selected primary muon.
+  void SetRequireSBTHit(bool enabled) { fRequireSBTHit = enabled; }
 
   void generateDISevents(const std::string& tType, const double& amuonW,
                          const std::string& aLabel, const MuonPath& aPath,
@@ -85,6 +87,7 @@ class MuDISProcessor {
   int fnDIS;
   int fP6seed;
   int fPythiaOutputUnit = 11;
+  bool fRequireSBTHit = false;
 
   MuGeoProcessor fGeoProcessor;
 
